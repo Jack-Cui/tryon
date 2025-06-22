@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './index.css';
 import logo from '../../assets/logo.png';
 import { authAPI } from '../../services/api';
 
 const Login = () => {
+  const navigate = useNavigate();
   const [countdown, setCountdown] = useState(0);
   const [isCountingDown, setIsCountingDown] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -124,10 +126,8 @@ const Login = () => {
             localStorage.setItem('refresh_token', loginData.refresh_token);
           }
           console.log('Token已保存');
-          
-          // 这里可以添加登录成功后的跳转逻辑
-          // 例如：window.location.href = '/dashboard';
-          // 或者使用React Router: navigate('/dashboard');
+          // 登录成功后跳转到主页面
+          navigate('/home');
         }
       } else {
         setErrorMessage(`登录失败: ${response.status}`);
