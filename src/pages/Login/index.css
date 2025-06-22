@@ -81,6 +81,12 @@ body, html, #root {
   margin-right: 5px;
 }
 
+.verify-code-button.disabled {
+  background-color: #ccc;
+  color: #999;
+  cursor: not-allowed;
+}
+
 .agreement-container {
   display: flex;
   align-items: center;
@@ -109,4 +115,10 @@ body, html, #root {
   font-size: 18px;
   font-weight: bold;
   cursor: pointer;
+}
+
+.login-button.disabled {
+  background: #ccc;
+  color: #999;
+  cursor: not-allowed;
 } 
