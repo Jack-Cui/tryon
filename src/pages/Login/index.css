@@ -121,4 +121,15 @@ body, html, #root {
   background: #ccc;
   color: #999;
   cursor: not-allowed;
+}
+
+.error-message {
+  color: #ff4757;
+  font-size: 14px;
+  text-align: center;
+  margin: 10px 0;
+  padding: 8px 12px;
+  background-color: #ffe0e0;
+  border-radius: 8px;
+  border: 1px solid #ffcccc;
 } 
