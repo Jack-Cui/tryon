@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import './index.css';
 import logo from '../../assets/logo.png';
 import { authAPI } from '../../services/api';
+import { saveTokens } from '../../utils/auth';
 
 const Login = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [countdown, setCountdown] = useState(0);
   const [isCountingDown, setIsCountingDown] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -14,6 +16,19 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isGettingCode, setIsGettingCode] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+
+  // 获取重定向URL
+  const getRedirectUrl = (): string => {
+    const urlParams = new URLSearchParams(location.search);
+    const redirect = urlParams.get('redirect');
+    return redirect || '/home';
+  };
+
+  // 检查是否是从其他页面重定向过来的
+  const isRedirected = (): boolean => {
+    const urlParams = new URLSearchParams(location.search);
+    return urlParams.has('redirect');
+  };
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -121,13 +136,12 @@ const Login = () => {
         const loginData = authAPI.parseLoginResponse(response);
         if (loginData?.access_token) {
           // 保存token到本地存储
-          localStorage.setItem('access_token', loginData.access_token);
-          if (loginData.refresh_token) {
-            localStorage.setItem('refresh_token', loginData.refresh_token);
-          }
+          saveTokens(loginData.access_token, loginData.refresh_token);
           console.log('Token已保存');
-          // 登录成功后跳转到主页面
-          navigate('/home');
+          
+          // 登录成功后跳转到目标页面
+          const redirectUrl = getRedirectUrl();
+          navigate(redirectUrl);
         }
       } else {
         setErrorMessage(`登录失败: ${response.status}`);
@@ -147,6 +161,14 @@ const Login = () => {
     <div className="login-container">
       <img src={logo} alt="logo" className="logo" />
       <h2 className="welcome-text">欢迎来到元相</h2>
+      
+      {/* 显示登录提示 */}
+      {isRedirected() && (
+        <div className="login-notice">
+          <p>请先登录后继续访问</p>
+        </div>
+      )}
+      
       <div className="form">
         <input 
           type="tel" 

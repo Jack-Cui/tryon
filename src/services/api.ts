@@ -148,8 +148,12 @@ export const authAPI = {
     }
 
     try {
+      // 简单判断返回内容是否为JSON
+      if (typeof response.data === 'string' && response.data.trim().startsWith('<')) {
+        throw new Error('返回内容不是JSON，可能是HTML页面');
+      }
       return JSON.parse(response.data);
-    } catch (error) {
+    } catch (error: any) {
       console.error('解析验证码响应失败:', error);
       return null;
     }
