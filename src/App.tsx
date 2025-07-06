@@ -5,6 +5,9 @@ import Login from './pages/Login';
 import Home from './pages/Home';
 import ProtectedRoute from './components/ProtectedRoute';
 import TestLinks from './components/TestLinks';
+import TryonTest from './components/TryonTest';
+import SimpleTryonTest from './components/SimpleTryonTest';
+import TestNavigation from './components/TestNavigation';
 
 function App() {
   return (
@@ -12,6 +15,9 @@ function App() {
       <div className="App">
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/test-nav" element={<TestNavigation />} />
+          <Route path="/tryon-test" element={<TryonTest />} />
+          <Route path="/simple-tryon-test" element={<SimpleTryonTest />} />
           <Route 
             path="/home" 
             element={

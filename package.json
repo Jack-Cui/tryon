@@ -19,7 +19,9 @@
     "antd": "^4.16.13",
     "cors": "^2.8.5",
     "express": "^5.1.0",
+    "google-protobuf": "^3.21.2",
     "node-fetch": "^3.3.2",
+    "protobufjs": "^7.2.5",
     "query-string": "7.0.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
@@ -30,11 +32,17 @@
     "uuid": "8.3.2",
     "web-vitals": "^2.1.4"
   },
+  "devDependencies": {
+    "@types/google-protobuf": "^3.15.12",
+    "http-proxy-middleware": "^3.0.5",
+    "protobufjs-cli": "^1.1.2"
+  },
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "proto:compile": "pbjs -t static-module -w commonjs -o src/proto/xproto.js src/proto/XProto.proto && pbts -o src/proto/xproto.d.ts src/proto/xproto.js"
   },
   "eslintConfig": {
     "extends": [
