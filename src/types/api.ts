@@ -12,6 +12,8 @@ export interface LoginResponse {
   refresh_token?: string;
   expires_in?: number;
   scope?: string;
+  user_id?: string;
+  co_creation_id?: number;
   [key: string]: any;
 }
 
@@ -23,4 +25,61 @@ export interface VerifyCodeResponse {
   success?: boolean;
   message?: string;
   [key: string]: any;
+}
+
+// 房间信息响应类型
+export interface RoomInfoResponse {
+  data: {
+    roomId: string;
+    userId: string;
+    clothId: string;
+    scenarioId: string;
+    actionId: string;
+    [key: string]: any;
+  };
+  [key: string]: any;
+}
+
+// 衣服尺寸响应类型
+export interface ClotheSizeResponse {
+  data: string;
+  [key: string]: any;
+}
+
+// 创建房间响应类型
+export interface CreateRoomResponse {
+  data: {
+    id: number;
+    [key: string]: any;
+  };
+  [key: string]: any;
+}
+
+// 加入房间响应类型
+export interface JoinRoomResponse {
+  data: any;
+  [key: string]: any;
+}
+
+// 进入舞台信息类型
+export interface EnterStageInfo {
+  avatarId: number;
+  userId: string;
+  mapName: string;
+  garments: {
+    garment1Id?: string;
+    garment1Size?: string;
+    garment2Id?: string;
+    garment2Size?: string;
+    garment3Id?: string;
+    garment3Size?: string;
+  };
+  animation: {
+    animId: string;
+    playRate: number;
+    isLoop: boolean;
+  };
+  isControl: boolean;
+  startTime: number;
+  endTime: number;
 } 

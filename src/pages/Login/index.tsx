@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import './index.css';
 import logo from '../../assets/logo.png';
-import { authAPI } from '../../services/api';
+import { authAPI, roomAPI } from '../../services/api';
 import { saveTokens } from '../../utils/auth';
+import { RoomInfoResponse } from '../../types/api';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -16,6 +17,8 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isGettingCode, setIsGettingCode] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
 
   // 获取重定向URL
   const getRedirectUrl = (): string => {
@@ -111,6 +114,83 @@ const Login = () => {
     return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
+  // 显示toast提示
+  const showToastMessage = (message: string) => {
+    setToastMessage(message);
+    setShowToast(true);
+    setTimeout(() => {
+      setShowToast(false);
+    }, 3000);
+  };
+
+  // 房间相关处理函数
+  const handleRoomFlow = async (access_token: string, user_id: string, co_creation_id?: number) => {
+    try {
+      // 如果没有传入共创ID，使用默认值
+      const finalCoCreationId = co_creation_id || 2;
+      
+      if (!finalCoCreationId || finalCoCreationId === 0) {
+        showToastMessage('共创ID不存在或为空，无法继续操作');
+        return;
+      }
+
+      console.log('*'.repeat(50) + '开始房间流程' + '*'.repeat(50));
+      console.log('Access Token:', access_token);
+      console.log('User ID:', user_id);
+      console.log('Co Creation ID:', finalCoCreationId);
+
+      // 1. 获取房间信息
+      console.log('*'.repeat(50) + '获取房间信息' + '*'.repeat(50));
+      const roomInfoResponse = await roomAPI.getSysRoomShare(finalCoCreationId, access_token);
+      const roomInfo = roomAPI.parseRoomInfoResponse(roomInfoResponse);
+      
+      if (!roomInfo) {
+        showToastMessage('获取房间信息失败');
+        return;
+      }
+
+      console.log('房间信息获取成功:', roomInfo);
+
+      // 2. 构建进入舞台信息
+      console.log('*'.repeat(50) + '构建进入舞台信息' + '*'.repeat(50));
+      const enterStageInfo = await roomAPI.buildEnterStageInfo(roomInfo, access_token);
+      console.log('进入舞台信息构建成功:', enterStageInfo);
+
+      // 3. 创建房间
+      console.log('*'.repeat(50) + '创建房间' + '*'.repeat(50));
+      const createRoomResponse = await roomAPI.createRoom(roomInfo.data.roomId, finalCoCreationId, access_token);
+      const createRoomData = roomAPI.parseCreateRoomResponse(createRoomResponse);
+      
+      if (!createRoomData) {
+        showToastMessage('创建房间失败');
+        return;
+      }
+
+      console.log('房间创建成功:', createRoomData);
+      const room_primary_id = createRoomData.data.id;
+
+      // 4. 加入房间
+      console.log('*'.repeat(50) + '加入房间' + '*'.repeat(50));
+      const joinRoomResponse = await roomAPI.joinRoom(room_primary_id, access_token, 1);
+      const joinRoomData = roomAPI.parseJoinRoomResponse(joinRoomResponse);
+      
+      if (!joinRoomData) {
+        showToastMessage('加入房间失败');
+        return;
+      }
+
+      console.log('加入房间成功:', joinRoomData);
+      console.log('*'.repeat(50) + '房间流程完成' + '*'.repeat(50));
+
+      // 显示成功提示
+      showToastMessage('房间流程处理完成！');
+      
+    } catch (error) {
+      console.error('房间流程处理错误:', error);
+      showToastMessage('房间流程处理失败，请重试');
+    }
+  };
+
   const handleLogin = async () => {
     if (!phoneNumber.trim() || !verifyCode.trim()) {
       setErrorMessage('请填写完整信息');
@@ -138,6 +218,15 @@ const Login = () => {
           // 保存token到本地存储
           saveTokens(loginData.access_token, loginData.refresh_token);
           console.log('Token已保存');
+          
+          // 获取用户ID，如果登录响应中没有，可以从其他地方获取或使用默认值
+          const user_id = loginData.user_id || 'default_user_id';
+          
+          // 尝试从登录响应中获取共创ID
+          const co_creation_id = loginData.co_creation_id || undefined;
+          
+          // 执行房间流程
+          await handleRoomFlow(loginData.access_token, user_id, co_creation_id);
           
           // 登录成功后跳转到目标页面
           const redirectUrl = getRedirectUrl();
@@ -220,6 +309,13 @@ const Login = () => {
           {isLoading ? '登录中...' : '立即登录'}
         </button>
       </div>
+      
+      {/* Toast 提示 */}
+      {showToast && (
+        <div className="toast-message">
+          {toastMessage}
+        </div>
+      )}
     </div>
   );
 };

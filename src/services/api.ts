@@ -1,5 +1,14 @@
 import { API_CONFIG, API_ENDPOINTS } from '../config/api';
-import { ApiResponse, LoginResponse, VerifyCodeResponse } from '../types/api';
+import { 
+  ApiResponse, 
+  LoginResponse, 
+  VerifyCodeResponse, 
+  RoomInfoResponse, 
+  ClotheSizeResponse, 
+  CreateRoomResponse, 
+  JoinRoomResponse, 
+  EnterStageInfo 
+} from '../types/api';
 
 // 通用HTTP请求方法
 class ApiService {
@@ -155,6 +164,155 @@ export const authAPI = {
       return JSON.parse(response.data);
     } catch (error: any) {
       console.error('解析验证码响应失败:', error);
+      return null;
+    }
+  }
+};
+
+// 房间相关API方法
+export const roomAPI = {
+  // 获取房间信息
+  async getSysRoomShare(co_creation_id: number, access_token: string): Promise<ApiResponse> {
+    console.log('开始获取房间信息，共创ID:', co_creation_id);
+    const endpoint = API_ENDPOINTS.GET_SYSROOMSHARE(co_creation_id);
+    const headers = {
+      'Authorization': `Bearer ${access_token}`
+    };
+    return await apiService.get(endpoint, headers);
+  },
+
+  // 获取衣服尺寸
+  async getClotheSize(clothe_id: string, access_token: string): Promise<ApiResponse> {
+    console.log('开始获取衣服尺寸，衣服ID:', clothe_id);
+    const endpoint = API_ENDPOINTS.GET_CLOTHE_SIZE(clothe_id);
+    const headers = {
+      'Authorization': `Bearer ${access_token}`
+    };
+    return await apiService.get(endpoint, headers);
+  },
+
+  // 创建房间
+  async createRoom(room_id: string, co_creation_id: number, access_token: string): Promise<ApiResponse> {
+    console.log('开始创建房间，房间ID:', room_id, '共创ID:', co_creation_id);
+    const endpoint = API_ENDPOINTS.CREATE_ROOM();
+    const headers = {
+      'Authorization': `Bearer ${access_token}`,
+      'Content-Type': 'application/json'
+    };
+    const data = JSON.stringify({
+      sourceRoomId: room_id,
+      shareId: co_creation_id
+    });
+    return await apiService.post(endpoint, data, headers);
+  },
+
+  // 加入房间
+  async joinRoom(room_primary_id: number, access_token: string, relationship_type: number = 1): Promise<ApiResponse> {
+    console.log('开始加入房间，房间主键ID:', room_primary_id, '关系类型:', relationship_type);
+    const endpoint = API_ENDPOINTS.JOIN_ROOM();
+    const headers = {
+      'Authorization': `Bearer ${access_token}`,
+      'Content-Type': 'application/json'
+    };
+    const data = JSON.stringify({
+      id: room_primary_id,
+      relationshipType: relationship_type
+    });
+    return await apiService.post(endpoint, data, headers);
+  },
+
+  // 构建进入舞台信息
+  async buildEnterStageInfo(room_info: RoomInfoResponse, access_token: string): Promise<string> {
+    console.log('开始构建进入舞台信息');
+    const room_info_data = room_info.data;
+
+    const clothe_ids = room_info_data.clothId.split(';').filter(id => id && id !== '0');
+    const garments: any = {};
+    
+    for (let i = 0; i < clothe_ids.length; i++) {
+      const clothe_id = clothe_ids[i];
+      console.log(`获取衣服尺寸: ${clothe_id}`);
+      
+      try {
+        const clothe_size_response = await this.getClotheSize(clothe_id, access_token);
+        if (clothe_size_response.ok) {
+          const clothe_size_data = JSON.parse(clothe_size_response.data) as ClotheSizeResponse;
+          const clothe_size = clothe_size_data.data;
+          console.log(`衣服ID: ${clothe_id}, 尺寸: ${clothe_size}`);
+          
+          if (i === 0) {
+            garments.garment1Id = clothe_id;
+            garments.garment1Size = clothe_size;
+          } else if (i === 1) {
+            garments.garment2Id = clothe_id;
+            garments.garment2Size = clothe_size;
+          } else if (i === 2) {
+            garments.garment3Id = clothe_id;
+            garments.garment3Size = clothe_size;
+          }
+        }
+      } catch (error) {
+        console.error(`获取衣服尺寸失败: ${clothe_id}`, error);
+      }
+    }
+
+    const enter_stage_info: EnterStageInfo = {
+      avatarId: 0,
+      userId: room_info_data.userId,
+      mapName: room_info_data.scenarioId,
+      garments: garments,
+      animation: {
+        animId: room_info_data.actionId,
+        playRate: 1,
+        isLoop: true
+      },
+      isControl: true,
+      startTime: 0,
+      endTime: 0
+    };
+
+    console.log('进入舞台信息:', enter_stage_info);
+    return JSON.stringify(JSON.stringify(enter_stage_info));
+  },
+
+  // 解析房间信息响应
+  parseRoomInfoResponse(response: ApiResponse): RoomInfoResponse | null {
+    if (!response.ok || !response.data) {
+      return null;
+    }
+
+    try {
+      return JSON.parse(response.data);
+    } catch (error) {
+      console.error('解析房间信息响应失败:', error);
+      return null;
+    }
+  },
+
+  // 解析创建房间响应
+  parseCreateRoomResponse(response: ApiResponse): CreateRoomResponse | null {
+    if (!response.ok || !response.data) {
+      return null;
+    }
+
+    try {
+      return JSON.parse(response.data);
+    } catch (error) {
+      console.error('解析创建房间响应失败:', error);
+      return null;
+    }
+  },
+
+  // 解析加入房间响应
+  parseJoinRoomResponse(response: ApiResponse): JoinRoomResponse | null {
+    if (!response.ok || !response.data) {
+      return null;
+    }
+
+    try {
+      return JSON.parse(response.data);
+    } catch (error) {
+      console.error('解析加入房间响应失败:', error);
       return null;
     }
   }
