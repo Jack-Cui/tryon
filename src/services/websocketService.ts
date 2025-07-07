@@ -348,12 +348,97 @@ export class WebSocketService {
       throw new Error('未配置WebSocket参数');
     }
     
+    console.log('🔍 登台请求参数检查:');
+    console.log('  - enterStageInfo:', this.config.enterStageInfo);
+    
     const enterStageReq = proto.oEnterStageReq.create({
       context: this.config.enterStageInfo
     });
     
     const payload = proto.oEnterStageReq.encode(enterStageReq).finish();
+    console.log('🔍 发送登台请求');
     this.sendMessage(501, payload); // EnterStageReq = 501
+    
+    // 启动登台状态监听
+    this.startStageStatusMonitoring();
+  }
+
+  // 登台状态监听
+  private stageStatusMonitoring: {
+    isActive: boolean;
+    timeoutCount: number;
+    maxTimeouts: number;
+    receivedStageChange: boolean;
+    enterStageSuccess: boolean;
+    roomIdForLeave: string | null;
+  } = {
+    isActive: false,
+    timeoutCount: 0,
+    maxTimeouts: 2,
+    receivedStageChange: false,
+    enterStageSuccess: false,
+    roomIdForLeave: null
+  };
+
+  private startStageStatusMonitoring(): void {
+    this.stageStatusMonitoring = {
+      isActive: true,
+      timeoutCount: 0,
+      maxTimeouts: 2,
+      receivedStageChange: false,
+      enterStageSuccess: false,
+      roomIdForLeave: null
+    };
+    
+    console.log('🔍 开始登台状态监听...');
+    
+    // 设置超时检查
+    this.checkStageStatusTimeout();
+  }
+
+  private checkStageStatusTimeout(): void {
+    if (!this.stageStatusMonitoring.isActive) {
+      return;
+    }
+    
+    this.stageStatusMonitoring.timeoutCount++;
+    console.log(`⏰ 登台状态检查超时 (${this.stageStatusMonitoring.timeoutCount}/${this.stageStatusMonitoring.maxTimeouts})`);
+    
+    // 如果收到了舞台状态变更，可能登台已经成功
+    if (this.stageStatusMonitoring.receivedStageChange && this.stageStatusMonitoring.timeoutCount >= this.stageStatusMonitoring.maxTimeouts) {
+      console.log('✅ 基于舞台状态变更判断登台可能成功');
+      this.stageStatusMonitoring.enterStageSuccess = true;
+      this.completeStageFlow();
+    } else if (this.stageStatusMonitoring.timeoutCount >= this.stageStatusMonitoring.maxTimeouts) {
+      console.log('❌ 登台过程失败或超时');
+      this.stageStatusMonitoring.isActive = false;
+    } else {
+      // 继续等待
+      setTimeout(() => {
+        this.checkStageStatusTimeout();
+      }, 8000); // 8秒超时
+    }
+  }
+
+  private completeStageFlow(): void {
+    if (!this.stageStatusMonitoring.isActive) {
+      return;
+    }
+    
+    this.stageStatusMonitoring.isActive = false;
+    
+    if (!this.stageStatusMonitoring.roomIdForLeave && this.config) {
+      this.stageStatusMonitoring.roomIdForLeave = this.config.roomId;
+      console.log(`使用配置的房间ID: ${this.stageStatusMonitoring.roomIdForLeave}`);
+    }
+    
+    console.log('✅ 登台成功，等待20秒后离开房间...');
+    
+    // 等待20秒后离开房间
+    setTimeout(() => {
+      console.log('准备离开房间...');
+      this.sendLeaveRoomRequest();
+    }, 20000);
   }
 
   // 发送离开房间请求
@@ -448,23 +533,27 @@ export class WebSocketService {
 
   // 处理登台响应
   private handleEnterStageResponse(payload: ArrayBuffer): void {
+    console.log('登台响应:', payload);
     try {
       const enterStageAsw = proto.oEnterStageAsw.decode(new Uint8Array(payload));
-      console.log('登台响应:', enterStageAsw);
+      console.log('登台响应详情:', enterStageAsw);
       
       const errorName = proto.eError[enterStageAsw.code];
       console.log(`登台结果: ${errorName}`);
       
       if (enterStageAsw.code === proto.eError.SUCCESS) {
-        console.log(`成功登台: 房间ID ${enterStageAsw.roomId}, 舞台ID ${enterStageAsw.stageId}`);
+        console.log(`✅ 成功登台: 房间ID ${enterStageAsw.roomId}, 舞台ID ${enterStageAsw.stageId}`);
         
-        // 在台上停留 20 秒后离开房间
-        setTimeout(() => {
-          console.log('准备离开房间...');
-          this.sendLeaveRoomRequest();
-        }, 20000);
+        // 更新登台状态监听器
+        if (this.stageStatusMonitoring.isActive) {
+          this.stageStatusMonitoring.enterStageSuccess = true;
+          this.stageStatusMonitoring.roomIdForLeave = enterStageAsw.roomId?.toString() || this.config?.roomId || null;
+          this.completeStageFlow();
+        }
       } else {
-        console.error('登台失败:', errorName);
+        console.error('❌ 登台失败:', errorName);
+        // 停止登台状态监听
+        this.stageStatusMonitoring.isActive = false;
       }
     } catch (error) {
       console.error('处理登台响应失败:', error);
@@ -487,10 +576,18 @@ export class WebSocketService {
       const stageStatusChange = proto.oStageStatusChangePush.decode(new Uint8Array(payload));
       console.log(`收到舞台状态变更: 索引${stageStatusChange.index}, 舞台ID${stageStatusChange.stageId}, 用户ID${stageStatusChange.userId}, 状态${stageStatusChange.stageType}`);
       
-      if (stageStatusChange.stageType === proto.eStageType.StageTypeTryEnter) {
-        console.log('舞台状态变更为 TryEnter - 正在尝试上台');
-      } else if (stageStatusChange.stageType === proto.eStageType.StageTypeWorking) {
-        console.log('舞台状态变更为 Working - 已经在台上工作！');
+      // 更新登台状态监听器
+      if (this.stageStatusMonitoring.isActive) {
+        this.stageStatusMonitoring.receivedStageChange = true;
+        
+        if (stageStatusChange.stageType === proto.eStageType.StageTypeTryEnter) {
+          console.log('舞台状态变更为 TryEnter - 正在尝试上台');
+        } else if (stageStatusChange.stageType === proto.eStageType.StageTypeWorking) {
+          console.log('舞台状态变更为 Working - 已经在台上工作！');
+          // 如果状态变为Working，认为登台成功
+          this.stageStatusMonitoring.enterStageSuccess = true;
+          this.completeStageFlow();
+        }
       }
     } catch (error) {
       console.error('处理舞台状态变更失败:', error);
@@ -502,6 +599,14 @@ export class WebSocketService {
     try {
       const stageQueueInfo = proto.oStageQueueInfoPush.decode(new Uint8Array(payload));
       console.log(`收到舞台队列信息: 队列类型${stageQueueInfo.type}, 排队人数${stageQueueInfo.queueCount}, 舞台数量${stageQueueInfo.stageCount}`);
+      
+      // 可以在这里添加队列状态的处理逻辑
+      if (stageQueueInfo.queueUserIds && stageQueueInfo.queueUserIds.length > 0) {
+        console.log(`排队用户: ${stageQueueInfo.queueUserIds.length}个`);
+      }
+      if (stageQueueInfo.stageUserIds && stageQueueInfo.stageUserIds.length > 0) {
+        console.log(`台上用户: ${stageQueueInfo.stageUserIds.length}个`);
+      }
     } catch (error) {
       console.error('处理队列信息推送失败:', error);
     }
