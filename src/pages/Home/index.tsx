@@ -33,7 +33,7 @@ const Home = () => {
         const rtcConfig: RTCVideoConfig = {
           appId: '643e46acb15c24012c963951', // 示例App ID
           appKey: 'b329b39ca8df4b5185078f29d8d8025f', // 示例App Key
-          roomId: coCreationId.toString(), // 使用共创ID作为房间ID
+          roomId: '1939613403762253825', // 使用共创ID作为房间ID
           userId: userId
         };
         
