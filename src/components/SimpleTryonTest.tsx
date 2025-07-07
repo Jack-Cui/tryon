@@ -35,11 +35,20 @@ const SimpleTryonTest: React.FC<SimpleTryonTestProps> = () => {
       
       addLog('开始试穿流程...');
       
+      // RTC配置
+      const rtcConfig = {
+        appId: '643e46acb15c24012c963951', // 示例App ID
+        appKey: 'b329b39ca8df4b5185078f29d8d8025f', // 示例App Key
+        roomId: 'temp_room_id', // 临时房间ID，会在tryonService中动态更新
+        userId: values.userId
+      };
+      
       const config = {
         phone: values.phone,
         coCreationId: parseInt(values.coCreationId),
         userId: values.userId,
-        accessToken: values.accessToken
+        accessToken: values.accessToken || '', // 如果没有accessToken，使用空字符串
+        rtcConfig, // 添加RTC配置
       };
       
       // 使用事件监听的方式来捕获日志

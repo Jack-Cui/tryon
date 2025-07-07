@@ -1,12 +1,14 @@
 import { authAPI, roomAPI } from './api';
 import { scheduleService } from './scheduleService';
 import { webSocketService, WebSocketConfig } from './websocketService';
+import { RTCVideoService, RTCVideoConfig } from './rtcVideoService';
 
 export interface TryonConfig {
   phone: string;
   coCreationId: number;
   userId: string;
   accessToken: string;
+  rtcConfig?: RTCVideoConfig;
 }
 
 export class TryonService {
@@ -14,8 +16,31 @@ export class TryonService {
   private accessToken: string | null = null;
   private roomId: string | null = null;
   private enterStageInfo: string | null = null;
+  private rtcVideoService: RTCVideoService | null = null;
+  private rtcStarted: boolean = false; // 防止重复启动RTC
 
-  constructor() {}
+  constructor() {
+    // 监听登台成功事件
+    this.setupEventListeners();
+  }
+
+  // 设置事件监听器
+  private setupEventListeners(): void {
+    window.addEventListener('stageSuccessRTCStart', ((event: CustomEvent) => {
+      console.log('🎯 收到登台成功事件，准备启动RTC...');
+      console.log('事件详情:', event.detail);
+      
+      if (!this.rtcStarted) {
+        this.rtcStarted = true;
+        this.startRTCVideo().catch(error => {
+          console.error('RTC启动失败:', error);
+          this.rtcStarted = false; // 重置标志，允许重试
+        });
+      } else {
+        console.log('RTC已经启动，跳过重复启动');
+      }
+    }) as EventListener);
+  }
 
   // 完整的试穿流程
   async startTryonFlow(config: TryonConfig): Promise<void> {
@@ -84,6 +109,12 @@ export class TryonService {
     
     this.roomId = roomInfo.data.roomId;
     console.log('房间ID:', this.roomId);
+    
+    // 更新RTC配置中的房间ID
+    if (this.config.rtcConfig) {
+      this.config.rtcConfig.roomId = this.roomId;
+      console.log('🔄 已更新RTC配置中的房间ID:', this.roomId);
+    }
     
     // 构建登台信息
     this.enterStageInfo = await roomAPI.buildEnterStageInfo(roomInfo, this.accessToken);
@@ -189,11 +220,118 @@ export class TryonService {
     
     // 执行完整的登台流程
     await webSocketService.performFullStageFlow();
+    
+    // RTC会在登台成功后通过事件自动启动
+    console.log('⏳ 等待登台成功后自动启动RTC...');
+  }
+
+  // 启动RTC视频服务
+  private async startRTCVideo(): Promise<void> {
+    console.log('🎥 检查RTC配置...');
+    console.log('  - config:', this.config);
+    console.log('  - rtcConfig:', this.config?.rtcConfig);
+    
+    if (!this.config?.rtcConfig) {
+      console.log('❌ 未配置RTC参数，跳过RTC视频接入');
+      return;
+    }
+
+    try {
+      console.log('🎥 开始接入RTC视频服务...');
+      console.log('📋 RTC配置参数:');
+      console.log('  - appId:', this.config.rtcConfig.appId);
+      console.log('  - appKey:', this.config.rtcConfig.appKey);
+      console.log('  - roomId:', this.config.rtcConfig.roomId);
+      console.log('  - userId:', this.config.rtcConfig.userId);
+      
+      // 创建RTC视频服务实例
+      this.rtcVideoService = new RTCVideoService();
+      
+      // 设置事件处理器
+      this.rtcVideoService.setEventHandlers({
+        onUserJoin: (userId: string) => {
+          console.log('👤 RTC用户加入:', userId);
+        },
+        onUserLeave: (userId: string) => {
+          console.log('👤 RTC用户离开:', userId);
+        },
+        onUserPublishStream: (userId: string, hasVideo: boolean, hasAudio: boolean) => {
+          console.log('📹 RTC用户发布流:', userId, '视频:', hasVideo, '音频:', hasAudio);
+          this.handleRemoteStream(userId, hasVideo, hasAudio);
+        },
+        onUserUnpublishStream: (userId: string) => {
+          console.log('📹 RTC用户取消发布流:', userId);
+        },
+        onError: (error: any) => {
+          console.error('❌ RTC错误:', error);
+        }
+      });
+      
+      console.log('🔧 开始初始化RTC服务...');
+      
+      // 初始化RTC服务
+      await this.rtcVideoService.initialize(this.config.rtcConfig);
+      
+      console.log('✅ RTC视频服务接入成功！');
+      
+    } catch (error) {
+      console.error('❌ RTC视频服务接入失败:', error);
+      console.error('错误详情:', error);
+      // 不抛出错误，避免影响主流程
+    }
+  }
+
+  // 处理远程视频流
+  private async handleRemoteStream(userId: string, hasVideo: boolean, hasAudio: boolean): Promise<void> {
+    if (!this.rtcVideoService || !hasVideo) {
+      return;
+    }
+
+    try {
+      const domId = `remote-video-${userId}`;
+      
+      // 设置远程视频播放器
+      await this.rtcVideoService.setRemoteVideoPlayer(userId, domId);
+      
+      console.log('🎬 远程视频播放器设置成功:', userId, domId);
+      
+      // 这里可以触发UI更新，显示视频播放器
+      this.triggerVideoPlayerUpdate(userId, domId);
+      
+    } catch (error) {
+      console.error('❌ 设置远程视频播放器失败:', error);
+    }
+  }
+
+  // 触发视频播放器UI更新
+  private triggerVideoPlayerUpdate(userId: string, domId: string): void {
+    // 创建自定义事件，通知UI组件更新视频播放器
+    const event = new CustomEvent('rtcVideoStreamUpdate', {
+      detail: {
+        userId,
+        domId,
+        type: 'add'
+      }
+    });
+    
+    window.dispatchEvent(event);
+    console.log('📡 发送视频播放器更新事件:', userId, domId);
   }
 
   // 断开连接
   disconnect(): void {
     webSocketService.disconnect();
+    
+    // 清理RTC视频服务
+    if (this.rtcVideoService) {
+      this.rtcVideoService.leaveRoom().catch(error => {
+        console.error('清理RTC服务失败:', error);
+      });
+      this.rtcVideoService = null;
+    }
+    
+    // 重置RTC状态
+    this.rtcStarted = false;
   }
 
   // 获取连接状态

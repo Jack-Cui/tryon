@@ -402,13 +402,35 @@ export class WebSocketService {
       console.log(`使用配置的房间ID: ${this.stageStatusMonitoring.roomIdForLeave}`);
     }
     
-    console.log('✅ 登台成功，等待20秒后离开房间...');
+    console.log('✅ 登台成功，准备启动RTC视频服务...');
+    
+    // 立即触发RTC启动事件
+    this.triggerRTCStart();
+    
+    console.log('⏰ 等待20秒后离开房间...');
     
     // 等待20秒后离开房间
     setTimeout(() => {
       console.log('准备离开房间...');
       this.sendLeaveRoomRequest();
     }, 20000);
+  }
+
+  // 触发RTC启动事件
+  private triggerRTCStart(): void {
+    console.log('🚀 触发RTC启动事件...');
+    
+    // 创建自定义事件，通知tryonService启动RTC
+    const event = new CustomEvent('stageSuccessRTCStart', {
+      detail: {
+        timestamp: Date.now(),
+        roomId: this.config?.roomId,
+        userId: this.config?.uid
+      }
+    });
+    
+    window.dispatchEvent(event);
+    console.log('📡 RTC启动事件已发送');
   }
 
   // 发送离开房间请求
