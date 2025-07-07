@@ -30,6 +30,9 @@ const TestLinks: React.FC = () => {
         <Link to="/home?co_creation_id=abc123" style={{ fontSize: '12px', color: '#007bff' }}>
           /home（co_creation_id=abc123）
         </Link>
+        <Link to="/rtc-video-test" style={{ fontSize: '12px', color: '#28a745' }}>
+          🎥 RTC视频测试
+        </Link>
       </div>
     </div>
   );

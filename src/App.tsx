@@ -8,6 +8,7 @@ import TestLinks from './components/TestLinks';
 import TryonTest from './components/TryonTest';
 import SimpleTryonTest from './components/SimpleTryonTest';
 import TestNavigation from './components/TestNavigation';
+import RTCVideoTest from './pages/RTCVideoTest';
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
           <Route path="/test-nav" element={<TestNavigation />} />
           <Route path="/tryon-test" element={<TryonTest />} />
           <Route path="/simple-tryon-test" element={<SimpleTryonTest />} />
+          <Route path="/rtc-video-test" element={<RTCVideoTest />} />
           <Route 
             path="/home" 
             element={
