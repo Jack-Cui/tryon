@@ -6,6 +6,7 @@ export interface TryonConfig {
   phone: string;
   coCreationId: number;
   userId: string;
+  accessToken: string;
 }
 
 export class TryonService {
@@ -19,36 +20,29 @@ export class TryonService {
   // 完整的试穿流程
   async startTryonFlow(config: TryonConfig): Promise<void> {
     this.config = config;
+    this.accessToken = config.accessToken;
     
     try {
       console.log('开始试穿流程...');
       
-      // 1. 获取验证码
-      console.log('步骤1: 获取验证码');
-      await this.getVerifyCode();
-      
-      // 2. 登录获取access_token
-      console.log('步骤2: 登录获取access_token');
-      await this.login();
-      
-      // 3. 获取房间信息
-      console.log('步骤3: 获取房间信息');
+      // 1. 获取房间信息
+      console.log('步骤1: 获取房间信息');
       await this.getRoomInfo();
       
-      // 4. 创建房间
-      console.log('步骤4: 创建房间');
+      // 2. 创建房间
+      console.log('步骤2: 创建房间');
       const roomPrimaryId = await this.createRoom();
       
-      // 5. 加入房间
-      console.log('步骤5: 加入房间');
+      // 3. 加入房间
+      console.log('步骤3: 加入房间');
       await this.joinRoom(roomPrimaryId);
       
-      // 6. 调度分配实例
-      console.log('步骤6: 调度分配实例');
+      // 4. 调度分配实例
+      console.log('步骤4: 调度分配实例');
       const scheduleResult = await this.scheduleInstance();
       
-      // 7. 连接WebSocket并执行登台流程
-      console.log('步骤7: 连接WebSocket并执行登台流程');
+      // 5. 连接WebSocket并执行登台流程
+      console.log('步骤5: 连接WebSocket并执行登台流程');
       await this.connectAndPerformStage(scheduleResult);
       
       console.log('试穿流程完成！');
@@ -59,54 +53,10 @@ export class TryonService {
     }
   }
 
-  // 获取验证码
-  private async getVerifyCode(): Promise<void> {
-    if (!this.config) {
-      throw new Error('未配置参数');
-    }
-    
-    const response = await authAPI.getVerifyCode(this.config.phone);
-    console.log('验证码请求响应:', response);
-    
-    if (!response.ok) {
-      throw new Error('获取验证码失败');
-    }
-  }
-
-  // 登录
-  private async login(): Promise<void> {
-    if (!this.config) {
-      throw new Error('未配置参数');
-    }
-    
-    // 使用固定验证码 8888
-    const response = await authAPI.login(this.config.phone, '8888');
-    console.log('登录响应:', response);
-    console.log('登录响应数据:', response.data);
-    
-    if (!response.ok) {
-      throw new Error(`登录失败: HTTP ${response.status}`);
-    }
-    
-    const loginData = authAPI.parseLoginResponse(response);
-    console.log('解析后的登录数据:', loginData);
-    
-    if (!loginData) {
-      throw new Error('解析登录响应失败：响应数据为空');
-    }
-    
-    if (!loginData.access_token) {
-      throw new Error('解析登录响应失败：响应数据中没有access_token字段');
-    }
-    
-    this.accessToken = loginData.access_token;
-    console.log('登录成功，access_token:', this.accessToken);
-  }
-
   // 获取房间信息
   private async getRoomInfo(): Promise<any> {
     if (!this.config || !this.accessToken) {
-      throw new Error('未配置参数或未登录');
+      throw new Error('未配置参数或未提供accessToken');
     }
     
     const response = await roomAPI.getSysRoomShare(this.config.coCreationId, this.accessToken);

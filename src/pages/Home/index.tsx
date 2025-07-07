@@ -1,9 +1,49 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import './index.css';
 import demoImage from '../../assets/demo.png';
 import { forceLogout, isLoggedIn } from '../../utils/auth';
+import { tryonService } from '../../services/tryonService';
 
 const Home = () => {
+  const location = useLocation();
+  const { token, userId, phone, coCreationId } = location.state || {};
+  const hasStartedTryon = useRef(false); // 防止重复执行
+
+  useEffect(() => {
+    if (!token || !userId || !phone || !coCreationId) {
+      console.warn('缺少登录参数，试穿流程未执行');
+      return;
+    }
+
+    // 防止重复执行
+    if (hasStartedTryon.current) {
+      console.log('试穿流程已启动，跳过重复执行');
+      return;
+    }
+
+    // 自动开始试穿流程
+    const startTryon = async () => {
+      try {
+        hasStartedTryon.current = true; // 标记已启动
+        const config = {
+          phone,
+          coCreationId,
+          userId,
+          accessToken: token, // 传入登录成功后的token
+        };
+        
+        console.log('开始自动试穿流程，配置:', config);
+        await tryonService.startTryonFlow(config);
+      } catch (error) {
+        console.error('试穿流程启动失败:', error);
+        hasStartedTryon.current = false; // 失败时重置标志
+      }
+    };
+
+    startTryon();
+  }, [token, userId, phone, coCreationId]);
+
   // 测试按钮区域保留（如需删除可告知）
   const handleTestLogout = () => {
     forceLogout();

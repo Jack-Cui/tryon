@@ -72,7 +72,8 @@ const TryonTest: React.FC<TryonTestProps> = () => {
       const config = {
         phone: values.phone,
         coCreationId: parseInt(values.coCreationId),
-        userId: values.userId
+        userId: values.userId,
+        accessToken: values.accessToken
       };
       
       await tryonService.startTryonFlow(config);

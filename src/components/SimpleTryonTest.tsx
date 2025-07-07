@@ -38,7 +38,8 @@ const SimpleTryonTest: React.FC<SimpleTryonTestProps> = () => {
       const config = {
         phone: values.phone,
         coCreationId: parseInt(values.coCreationId),
-        userId: values.userId
+        userId: values.userId,
+        accessToken: values.accessToken
       };
       
       // 使用事件监听的方式来捕获日志
