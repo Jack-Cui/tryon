@@ -284,11 +284,61 @@ export class WebSocketService {
       throw new Error('未配置WebSocket参数');
     }
     
+    // 使用Long类型处理roomId，避免64位整数精度问题
+    const Long = require('long');
+    const roomIdLong = Long.fromString(this.config.roomId, false); // false表示无符号
+    
+    console.log('🔍 进入房间请求参数检查:');
+    console.log('  - roomId (原始):', this.config.roomId, '(类型:', typeof this.config.roomId, ')');
+    console.log('  - roomId (Long):', roomIdLong.toString());
+    console.log('  - roomId (Long 低32位):', roomIdLong.low);
+    console.log('  - roomId (Long 高32位):', roomIdLong.high);
+    
+    // 验证Long值是否正确
+    if (roomIdLong.toString() !== this.config.roomId) {
+      console.error('❌ roomId Long值不正确！期望:', this.config.roomId, '实际:', roomIdLong.toString());
+    } else {
+      console.log('✅ roomId Long值正确！');
+    }
+    
     const enterRoomReq = proto.oEnterRoomReq.create({
-      roomId: this.config.roomId
+      roomId: roomIdLong  // 使用 Long 类型
     });
     
+    console.log('🔍 进入房间Protobuf消息详情:');
+    console.log('  - enterRoomReq.roomId:', enterRoomReq.roomId, '(类型:', typeof enterRoomReq.roomId, ')');
+    
     const payload = proto.oEnterRoomReq.encode(enterRoomReq).finish();
+    console.log('  - 编码后的 payload 长度:', payload.length);
+    console.log('  - 编码后的 payload (前20字节):', Array.from(payload.slice(0, 20)).map(b => b.toString(16).padStart(2, '0')).join(' '));
+    
+    // 解码验证
+    try {
+      const decoded = proto.oEnterRoomReq.decode(payload);
+      console.log('🔍 进入房间解码验证:');
+      console.log('  - decoded.roomId:', decoded.roomId, '(类型:', typeof decoded.roomId, ')');
+      
+      if (decoded.roomId && typeof decoded.roomId === 'object' && decoded.roomId.toString) {
+        console.log('  - decoded.roomId.toString():', decoded.roomId.toString());
+        if (decoded.roomId.toString() !== roomIdLong.toString()) {
+          console.error('❌ roomId解码错误！期望:', roomIdLong.toString(), '实际:', decoded.roomId.toString());
+        } else {
+          console.log('✅ roomId解码正确！');
+        }
+      } else if (typeof decoded.roomId === 'number') {
+        console.log('  - decoded.roomId (number):', decoded.roomId);
+        const expectedNum = parseInt(roomIdLong.toString());
+        if (decoded.roomId !== expectedNum) {
+          console.error('❌ roomId解码错误！期望:', expectedNum, '实际:', decoded.roomId);
+        } else {
+          console.log('✅ roomId解码正确！');
+        }
+      }
+    } catch (error) {
+      console.error('进入房间解码验证失败:', error);
+    }
+    
+    console.log('🔍 发送进入房间请求');
     this.sendMessage(201, payload); // EnterRoomReq = 201
   }
 
@@ -312,8 +362,12 @@ export class WebSocketService {
       throw new Error('未配置WebSocket参数');
     }
     
+    // 使用Long类型处理roomId，避免64位整数精度问题
+    const Long = require('long');
+    const roomIdLong = Long.fromString(this.config.roomId, false); // false表示无符号
+    
     const leaveRoomReq = proto.oLeaveRoomReq.create({
-      roomId: this.config.roomId
+      roomId: roomIdLong  // 使用 Long 类型
     });
     
     const payload = proto.oLeaveRoomReq.encode(leaveRoomReq).finish();
