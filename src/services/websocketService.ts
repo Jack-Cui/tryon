@@ -1,8 +1,11 @@
 import * as proto from '../proto/xproto';
 
+// 从 proto 中获取 Long 类型
+const Long = require('long');
+
 export interface WebSocketConfig {
   url: string;
-  uid: number;
+  uid: string;
   accessToken: string;
   insToken: string;
   roomId: string;
@@ -20,6 +23,45 @@ export class WebSocketService {
 
   constructor() {
     this.setupMessageHandlers();
+  }
+
+  // 工具方法：安全地将字符串转换为 Long 类型
+  private stringToLong(value: string): any {
+    try {
+      if (!value || value.trim() === '') {
+        throw new Error('输入值不能为空');
+      }
+      
+      // 验证输入是否为有效的数字字符串
+      if (!/^\d+$/.test(value)) {
+        throw new Error(`输入值不是有效的数字: ${value}`);
+      }
+      
+      const longValue = Long.fromString(value);
+      
+      // 验证 Long 对象是否有效
+      if (!longValue || typeof longValue.toString !== 'function') {
+        throw new Error('Long 对象创建失败');
+      }
+      
+      console.log(`✅ 成功转换字符串 "${value}" 为 Long: ${longValue.toString()}`);
+      return longValue;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error(`❌ 转换字符串到 Long 失败: ${value}`, error);
+      throw new Error(`无效的数字格式: ${value} - ${errorMessage}`);
+    }
+  }
+
+  // 工具方法：安全地将 Long 类型转换为字符串
+  private longToString(value: any): string {
+    if (!value) return 'unknown';
+    try {
+      return value.toString();
+    } catch (error) {
+      console.error('转换 Long 到字符串失败:', error);
+      return 'unknown';
+    }
   }
 
   private setupMessageHandlers(): void {
@@ -52,6 +94,9 @@ export class WebSocketService {
       try {
         console.log(`正在连接WebSocket: ${config.url}`);
         this.websocket = new WebSocket(config.url);
+        
+        // 设置二进制数据类型为 ArrayBuffer
+        this.websocket.binaryType = 'arraybuffer';
         
         this.websocket.onopen = () => {
           console.log('WebSocket 连接成功');
@@ -103,16 +148,51 @@ export class WebSocketService {
     }
   }
 
-  private handleMessage(data: ArrayBuffer): void {
+  private handleMessage(data: any): void {
     try {
-      const dataView = new DataView(data);
+      let arrayBuffer: ArrayBuffer;
+      
+      // 检查数据类型并转换为 ArrayBuffer
+      if (data instanceof ArrayBuffer) {
+        arrayBuffer = data;
+      } else if (data instanceof Blob) {
+        // 如果是 Blob，需要异步读取
+        data.arrayBuffer().then(buffer => {
+          this.handleMessage(buffer);
+        }).catch(error => {
+          console.error('读取 Blob 数据失败:', error);
+        });
+        return;
+      } else if (typeof data === 'string') {
+        // 如果是字符串，可能是 JSON 或其他格式
+        console.log('收到字符串消息:', data);
+        // 这里可以根据需要处理字符串消息
+        return;
+      } else {
+        console.error('不支持的消息数据类型:', typeof data, data);
+        return;
+      }
+      
+      // 检查数据长度是否足够
+      if (arrayBuffer.byteLength < 6) {
+        console.error('消息数据长度不足:', arrayBuffer.byteLength);
+        return;
+      }
+      
+      const dataView = new DataView(arrayBuffer);
       
       // 解析消息头 (4字节长度 + 2字节消息ID)
       const totalLength = dataView.getUint32(0, true); // 小端序
       const messageId = dataView.getUint16(4, true);   // 小端序
       
+      // 验证消息长度
+      if (totalLength !== arrayBuffer.byteLength) {
+        console.error(`消息长度不匹配: 期望 ${totalLength}, 实际 ${arrayBuffer.byteLength}`);
+        return;
+      }
+      
       // 提取消息体
-      const payload = data.slice(6);
+      const payload = arrayBuffer.slice(6);
       
       console.log(`收到消息 ID: ${messageId}, 长度: ${totalLength}`);
       
@@ -129,7 +209,10 @@ export class WebSocketService {
   }
 
   private sendMessage(messageId: number, payload: Uint8Array): void {
+    console.log(`📤 准备发送消息 ID: ${messageId}, 连接状态: ${this.isConnected}`);
+    
     if (!this.websocket || !this.isConnected) {
+      console.error('❌ WebSocket 未连接，无法发送消息');
       throw new Error('WebSocket 未连接');
     }
     
@@ -145,8 +228,10 @@ export class WebSocketService {
     const bodyView = new Uint8Array(buffer, 6);
     bodyView.set(payload);
     
+    console.log(`📤 发送消息详情: ID=${messageId}, 总长度=${totalLength}, 数据长度=${payload.length}`);
+    
     this.websocket.send(buffer);
-    console.log(`发送消息 ID: ${messageId}, 长度: ${totalLength}`);
+    console.log(`✅ 消息发送成功 ID: ${messageId}`);
   }
 
   // 发送登录请求
@@ -155,14 +240,54 @@ export class WebSocketService {
       throw new Error('未配置WebSocket参数');
     }
     
-    const loginReq = proto.oLoginReq.create({
-      account: this.config.uid,
-      token: this.config.accessToken,
-      insToken: this.config.insToken
-    });
+    console.log('🔐 准备发送登录请求...');
+    console.log('  - uid:', this.config.uid);
+    console.log('  - accessToken:', this.config.accessToken ? '已设置' : '未设置');
+    console.log('  - insToken:', this.config.insToken ? '已设置' : '未设置');
     
-    const payload = proto.oLoginReq.encode(loginReq).finish();
-    this.sendMessage(101, payload); // LoginReq = 101
+    try {
+      // 使用 Long.fromString 将字符串 uid 转换为 Long 类型
+      const accountLong = this.stringToLong(this.config.uid);
+      console.log('🔐 转换后的 account Long:', this.longToString(accountLong));
+      
+      // 验证 accountLong 是否为有效的 Long 对象
+      if (!accountLong || typeof accountLong.toString !== 'function') {
+        throw new Error('account Long 对象无效');
+      }
+      
+      // 创建登录请求对象
+      const loginReqData = {
+        account: accountLong,
+        token: this.config.accessToken,
+        insToken: this.config.insToken
+      };
+      
+      console.log('🔐 登录请求数据:', {
+        account: accountLong.toString(),
+        token: this.config.accessToken ? '已设置' : '未设置',
+        insToken: this.config.insToken ? '已设置' : '未设置'
+      });
+      
+      const loginReq = proto.oLoginReq.create(loginReqData);
+      
+      // 验证创建的对象
+      if (!loginReq) {
+        throw new Error('登录请求对象创建失败');
+      }
+      
+      console.log('🔐 登录请求对象创建成功:', loginReq);
+      
+      const payload = proto.oLoginReq.encode(loginReq).finish();
+      console.log('🔐 登录请求编码完成，长度:', payload.length);
+      
+      this.sendMessage(101, payload); // LoginReq = 101
+      console.log('🔐 登录请求已发送');
+      
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('❌ 发送登录请求失败:', errorMessage);
+      throw new Error(`登录请求失败: ${errorMessage}`);
+    }
   }
 
   // 发送进入房间请求
@@ -171,11 +296,19 @@ export class WebSocketService {
       throw new Error('未配置WebSocket参数');
     }
     
+    console.log('🚪 准备发送进入房间请求...');
+    console.log('  - roomId:', this.config.roomId);
+    
+    // 使用 Long.fromString 将字符串 roomId 转换为 Long 类型
+    const roomIdLong = this.stringToLong(this.config.roomId);
+    console.log('🚪 转换后的 roomId Long:', this.longToString(roomIdLong));
+    
     const enterRoomReq = proto.oEnterRoomReq.create({
-      roomId: this.config.roomId
+      roomId: roomIdLong
     });
     
     const payload = proto.oEnterRoomReq.encode(enterRoomReq).finish();
+    console.log('🚪 进入房间请求已发送');
     this.sendMessage(201, payload); // EnterRoomReq = 201
   }
 
@@ -284,11 +417,19 @@ export class WebSocketService {
       throw new Error('未配置WebSocket参数');
     }
     
+    console.log('🚪 准备发送离开房间请求...');
+    console.log('  - roomId:', this.config.roomId);
+    
+    // 使用 Long.fromString 将字符串 roomId 转换为 Long 类型
+    const roomIdLong = this.stringToLong(this.config.roomId);
+    console.log('🚪 转换后的 roomId Long:', this.longToString(roomIdLong));
+    
     const leaveRoomReq = proto.oLeaveRoomReq.create({
-      roomId: this.config.roomId
+      roomId: roomIdLong
     });
     
     const payload = proto.oLeaveRoomReq.encode(leaveRoomReq).finish();
+    console.log('🚪 离开房间请求已发送');
     this.sendMessage(203, payload); // LeaveRoomReq = 203
   }
 
@@ -337,7 +478,9 @@ export class WebSocketService {
       console.log(`进入房间结果: ${errorName}`);
       
       if (enterRoomAsw.code === proto.eError.SUCCESS) {
-        console.log(`成功进入房间: ${enterRoomAsw.roomId}`);
+        // 将 Long 类型转换为字符串显示
+        const roomIdStr = this.longToString(enterRoomAsw.roomId);
+        console.log(`成功进入房间: ${roomIdStr}`);
         console.log(`在线用户数量: ${enterRoomAsw.onlineUsers.length}`);
         console.log(`舞台数量: ${enterRoomAsw.stageCount}`);
         console.log(`场景: ${enterRoomAsw.scene}`);
@@ -358,7 +501,9 @@ export class WebSocketService {
   private handleEnterRoomPush(payload: ArrayBuffer): void {
     try {
       const enterRoomPush = proto.oEnterRoomPush.decode(new Uint8Array(payload));
-      console.log(`收到用户进入房间广播: 用户ID ${enterRoomPush.enterUserId}`);
+      // 将 Long 类型转换为字符串显示
+      const userIdStr = this.longToString(enterRoomPush.enterUserId);
+      console.log(`收到用户进入房间广播: 用户ID ${userIdStr}`);
     } catch (error) {
       console.error('处理进入房间广播失败:', error);
     }
@@ -375,12 +520,15 @@ export class WebSocketService {
       console.log(`登台结果: ${errorName}`);
       
       if (enterStageAsw.code === proto.eError.SUCCESS) {
-        console.log(`✅ 成功登台: 房间ID ${enterStageAsw.roomId}, 舞台ID ${enterStageAsw.stageId}`);
+        // 将 Long 类型转换为字符串显示
+        const roomIdStr = this.longToString(enterStageAsw.roomId);
+        const stageIdStr = this.longToString(enterStageAsw.stageId);
+        console.log(`✅ 成功登台: 房间ID ${roomIdStr}, 舞台ID ${stageIdStr}`);
         
         // 更新登台状态监听器
         if (this.stageStatusMonitoring.isActive) {
           this.stageStatusMonitoring.enterStageSuccess = true;
-          this.stageStatusMonitoring.roomIdForLeave = enterStageAsw.roomId?.toString() || this.config?.roomId || null;
+          this.stageStatusMonitoring.roomIdForLeave = roomIdStr;
           this.completeStageFlow();
         }
       } else {
@@ -397,7 +545,10 @@ export class WebSocketService {
   private handleEnterStagePush(payload: ArrayBuffer): void {
     try {
       const enterStagePush = proto.oEnterStagePush.decode(new Uint8Array(payload));
-      console.log(`收到用户登台广播: 用户ID ${enterStagePush.userId}, 舞台ID ${enterStagePush.stageId}`);
+      // 将 Long 类型转换为字符串显示
+      const userIdStr = this.longToString(enterStagePush.userId);
+      const stageIdStr = this.longToString(enterStagePush.stageId);
+      console.log(`收到用户登台广播: 用户ID ${userIdStr}, 舞台ID ${stageIdStr}`);
     } catch (error) {
       console.error('处理登台广播失败:', error);
     }
@@ -407,7 +558,10 @@ export class WebSocketService {
   private handleStageStatusChange(payload: ArrayBuffer): void {
     try {
       const stageStatusChange = proto.oStageStatusChangePush.decode(new Uint8Array(payload));
-      console.log(`收到舞台状态变更: 索引${stageStatusChange.index}, 舞台ID${stageStatusChange.stageId}, 用户ID${stageStatusChange.userId}, 状态${stageStatusChange.stageType}`);
+      // 将 Long 类型转换为字符串显示
+      const stageIdStr = this.longToString(stageStatusChange.stageId);
+      const userIdStr = this.longToString(stageStatusChange.userId);
+      console.log(`收到舞台状态变更: 索引${stageStatusChange.index}, 舞台ID${stageIdStr}, 用户ID${userIdStr}, 状态${stageStatusChange.stageType}`);
       
       // 更新登台状态监听器
       if (this.stageStatusMonitoring.isActive) {
@@ -470,7 +624,9 @@ export class WebSocketService {
   private handleLeaveRoomPush(payload: ArrayBuffer): void {
     try {
       const leaveRoomPush = proto.oLeaveRoomPush.decode(new Uint8Array(payload));
-      console.log(`收到用户离开房间广播: 用户ID ${leaveRoomPush.leaveUserId}`);
+      // 将 Long 类型转换为字符串显示
+      const userIdStr = this.longToString(leaveRoomPush.leaveUserId);
+      console.log(`收到用户离开房间广播: 用户ID ${userIdStr}`);
     } catch (error) {
       console.error('处理离开房间广播失败:', error);
     }
@@ -478,21 +634,33 @@ export class WebSocketService {
 
   // 完整的登台流程
   async performFullStageFlow(): Promise<void> {
+    console.log('🚀 开始执行完整登台流程...');
+    console.log('  - WebSocket 连接状态:', this.isConnected);
+    console.log('  - WebSocket 实例:', this.websocket ? '已创建' : '未创建');
+    console.log('  - 配置信息:', this.config ? '已设置' : '未设置');
+    
     if (!this.isConnected) {
+      console.error('❌ WebSocket 未连接，无法执行登台流程');
       throw new Error('WebSocket 未连接');
     }
     
+    if (!this.config) {
+      console.error('❌ 未配置WebSocket参数，无法执行登台流程');
+      throw new Error('未配置WebSocket参数');
+    }
+    
     try {
-      console.log('开始登台流程...');
+      console.log('✅ 开始登台流程...');
       
       // 1. 发送登录请求
+      console.log('📤 步骤1: 发送登录请求');
       await this.sendLoginRequest();
       
       // 其他步骤将通过消息处理器自动执行
-      console.log('登台流程已启动，等待服务器响应...');
+      console.log('⏳ 登台流程已启动，等待服务器响应...');
       
     } catch (error) {
-      console.error('登台流程失败:', error);
+      console.error('❌ 登台流程失败:', error);
       throw error;
     }
   }

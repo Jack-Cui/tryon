@@ -225,7 +225,7 @@ export class TryonService {
     
     const wsConfig: WebSocketConfig = {
       url: `wss://${scheduleResult.data.inst_acc_info.ws_url}`,
-      uid: parseInt(this.config.userId),
+      uid: this.config.userId,
       accessToken: this.accessToken,
       insToken: scheduleResult.data.inst_acc_info.token,
       roomId: this.roomId,

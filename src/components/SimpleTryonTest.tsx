@@ -46,9 +46,23 @@ const SimpleTryonTest: React.FC<SimpleTryonTestProps> = () => {
       const logMessages: string[] = [];
       
       console.log = (...args) => {
-        const message = args.map(arg => 
-          typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
-        ).join(' ');
+        const message = args.map(arg => {
+          if (typeof arg === 'object') {
+            // 特殊处理 Long 对象和其他特殊对象
+            try {
+              // 如果是 Long 对象，转换为字符串
+              if (arg && typeof arg.toString === 'function' && arg.toString().includes('Long')) {
+                return arg.toString();
+              }
+              // 尝试 JSON.stringify，如果失败则使用 toString
+              return JSON.stringify(arg, null, 2);
+            } catch (error) {
+              // 如果 JSON.stringify 失败，使用 toString
+              return String(arg);
+            }
+          }
+          return String(arg);
+        }).join(' ');
         logMessages.push(message);
         addLog(message);
         originalLog(...args);
