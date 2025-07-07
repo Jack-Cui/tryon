@@ -223,55 +223,16 @@ export class TryonService {
       throw new Error('缺少必要参数');
     }
     
-    // 详细检查调度结果
-    console.log('🔍 调度结果详细检查:');
-    console.log('  - 完整调度结果:', scheduleResult);
-    console.log('  - scheduleResult.data:', scheduleResult.data);
-    console.log('  - scheduleResult.data.inst_acc_info:', scheduleResult.data?.inst_acc_info);
-    
-    if (!scheduleResult.data) {
-      throw new Error('调度结果中没有 data 字段');
-    }
-    
-    if (!scheduleResult.data.inst_acc_info) {
-      throw new Error('调度结果中没有 inst_acc_info 字段');
-    }
-    
-    const instAccInfo = scheduleResult.data.inst_acc_info;
-    console.log('  - instAccInfo.token:', instAccInfo.token, '(类型:', typeof instAccInfo.token, ')');
-    console.log('  - instAccInfo.ws_url:', instAccInfo.ws_url, '(类型:', typeof instAccInfo.ws_url, ')');
-    
-    if (!instAccInfo.token) {
-      throw new Error('调度结果中 insToken 为空或未定义');
-    }
-    
-    if (!instAccInfo.ws_url) {
-      console.warn('调度结果中 ws_url 为空，使用默认值');
-      instAccInfo.ws_url = "dev_wss.ai1010.cn/w8";
-    }
-    
-    // 临时强制使用与 Python demo 相同的 WebSocket URL 进行测试
-    console.log('🔧 临时强制使用与 Python demo 相同的 WebSocket URL');
-    const testWsUrl = "dev_wss.ai1010.cn/w8";
-    console.log(`  - 调度接口返回的 ws_url: ${instAccInfo.ws_url}`);
-    console.log(`  - 临时强制使用的 ws_url: ${testWsUrl}`);
-    
     const wsConfig: WebSocketConfig = {
-      url: `wss://${testWsUrl}`,
-      uid: this.config.userId,
+      url: `wss://${scheduleResult.data.inst_acc_info.ws_url}`,
+      uid: parseInt(this.config.userId),
       accessToken: this.accessToken,
-      insToken: instAccInfo.token,
+      insToken: scheduleResult.data.inst_acc_info.token,
       roomId: this.roomId,
       enterStageInfo: this.enterStageInfo
     };
     
-    console.log('🔍 WebSocket配置详细检查:');
-    console.log('  - url:', wsConfig.url);
-    console.log('  - uid:', wsConfig.uid, '(类型:', typeof wsConfig.uid, ')');
-    console.log('  - accessToken:', wsConfig.accessToken, '(类型:', typeof wsConfig.accessToken, ')');
-    console.log('  - insToken:', wsConfig.insToken, '(类型:', typeof wsConfig.insToken, ')');
-    console.log('  - roomId:', wsConfig.roomId, '(类型:', typeof wsConfig.roomId, ')');
-    console.log('  - enterStageInfo:', wsConfig.enterStageInfo, '(类型:', typeof wsConfig.enterStageInfo, ')');
+    console.log('WebSocket配置:', wsConfig);
     
     // 连接WebSocket
     await webSocketService.connect(wsConfig);

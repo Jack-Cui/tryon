@@ -127,32 +127,10 @@ export class ScheduleService {
       const responseData = await response.json();
       console.log('📥 调度响应数据:', responseData);
       
-      // 详细检查响应数据结构
-      console.log('🔍 调度响应数据结构检查:');
-      console.log('  - responseData:', responseData);
-      console.log('  - responseData.data:', responseData.data);
-      console.log('  - responseData.data.inst_acc_info:', responseData.data?.inst_acc_info);
-      
-      if (!responseData.data) {
-        throw new Error('调度响应中没有 data 字段');
-      }
-      
-      if (!responseData.data.inst_acc_info) {
-        throw new Error('调度响应中没有 inst_acc_info 字段');
-      }
-      
-      const instAccInfo = responseData.data.inst_acc_info;
-      console.log('  - instAccInfo.token:', instAccInfo.token, '(类型:', typeof instAccInfo.token, ')');
-      console.log('  - instAccInfo.ws_url:', instAccInfo.ws_url, '(类型:', typeof instAccInfo.ws_url, ')');
-      
-      if (!instAccInfo.token) {
-        throw new Error('调度响应中 token 为空或未定义');
-      }
-      
       // 检查ws_url是否为空，如果为空则使用默认值
-      if (!instAccInfo.ws_url) {
-        instAccInfo.ws_url = "dev_wss.ai1010.cn/w8";
-        console.log('ws_url为空，使用默认URL:', instAccInfo.ws_url);
+      if (!responseData.data.inst_acc_info.ws_url) {
+        responseData.data.inst_acc_info.ws_url = "dev_wss.ai1010.cn/w8";
+        console.log('ws_url为空，使用默认URL:', responseData.data.inst_acc_info.ws_url);
       }
       
       return responseData;
