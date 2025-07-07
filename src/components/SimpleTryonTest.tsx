@@ -113,6 +113,54 @@ const SimpleTryonTest: React.FC<SimpleTryonTestProps> = () => {
     addLog(`连接状态: ${status ? '已连接' : '未连接'}`);
   };
 
+  // 测试签名生成
+  const handleTestSignature = async () => {
+    try {
+      setLoading(true);
+      addLog('测试签名生成...');
+      
+      // 使用固定的测试参数
+      const rand = 80888197;
+      const ts = 1751855826;
+      const secretKey = 'nDQ5EVbQUiDSYpOz';
+      
+      addLog(`测试参数: rand=${rand}, ts=${ts}, secretKey=${secretKey}`);
+      
+      // 手动生成签名
+      const signMessage = `rand=${rand}&secretkey=${secretKey}&ts=${ts}`;
+      addLog(`签名字符串: ${signMessage}`);
+      
+      if (typeof crypto !== 'undefined' && crypto.subtle) {
+        const encoder = new TextEncoder();
+        const data = encoder.encode(signMessage);
+        
+        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        
+        addLog(`生成的签名: ${hashHex}`);
+        addLog('期望的签名: 31bd369a8f02bd4979031940ebfac313c26e38a04887cbef77d92c93d983956f');
+        
+        if (hashHex === '31bd369a8f02bd4979031940ebfac313c26e38a04887cbef77d92c93d983956f') {
+          addLog('✅ 签名生成正确！');
+          message.success('签名生成测试通过');
+        } else {
+          addLog('❌ 签名生成错误！');
+          message.error('签名生成测试失败');
+        }
+      } else {
+        addLog('❌ Web Crypto API 不可用');
+        message.error('Web Crypto API 不可用');
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      addLog(`签名测试错误: ${errorMessage}`);
+      message.error('签名测试失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
       <Title level={2}>试穿系统测试 (简化版)</Title>
@@ -201,6 +249,13 @@ const SimpleTryonTest: React.FC<SimpleTryonTestProps> = () => {
             size="large"
           >
             清空日志
+          </Button>
+          
+          <Button 
+            onClick={handleTestSignature}
+            size="large"
+          >
+            测试签名生成
           </Button>
         </Space>
       </Card>
