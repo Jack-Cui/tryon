@@ -2,7 +2,7 @@ import * as proto from '../proto/xproto';
 
 export interface WebSocketConfig {
   url: string;
-  uid: number;
+  uid: string;
   accessToken: string;
   insToken: string;
   roomId: string;
@@ -52,6 +52,9 @@ export class WebSocketService {
       try {
         console.log(`正在连接WebSocket: ${config.url}`);
         this.websocket = new WebSocket(config.url);
+        
+        // 设置二进制类型为 ArrayBuffer
+        this.websocket.binaryType = 'arraybuffer';
         
         this.websocket.onopen = () => {
           console.log('WebSocket 连接成功');
@@ -103,18 +106,45 @@ export class WebSocketService {
     }
   }
 
-  private handleMessage(data: ArrayBuffer): void {
+  private handleMessage(data: any): void {
     try {
-      const dataView = new DataView(data);
+      // 确保数据是 ArrayBuffer 类型
+      let arrayBuffer: ArrayBuffer;
+      
+      if (data instanceof ArrayBuffer) {
+        arrayBuffer = data;
+      } else if (data instanceof Uint8Array) {
+        arrayBuffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer;
+      } else if (typeof data === 'string') {
+        // 如果是字符串，可能是 JSON 格式的消息，需要特殊处理
+        console.warn('收到字符串消息，可能需要特殊处理:', data);
+        return;
+      } else {
+        console.error('未知的数据类型:', typeof data, data);
+        return;
+      }
+      
+      const dataView = new DataView(arrayBuffer);
+      
+      // 检查数据长度是否足够
+      if (arrayBuffer.byteLength < 6) {
+        console.error('消息数据长度不足:', arrayBuffer.byteLength);
+        return;
+      }
       
       // 解析消息头 (4字节长度 + 2字节消息ID)
       const totalLength = dataView.getUint32(0, true); // 小端序
       const messageId = dataView.getUint16(4, true);   // 小端序
       
-      // 提取消息体
-      const payload = data.slice(6);
+      // 验证消息长度
+      if (totalLength !== arrayBuffer.byteLength) {
+        console.warn(`消息长度不匹配: 期望 ${totalLength}, 实际 ${arrayBuffer.byteLength}`);
+      }
       
-      console.log(`收到消息 ID: ${messageId}, 长度: ${totalLength}`);
+      // 提取消息体
+      const payload = arrayBuffer.slice(6);
+      
+      console.log(`收到消息 ID: ${messageId}, 长度: ${totalLength}, 实际长度: ${arrayBuffer.byteLength}`);
       
       // 根据消息ID处理消息
       const handler = this.messageHandlers.get(messageId);
@@ -154,14 +184,97 @@ export class WebSocketService {
     if (!this.config) {
       throw new Error('未配置WebSocket参数');
     }
+
+    
+    // 检查 insToken 是否有效
+    if (!this.config.insToken) {
+      throw new Error('insToken 为空或未定义');
+    }
+    
+    if (typeof this.config.insToken !== 'string') {
+      throw new Error(`insToken 类型错误，期望 string，实际 ${typeof this.config.insToken}`);
+    }
+    
+    if (this.config.insToken.trim() === '') {
+      throw new Error('insToken 为空字符串');
+    }
+    
+    // 使用 protobufjs 内置的 Long 类型来正确处理64位整数
+    const Long = require('long');
+    
+    // 使用Long.fromString正确处理64位整数
+    const accountLong = Long.fromString(this.config.uid, false); // false表示无符号
+    
+    // 验证Long值是否正确
+    console.log('🔍 验证Long值:');
+    console.log('  - 期望值:', this.config.uid);
+    console.log('  - Long.toString():', accountLong.toString());
+    console.log('  - 是否相等:', accountLong.toString() === this.config.uid);
+    
+    if (accountLong.toString() !== this.config.uid) {
+      console.error('❌ Long值不正确！期望:', this.config.uid, '实际:', accountLong.toString());
+    } else {
+      console.log('✅ Long值正确！');
+    }
+    
     
     const loginReq = proto.oLoginReq.create({
-      account: this.config.uid,
+      account: accountLong,  // 使用 Long 类型
       token: this.config.accessToken,
       insToken: this.config.insToken
     });
     
+    console.log('🔍 Protobuf 消息详情:');
+    console.log('  - loginReq.account:', loginReq.account, '(类型:', typeof loginReq.account, ')');
+    console.log('  - loginReq.token:', loginReq.token, '(类型:', typeof loginReq.token, ')');
+    console.log('  - loginReq.insToken:', loginReq.insToken, '(类型:', typeof loginReq.insToken, ')');
+    
+    // 验证字段是否正确设置
+    if (!loginReq.account) {
+      throw new Error('account 字段未正确设置');
+    }
+    if (!loginReq.token) {
+      throw new Error('token 字段未正确设置');
+    }
+    if (!loginReq.insToken) {
+      throw new Error('insToken 字段未正确设置');
+    }
+    
     const payload = proto.oLoginReq.encode(loginReq).finish();
+    console.log('  - 编码后的 payload 长度:', payload.length);
+    console.log('  - 编码后的 payload (前20字节):', Array.from(payload.slice(0, 20)).map(b => b.toString(16).padStart(2, '0')).join(' '));
+    
+    // 解码验证
+    try {
+      const decoded = proto.oLoginReq.decode(payload);
+      console.log('🔍 解码验证:');
+      console.log('  - decoded.account:', decoded.account, '(类型:', typeof decoded.account, ')');
+      console.log('  - decoded.token:', decoded.token);
+      console.log('  - decoded.insToken:', decoded.insToken);
+      
+      // 验证account是否正确解码
+      if (decoded.account && typeof decoded.account === 'object' && decoded.account.toString) {
+        console.log('  - decoded.account.toString():', decoded.account.toString());
+        if (decoded.account.toString() !== accountLong.toString()) {
+          console.error('❌ account解码错误！期望:', accountLong.toString(), '实际:', decoded.account.toString());
+        } else {
+          console.log('✅ account解码正确！');
+        }
+      } else if (typeof decoded.account === 'number') {
+        console.log('  - decoded.account (number):', decoded.account);
+        const expectedNum = parseInt(accountLong.toString());
+        if (decoded.account !== expectedNum) {
+          console.error('❌ account解码错误！期望:', expectedNum, '实际:', decoded.account);
+        } else {
+          console.log('✅ account解码正确！');
+        }
+      }
+    } catch (error) {
+      console.error('解码验证失败:', error);
+    }
+    
+    // 发送登录请求
+    console.log('🔍 发送登录请求');
     this.sendMessage(101, payload); // LoginReq = 101
   }
 
