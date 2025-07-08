@@ -1,7 +1,10 @@
 import * as proto from '../proto/xproto';
+import VERTC, { MediaType, StreamIndex } from '@volcengine/rtc';
 
 // 从 proto 中获取 Long 类型
 const Long = require('long');
+
+// 导入RTC相关依赖
 
 export interface WebSocketConfig {
   url: string;
@@ -10,6 +13,24 @@ export interface WebSocketConfig {
   insToken: string;
   roomId: string;
   enterStageInfo: string;
+  // 添加RTC配置
+  rtcConfig?: RTCConfig;
+}
+
+// RTC配置接口
+export interface RTCConfig {
+  appId: string;
+  roomId: string;
+  userId: string;
+  token?: string;
+}
+
+// 远程流信息
+export interface RemoteStream {
+  userId: string;
+  hasVideo: boolean;
+  hasAudio: boolean;
+  domId: string;
 }
 
 export class WebSocketService {
@@ -21,8 +42,233 @@ export class WebSocketService {
   private maxReconnectAttempts: number = 5;
   private reconnectDelay: number = 1000;
 
+  // RTC相关属性
+  private rtcEngine: any = null;
+  private rtcConfig: RTCConfig | null = null;
+  private isRTCConnected: boolean = false;
+  private remoteStreams: Map<string, RemoteStream> = new Map();
+  private rtcEventHandlers: {
+    onUserJoin?: (userId: string) => void;
+    onUserLeave?: (userId: string) => void;
+    onUserPublishStream?: (userId: string, hasVideo: boolean, hasAudio: boolean) => void;
+    onUserUnpublishStream?: (userId: string) => void;
+    onError?: (error: any) => void;
+  } = {};
+
   constructor() {
     this.setupMessageHandlers();
+  }
+
+  // 设置RTC事件处理器
+  setRTCEventHandlers(handlers: typeof this.rtcEventHandlers): void {
+    this.rtcEventHandlers = { ...this.rtcEventHandlers, ...handlers };
+  }
+
+  // 初始化RTC引擎
+  async initializeRTC(config: RTCConfig): Promise<void> {
+    try {
+      console.log('🚀 初始化RTC引擎...', config);
+      
+      this.rtcConfig = config;
+      this.rtcEngine = VERTC.createEngine(config.appId);
+      
+      // 绑定RTC事件
+      this.bindRTCEvents();
+      
+      console.log('✅ RTC引擎初始化成功');
+    } catch (error) {
+      console.error('❌ RTC引擎初始化失败:', error);
+      throw error;
+    }
+  }
+
+  // 初始化RTC配置
+  async initializeRTCConfig(rtcConfig: RTCConfig): Promise<void> {
+    try {
+      console.log('🔧 初始化RTC配置...', rtcConfig);
+      
+      // 初始化RTC引擎
+      await this.initializeRTC(rtcConfig);
+      
+      console.log('✅ RTC配置初始化完成');
+    } catch (error) {
+      console.error('❌ RTC配置初始化失败:', error);
+      throw error;
+    }
+  }
+
+  // 绑定RTC事件
+  private bindRTCEvents(): void {
+    if (!this.rtcEngine) return;
+
+    // 用户加入房间
+    this.rtcEngine.on(VERTC.events.onUserJoined, (event: any) => {
+      console.log('👤 用户加入RTC房间:', event.userInfo.userId);
+      this.rtcEventHandlers.onUserJoin?.(event.userInfo.userId);
+    });
+
+    // 用户离开房间
+    this.rtcEngine.on(VERTC.events.onUserLeave, (event: any) => {
+      console.log('👤 用户离开RTC房间:', event.userInfo.userId);
+      this.rtcEventHandlers.onUserLeave?.(event.userInfo.userId);
+      
+      // 移除远程流
+      this.remoteStreams.delete(event.userInfo.userId);
+    });
+
+    // 用户发布流
+    this.rtcEngine.on(VERTC.events.onUserPublishStream, (event: any) => {
+      console.log('📹 用户发布流:', event.userId, event.mediaType);
+      const hasVideo = (event.mediaType & MediaType.VIDEO) !== 0;
+      const hasAudio = (event.mediaType & MediaType.AUDIO) !== 0;
+      
+      this.rtcEventHandlers.onUserPublishStream?.(event.userId, hasVideo, hasAudio);
+      
+      // 记录远程流信息
+      this.remoteStreams.set(event.userId, {
+        userId: event.userId,
+        hasVideo,
+        hasAudio,
+        domId: `remoteStream_${event.userId}`
+      });
+    });
+
+    // 用户取消发布流
+    this.rtcEngine.on(VERTC.events.onUserUnpublishStream, (event: any) => {
+      console.log('📹 用户取消发布流:', event.userId);
+      this.rtcEventHandlers.onUserUnpublishStream?.(event.userId);
+      
+      // 移除远程流
+      this.remoteStreams.delete(event.userId);
+    });
+
+    // 错误处理
+    this.rtcEngine.on(VERTC.events.onError, (event: any) => {
+      console.error('❌ RTC错误:', event);
+      this.rtcEventHandlers.onError?.(event);
+    });
+
+    console.log('✅ RTC事件绑定完成');
+  }
+
+  // 加入RTC房间（只观看，不发布本地流）
+  async joinRTCRoom(): Promise<void> {
+    if (!this.rtcEngine || !this.rtcConfig) {
+      throw new Error('RTC引擎或配置未初始化');
+    }
+
+    try {
+      console.log('🚪 加入RTC房间...', {
+        roomId: this.rtcConfig.roomId,
+        userId: this.rtcConfig.userId,
+        hasToken: !!this.rtcConfig.token
+      });
+
+      await this.rtcEngine.joinRoom(
+        this.rtcConfig.token || null,
+        this.rtcConfig.roomId,
+        {
+          userId: this.rtcConfig.userId,
+        },
+        {
+          // 只订阅，不发布本地流
+          isAutoPublish: false,
+          isAutoSubscribeAudio: true,
+          isAutoSubscribeVideo: true,
+        }
+      );
+
+      this.isRTCConnected = true;
+      console.log('✅ 成功加入RTC房间（仅观看模式）');
+    } catch (error) {
+      console.error('❌ 加入RTC房间失败:', error);
+      throw error;
+    }
+  }
+
+  // 设置远程视频播放器
+  async setRemoteVideoPlayer(userId: string, domId: string): Promise<void> {
+    if (!this.rtcEngine || !this.isRTCConnected) {
+      console.warn('RTC引擎未连接，无法设置远程视频播放器');
+      return;
+    }
+
+    try {
+      console.log(`📹 设置远程视频播放器: ${userId} -> ${domId}`);
+      
+      // 订阅用户的音视频流
+      await this.rtcEngine.subscribeStream(userId, MediaType.AUDIO_AND_VIDEO);
+      
+      // 设置远程视频播放器
+      await this.rtcEngine.setRemoteVideoPlayer(StreamIndex.STREAM_INDEX_MAIN, {
+        userId: userId,
+        renderDom: domId,
+      });
+
+      console.log(`✅ 远程视频播放器设置成功: ${userId}`);
+    } catch (error) {
+      console.error(`❌ 设置远程视频播放器失败: ${userId}`, error);
+      throw error;
+    }
+  }
+
+  // 获取远程流列表
+  getRemoteStreams(): RemoteStream[] {
+    return Array.from(this.remoteStreams.values());
+  }
+
+  // 离开RTC房间
+  async leaveRTCRoom(): Promise<void> {
+    if (!this.rtcEngine) return;
+
+    try {
+      console.log('🚪 离开RTC房间...');
+      
+      // 停止所有本地流（如果有的话）
+      await Promise.all([
+        this.rtcEngine?.stopVideoCapture?.()?.catch(() => {}),
+        this.rtcEngine?.stopAudioCapture?.()?.catch(() => {}),
+      ]);
+      
+      // 取消发布所有流
+      await this.rtcEngine?.unpublishStream(MediaType.AUDIO_AND_VIDEO).catch(() => {});
+      
+      // 离开房间
+      await this.rtcEngine.leaveRoom();
+      
+      this.isRTCConnected = false;
+      this.remoteStreams.clear();
+      
+      console.log('✅ 成功离开RTC房间');
+    } catch (error) {
+      console.error('❌ 离开RTC房间失败:', error);
+      throw error;
+    }
+  }
+
+  // 清理RTC资源
+  cleanupRTC(): void {
+    if (this.rtcEngine) {
+      // 移除所有事件监听器
+      this.rtcEngine.off(VERTC.events.onUserJoined);
+      this.rtcEngine.off(VERTC.events.onUserLeave);
+      this.rtcEngine.off(VERTC.events.onUserPublishStream);
+      this.rtcEngine.off(VERTC.events.onUserUnpublishStream);
+      this.rtcEngine.off(VERTC.events.onError);
+      
+      this.rtcEngine = null;
+    }
+    
+    this.isRTCConnected = false;
+    this.remoteStreams.clear();
+    this.rtcConfig = null;
+    
+    console.log('🧹 RTC资源清理完成');
+  }
+
+  // 获取RTC连接状态
+  getRTCConnectionStatus(): boolean {
+    return this.isRTCConnected;
   }
 
   // 工具方法：安全地将字符串转换为 Long 类型
@@ -390,7 +636,7 @@ export class WebSocketService {
     }
   }
 
-  private completeStageFlow(): void {
+  private async completeStageFlow(): Promise<void> {
     if (!this.stageStatusMonitoring.isActive) {
       return;
     }
@@ -404,33 +650,76 @@ export class WebSocketService {
     
     console.log('✅ 登台成功，准备启动RTC视频服务...');
     
-    // 立即触发RTC启动事件
-    this.triggerRTCStart();
+    // 启动RTC视频服务（仅观看模式）
+    try {
+      await this.triggerRTCStart();
+      console.log('✅ RTC视频服务启动完成');
+    } catch (error) {
+      console.error('❌ RTC视频服务启动失败:', error);
+      // 即使RTC启动失败，也继续后续流程
+    }
     
     console.log('⏰ 等待20秒后离开房间...');
     
     // 等待20秒后离开房间
-    setTimeout(() => {
+    setTimeout(async () => {
       console.log('准备离开房间...');
+      
+      // 先离开RTC房间
+      try {
+        await this.leaveRTCRoom();
+        console.log('✅ 已离开RTC房间');
+      } catch (error) {
+        console.error('❌ 离开RTC房间失败:', error);
+      }
+      
+      // 清理RTC资源
+      this.cleanupRTC();
+      
+      // 然后离开WebSocket房间
       this.sendLeaveRoomRequest();
     }, 20000);
   }
 
   // 触发RTC启动事件
-  private triggerRTCStart(): void {
-    console.log('🚀 触发RTC启动事件...');
+  private async triggerRTCStart(): Promise<void> {
+    console.log('🚀 启动RTC视频服务...');
     
-    // 创建自定义事件，通知tryonService启动RTC
-    const event = new CustomEvent('stageSuccessRTCStart', {
-      detail: {
-        timestamp: Date.now(),
-        roomId: this.config?.roomId,
-        userId: this.config?.uid
+    if (!this.config) {
+      console.error('❌ 未配置WebSocket参数，无法启动RTC');
+      return;
+    }
+
+    try {
+      // 检查是否有RTC配置
+      if (!this.config.rtcConfig) {
+        console.log('⚠️ 未配置RTC参数，跳过RTC启动');
+        return;
       }
-    });
-    
-    window.dispatchEvent(event);
-    console.log('📡 RTC启动事件已发送');
+
+      // 如果RTC已经连接，不需要重复连接
+      if (this.isRTCConnected) {
+        console.log('✅ RTC已经连接，无需重复启动');
+        return;
+      }
+
+      // 初始化RTC配置
+      console.log('🔧 初始化RTC配置...');
+      await this.initializeRTCConfig(this.config.rtcConfig);
+      
+      // 加入RTC房间（仅观看模式）
+      console.log('🚪 加入RTC房间...');
+      await this.joinRTCRoom();
+      
+      console.log('✅ RTC视频服务启动成功（仅观看模式）');
+      
+      // 可以在这里添加其他RTC相关的初始化逻辑
+      // 比如设置远程视频播放器等
+      
+    } catch (error) {
+      console.error('❌ RTC视频服务启动失败:', error);
+      // 这里可以触发错误处理逻辑
+    }
   }
 
   // 发送离开房间请求
@@ -688,13 +977,29 @@ export class WebSocketService {
   }
 
   // 断开连接
-  disconnect(): void {
+  async disconnect(): Promise<void> {
+    console.log('🔌 开始断开连接...');
+    
+    // 先断开RTC连接
+    if (this.isRTCConnected) {
+      try {
+        await this.leaveRTCRoom();
+        console.log('✅ RTC连接已断开');
+      } catch (error) {
+        console.error('❌ 断开RTC连接失败:', error);
+      }
+    }
+    
+    // 清理RTC资源
+    this.cleanupRTC();
+    
+    // 断开WebSocket连接
     if (this.websocket) {
       this.websocket.close();
       this.websocket = null;
     }
     this.isConnected = false;
-    console.log('WebSocket 连接已断开');
+    console.log('✅ WebSocket连接已断开');
   }
 
   // 获取连接状态

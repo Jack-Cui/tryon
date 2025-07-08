@@ -210,7 +210,13 @@ export class TryonService {
       accessToken: this.accessToken,
       insToken: scheduleResult.data.inst_acc_info.token,
       roomId: this.roomId,
-      enterStageInfo: this.enterStageInfo
+      enterStageInfo: this.enterStageInfo,
+      rtcConfig: {
+        appId: '643e46acb15c24012c963951',
+        roomId: this.roomId,
+        userId: this.config.userId,
+        token: '001643e46acb15c24012c963951VgAly9sD+MtsaAjabGgTADE5Mzk2MTM0MDM3NjIyNTM4MjUTADE3NTQwOTI4MDUzODk4MTk5MDYFAAAACNpsaAEACNpsaAIACNpsaAMACNpsaAQAAAAAACAAMtTQDuTearxDMoA6TZGHOcPHuCnKd1o2vA18Tj4UJ0s=' // 可选
+      }
     };
     
     console.log('WebSocket配置:', wsConfig);
