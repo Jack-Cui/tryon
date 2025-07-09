@@ -1,0 +1,161 @@
+// 项目配置文件
+// 包含所有硬编码参数的统一管理
+
+// 环境配置
+export const ENV_CONFIG = {
+  // 开发环境
+  DEVELOPMENT: {
+    API_BASE_URL: 'http://dev_gw.ai1010.cn',
+    WS_BASE_URL: 'dev_wss.ai1010.cn',
+    PROXY_TARGET: 'http://dev_gw.ai1010.cn',
+    DEFAULT_WS_URL: 'dev_wss.ai1010.cn/w8'
+  },
+  // 生产环境
+  PRODUCTION: {
+    API_BASE_URL: 'https://prod_gw.ai1010.cn',
+    WS_BASE_URL: 'prod_wss.ai1010.cn',
+    PROXY_TARGET: 'https://prod_gw.ai1010.cn',
+    DEFAULT_WS_URL: 'prod_wss.ai1010.cn/w8'
+  },
+  // 测试环境
+  TEST: {
+    API_BASE_URL: 'http://test_gw.ai1010.cn',
+    WS_BASE_URL: 'test_wss.ai1010.cn',
+    PROXY_TARGET: 'http://test_gw.ai1010.cn',
+    DEFAULT_WS_URL: 'test_wss.ai1010.cn/w8'
+  }
+};
+
+// 当前环境（可通过环境变量或构建时配置）
+const CURRENT_ENV = process.env.REACT_APP_ENV || 'DEVELOPMENT';
+export const CURRENT_ENV_CONFIG = ENV_CONFIG[CURRENT_ENV as keyof typeof ENV_CONFIG];
+
+// API配置
+export const API_CONFIG = {
+  // API基础地址 - 使用相对路径，通过nginx代理访问
+  BASE_URL: '', // 空字符串表示使用当前域名，配合nginx代理
+  
+  // 代理配置
+  PROXY_TARGET: CURRENT_ENV_CONFIG.PROXY_TARGET,
+  
+  // 通用请求头
+  COMMON_HEADERS: {
+    'Content-Type': 'application/json',
+  },
+  
+  // 登录相关请求头
+  LOGIN_HEADERS: {
+    'Content-Type': 'application/x-www-form-urlencoded',
+    'isToken': 'false',
+    'TENANT-ID': '1',
+    'Authorization': 'Basic cGlnOnBpZw=='
+  }
+};
+
+// API端点
+export const API_ENDPOINTS = {
+  // 获取验证码
+  GET_VERIFY_CODE: (phone: string) => `/admin/mobile/${phone}`,
+  
+  // 登录
+  LOGIN: (phone: string, code: string) => 
+    `/admin/oauth/token?mobile=SMS@${phone}&code=${code}&grant_type=mobile`,
+  
+  // 获取房间信息
+  GET_SYSROOMSHARE: (co_creation_id: number) => `/admin/sysroomshare/${co_creation_id}`,
+  
+  // 创建房间
+  CREATE_ROOM: () => `/admin/room/create`,
+  
+  // 加入房间
+  JOIN_ROOM: () => `/admin/roomUser/join`,
+  
+  // 获取衣服尺寸
+  GET_CLOTHE_SIZE: (clothe_id: string) => `/admin/sysclotheextra/getSize/${clothe_id}`,
+  
+  // 调度服务
+  SCHEDULE: () => '/alloc/room_inst'
+};
+
+// RTC配置
+export const RTC_CONFIG = {
+  // RTC应用ID
+  APP_ID: '643e46acb15c24012c963951',
+  
+  // RTC应用密钥
+  APP_KEY: 'b329b39ca8df4b5185078f29d8d8025f',
+  
+  // RTC Token（可选，通常由服务器生成）
+  DEFAULT_TOKEN: '001643e46acb15c24012c963951VgDDnVQCBN5taBTsbWgTADE5Mzk2MTM0MDM3NjIyNTM4MjUTADE3NTQwOTI4MDUzODk4MTk5MDYFAAAAFOxtaAEAFOxtaAIAFOxtaAMAFOxtaAQAAAAAACAAVrfNtz30WFJOACsd2Wp3fNsuM39PGaXmjEzxZvf87Cw='
+};
+
+// 调度服务配置
+export const SCHEDULE_CONFIG = {
+  // 签名密钥
+  SECRET_KEY: 'nDQ5EVbQUiDSYpOz',
+  
+  // 默认优先级IP列表
+  DEFAULT_PRIORITY_IPS: ["14.103.136.236", "120.245.126.162"],
+  
+  // 默认WebSocket URL
+  DEFAULT_WS_URL: CURRENT_ENV_CONFIG.DEFAULT_WS_URL,
+  
+  // 测试用的固定参数（仅用于测试）
+  TEST_PARAMS: {
+    RAND: 21731296,
+    TS: 1751856205,
+    SIGNATURE: '389a7927b97b71374e7d264f529460f2b6b5f989459ad512818fe57fccddf74a'
+  }
+};
+
+// 默认测试数据
+export const DEFAULT_TEST_DATA = {
+  // 默认手机号
+  DEFAULT_PHONE: '13500003000',
+  
+  // 默认用户ID
+  DEFAULT_USER_ID: '1754092805389819906',
+  
+  // 默认共创ID
+  DEFAULT_CO_CREATION_ID: '2',
+  
+  // 默认房间ID
+  DEFAULT_ROOM_ID: '1939613403762253825'
+};
+
+// 服务器配置
+export const SERVER_CONFIG = {
+  // 服务器端口
+  PORT: process.env.PORT || 3000,
+  
+  // 健康检查端点
+  HEALTH_CHECK_ENDPOINT: '/health',
+  
+  // 日志端点
+  LOG_ENDPOINT: '/api/log',
+  LOGS_ENDPOINT: '/api/logs'
+};
+
+// 代理配置
+export const PROXY_CONFIG = {
+  // 调度服务代理
+  SCHEDULE: {
+    TARGET: CURRENT_ENV_CONFIG.PROXY_TARGET,
+    PATH_REWRITE: {
+      '^/api/schedule': '/alloc/room_inst'
+    }
+  }
+};
+
+// 导出默认配置
+export default {
+  ENV_CONFIG,
+  CURRENT_ENV_CONFIG,
+  API_CONFIG,
+  API_ENDPOINTS,
+  RTC_CONFIG,
+  SCHEDULE_CONFIG,
+  DEFAULT_TEST_DATA,
+  SERVER_CONFIG,
+  PROXY_CONFIG
+}; 

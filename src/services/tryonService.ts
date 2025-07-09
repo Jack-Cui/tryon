@@ -2,6 +2,7 @@ import { authAPI, roomAPI } from './api';
 import { scheduleService } from './scheduleService';
 import { webSocketService, WebSocketConfig } from './websocketService';
 import { RTCVideoService, RTCVideoConfig } from './rtcVideoService';
+import { RTC_CONFIG } from '../config/config';
 
 export interface TryonConfig {
   phone: string;
@@ -212,10 +213,10 @@ export class TryonService {
       roomId: this.roomId,
       enterStageInfo: this.enterStageInfo,
       rtcConfig: {
-        appId: '643e46acb15c24012c963951',
+        appId: RTC_CONFIG.APP_ID,
         roomId: this.roomId,
         userId: this.config.userId,
-        token: '001643e46acb15c24012c963951VgDDnVQCBN5taBTsbWgTADE5Mzk2MTM0MDM3NjIyNTM4MjUTADE3NTQwOTI4MDUzODk4MTk5MDYFAAAAFOxtaAEAFOxtaAIAFOxtaAMAFOxtaAQAAAAAACAAVrfNtz30WFJOACsd2Wp3fNsuM39PGaXmjEzxZvf87Cw=' // 可选
+        token: RTC_CONFIG.DEFAULT_TOKEN // 可选
       }
     };
     

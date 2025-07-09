@@ -1,3 +1,5 @@
+import { SCHEDULE_CONFIG, API_ENDPOINTS } from '../config/config';
+
 // 浏览器环境中使用 Web Crypto API
 
 export interface ScheduleRequest {
@@ -18,9 +20,10 @@ export interface ScheduleResponse {
   };
 }
 
+
 export class ScheduleService {
-  private baseUrl = '/alloc/room_inst';  // 使用相对路径，通过nginx代理
-  private secretKey = 'nDQ5EVbQUiDSYpOz';
+  private baseUrl = API_ENDPOINTS.SCHEDULE();  // 使用配置文件中的端点
+  private secretKey = SCHEDULE_CONFIG.SECRET_KEY;
 
   // 使用 Web Crypto API 生成SHA256签名
   private async makeSha256Signature(rand: number, ts: number, secretKey: string): Promise<string> {
@@ -78,10 +81,10 @@ export class ScheduleService {
     console.log('📡 开始调度分配实例...');
     console.log('调度请求参数:', request);
     
-    // 🚀 测试：使用固定参数
-    const rand = 21731296;
-    const ts = 1751856205;
-    const signature = '389a7927b97b71374e7d264f529460f2b6b5f989459ad512818fe57fccddf74a';
+    // 🚀 测试：使用配置文件中的固定参数
+    const rand = SCHEDULE_CONFIG.TEST_PARAMS.RAND;
+    const ts = SCHEDULE_CONFIG.TEST_PARAMS.TS;
+    const signature = SCHEDULE_CONFIG.TEST_PARAMS.SIGNATURE;
     
     const url = `${this.baseUrl}?rand=${rand}&ts=${ts}`;
     console.log(`调度请求URL: ${url}`);
@@ -95,7 +98,7 @@ export class ScheduleService {
     
     const requestData = {
       user_id: request.user_id,
-      priority_ips: request.priority_ips || ["14.103.136.236", "120.245.126.162"],
+      priority_ips: request.priority_ips || SCHEDULE_CONFIG.DEFAULT_PRIORITY_IPS,
       latitude: request.latitude || 0.0,
       longitude: request.longitude || 0.0,
       poi: request.poi || null,
@@ -127,9 +130,9 @@ export class ScheduleService {
       const responseData = await response.json();
       console.log('📥 调度响应数据:', responseData);
       
-      // 检查ws_url是否为空，如果为空则使用默认值
+      // 检查ws_url是否为空，如果为空则使用配置文件中的默认值
       if (!responseData.data.inst_acc_info.ws_url) {
-        responseData.data.inst_acc_info.ws_url = "dev_wss.ai1010.cn/w8";
+        responseData.data.inst_acc_info.ws_url = SCHEDULE_CONFIG.DEFAULT_WS_URL;
         console.log('ws_url为空，使用默认URL:', responseData.data.inst_acc_info.ws_url);
       }
       

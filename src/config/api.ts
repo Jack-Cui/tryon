@@ -1,5 +1,12 @@
 // API配置文件
-export const API_CONFIG = {
+// 从综合配置文件中导入配置
+import { API_CONFIG, API_ENDPOINTS } from './config';
+
+// 重新导出API配置，保持向后兼容
+export { API_CONFIG, API_ENDPOINTS };
+
+// 为了向后兼容，保留原有的导出方式
+export const API_CONFIG_LEGACY = {
   // API基础地址 - 使用相对路径，配合代理设置
   BASE_URL: '', // 空字符串表示使用当前域名，配合package.json中的proxy配置
   
@@ -17,8 +24,8 @@ export const API_CONFIG = {
   }
 };
 
-// API端点
-export const API_ENDPOINTS = {
+// API端点（保持向后兼容）
+export const API_ENDPOINTS_LEGACY = {
   // 获取验证码
   GET_VERIFY_CODE: (phone: string) => `/admin/mobile/${phone}`,
   
