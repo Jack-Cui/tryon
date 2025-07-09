@@ -42,6 +42,11 @@ export class WebSocketService {
   private maxReconnectAttempts: number = 5;
   private reconnectDelay: number = 1000;
 
+  // 心跳相关属性
+  private heartbeatTimer: NodeJS.Timeout | null = null;
+  private heartbeatInterval: number = 20000; // 20秒发送一次心跳
+  private lastHeartbeatTime: number = 0;
+
   // RTC相关属性
   private rtcEngine: any = null;
   private rtcConfig: RTCConfig | null = null;
@@ -331,6 +336,78 @@ export class WebSocketService {
     this.messageHandlers.set(1203, this.handleLeaveRoomResponse.bind(this));
     // 离开房间广播
     this.messageHandlers.set(1204, this.handleLeaveRoomPush.bind(this));
+    // 心跳响应
+    this.messageHandlers.set(1111, this.handleHeartBeatResponse.bind(this));
+  }
+
+  // 启动心跳
+  private startHeartbeat(): void {
+    console.log('💓 启动心跳机制，间隔:', this.heartbeatInterval, 'ms');
+    
+    // 清除可能存在的旧定时器
+    this.stopHeartbeat();
+    
+    // 立即发送一次心跳
+    this.sendHeartbeat();
+    
+    // 设置定时器，每20秒发送一次心跳
+    this.heartbeatTimer = setInterval(() => {
+      this.sendHeartbeat();
+    }, this.heartbeatInterval);
+  }
+
+  // 停止心跳
+  private stopHeartbeat(): void {
+    if (this.heartbeatTimer) {
+      console.log('💓 停止心跳机制');
+      clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = null;
+    }
+  }
+
+  // 发送心跳消息
+  private sendHeartbeat(): void {
+    if (!this.isConnected) {
+      console.warn('💓 WebSocket未连接，跳过心跳发送');
+      return;
+    }
+
+    try {
+      console.log('💓 发送心跳消息...');
+      
+      // 创建心跳请求对象
+      const heartbeatReq = proto.oHeartBeatReq.create({
+        timestamp: Date.now()
+      });
+      
+      const payload = proto.oHeartBeatReq.encode(heartbeatReq).finish();
+      this.sendMessage(1111, payload); // HeartBeatReq = 1111
+      
+      this.lastHeartbeatTime = Date.now();
+      console.log('💓 心跳消息发送成功');
+      
+    } catch (error) {
+      console.error('❌ 发送心跳消息失败:', error);
+    }
+  }
+
+  // 处理心跳响应
+  private handleHeartBeatResponse(payload: ArrayBuffer): void {
+    try {
+      const heartbeatAsw = proto.oHeartBeatAsw.decode(new Uint8Array(payload));
+      console.log('💓 收到心跳响应:', heartbeatAsw);
+      
+      // 可以在这里添加心跳延迟计算
+      const now = Date.now();
+      const timestamp = typeof heartbeatAsw.timestamp === 'object' && heartbeatAsw.timestamp?.toString 
+        ? parseInt(heartbeatAsw.timestamp.toString()) 
+        : Number(heartbeatAsw.timestamp);
+      const latency = now - timestamp;
+      console.log('💓 心跳延迟:', latency, 'ms');
+      
+    } catch (error) {
+      console.error('❌ 解析心跳响应失败:', error);
+    }
   }
 
   async connect(config: WebSocketConfig): Promise<void> {
@@ -348,6 +425,10 @@ export class WebSocketService {
           console.log('WebSocket 连接成功');
           this.isConnected = true;
           this.reconnectAttempts = 0;
+          
+          // 启动心跳机制
+          this.startHeartbeat();
+          
           resolve();
         };
         
@@ -358,6 +439,10 @@ export class WebSocketService {
         this.websocket.onclose = (event) => {
           console.log('WebSocket 连接关闭', event);
           this.isConnected = false;
+          
+          // 停止心跳机制
+          this.stopHeartbeat();
+          
           this.handleReconnect();
         };
         
@@ -979,6 +1064,9 @@ export class WebSocketService {
   // 断开连接
   async disconnect(): Promise<void> {
     console.log('🔌 开始断开连接...');
+    
+    // 停止心跳机制
+    this.stopHeartbeat();
     
     // 先断开RTC连接
     if (this.isRTCConnected) {
