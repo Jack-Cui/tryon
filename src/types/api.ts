@@ -63,23 +63,27 @@ export interface JoinRoomResponse {
 
 // 进入舞台信息类型
 export interface EnterStageInfo {
-  avatarId: number;
-  userId: string;
-  mapName: string;
-  garments: {
-    garment1Id?: string;
-    garment1Size?: string;
-    garment2Id?: string;
-    garment2Size?: string;
-    garment3Id?: string;
-    garment3Size?: string;
+  AvatarId: number;
+  UserId: string;
+  MapName: string;
+  Garments: {
+    Garment1Id?: string;
+    Garment1Size?: string;
+    Garment2Id?: string;
+    Garment2Size?: string;
+    Garment3Id?: string;
+    Garment3Size?: string;
   };
-  animation: {
-    animId: string;
-    playRate: number;
-    isLoop: boolean;
-  };
+  // Animation: {
+  //   animId: string;
+  //   playRate: number;
+  //   isLoop: boolean;
+  // };
+  Animation: null;
+  Camera: boolean;
+  Voice: boolean;
   isControl: boolean;
   startTime: number;
   endTime: number;
+  Size: number;
 } 

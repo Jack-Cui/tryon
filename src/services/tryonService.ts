@@ -215,7 +215,7 @@ export class TryonService {
         appId: '643e46acb15c24012c963951',
         roomId: this.roomId,
         userId: this.config.userId,
-        token: '001643e46acb15c24012c963951VgAly9sD+MtsaAjabGgTADE5Mzk2MTM0MDM3NjIyNTM4MjUTADE3NTQwOTI4MDUzODk4MTk5MDYFAAAACNpsaAEACNpsaAIACNpsaAMACNpsaAQAAAAAACAAMtTQDuTearxDMoA6TZGHOcPHuCnKd1o2vA18Tj4UJ0s=' // 可选
+        token: '001643e46acb15c24012c963951VgDDnVQCBN5taBTsbWgTADE5Mzk2MTM0MDM3NjIyNTM4MjUTADE3NTQwOTI4MDUzODk4MTk5MDYFAAAAFOxtaAEAFOxtaAIAFOxtaAMAFOxtaAQAAAAAACAAVrfNtz30WFJOACsd2Wp3fNsuM39PGaXmjEzxZvf87Cw=' // 可选
       }
     };
     

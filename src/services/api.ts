@@ -226,7 +226,7 @@ export const roomAPI = {
     console.log('开始构建进入舞台信息');
     const room_info_data = room_info.data;
 
-    const clothe_ids = room_info_data.clothId.split(';').filter(id => id && id !== '0');
+    const clothe_ids = room_info_data.clothId.split(';');
     const garments: any = {};
     
     for (let i = 0; i < clothe_ids.length; i++) {
@@ -239,40 +239,44 @@ export const roomAPI = {
           const clothe_size_data = JSON.parse(clothe_size_response.data) as ClotheSizeResponse;
           const clothe_size = clothe_size_data.data;
           console.log(`衣服ID: ${clothe_id}, 尺寸: ${clothe_size}`);
-          
-          if (i === 0) {
-            garments.garment1Id = clothe_id;
-            garments.garment1Size = clothe_size;
-          } else if (i === 1) {
-            garments.garment2Id = clothe_id;
-            garments.garment2Size = clothe_size;
-          } else if (i === 2) {
-            garments.garment3Id = clothe_id;
-            garments.garment3Size = clothe_size;
-          }
         }
       } catch (error) {
         console.error(`获取衣服尺寸失败: ${clothe_id}`, error);
       }
+      let clothe_size = 0;
+      if (clothe_id == '0') {
+        clothe_size = 0
+      } else {
+        clothe_size = 4
+      }
+      if (i === 0) {
+        garments.garment1Id = clothe_id;
+        garments.garment1Size = clothe_size;
+      } else if (i === 1) {
+        garments.garment2Id = clothe_id;
+        garments.garment2Size = clothe_size;
+      } else if (i === 2) {
+        garments.garment3Id = clothe_id;
+        garments.garment3Size = clothe_size;
+      }
     }
 
     const enter_stage_info: EnterStageInfo = {
-      avatarId: 0,
-      userId: room_info_data.userId,
-      mapName: room_info_data.scenarioId,
-      garments: garments,
-      animation: {
-        animId: room_info_data.actionId,
-        playRate: 1,
-        isLoop: true
-      },
+      AvatarId: 0,
+      UserId: room_info_data.userId,
+      MapName: room_info_data.scenarioId,
+      Garments: garments,
+      Animation: null,
+      Camera: true,
+      Voice: false,
       isControl: true,
       startTime: 0,
-      endTime: 0
+      endTime: 0,
+      Size: 4
     };
 
     console.log('进入舞台信息:', enter_stage_info);
-    return JSON.stringify(JSON.stringify(enter_stage_info));
+    return JSON.stringify(enter_stage_info);
   },
 
   // 解析房间信息响应
