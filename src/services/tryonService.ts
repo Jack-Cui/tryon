@@ -3,6 +3,7 @@ import { scheduleService } from './scheduleService';
 import { webSocketService, WebSocketConfig } from './websocketService';
 import { RTCVideoService, RTCVideoConfig } from './rtcVideoService';
 import { RTC_CONFIG } from '../config/config';
+import { AccessToken, Privilege } from '../token/AccessToken';
 
 export interface TryonConfig {
   phone: string;
@@ -41,6 +42,41 @@ export class TryonService {
         console.log('RTC已经启动，跳过重复启动');
       }
     }) as EventListener);
+  }
+
+  // 生成RTC Token
+  private generateRTCToken(): string {
+    if (!this.config || !this.roomId) {
+      throw new Error('缺少必要参数：config 或 roomId');
+    }
+
+    const appId = RTC_CONFIG.APP_ID;
+    const appKey = RTC_CONFIG.APP_KEY;
+    const roomId = this.roomId;
+    const userId = this.config.userId;
+
+    console.log('🔑 生成RTC Token...');
+    console.log('  - appId:', appId);
+    console.log('  - roomId:', roomId);
+    console.log('  - userId:', userId);
+
+    const token = new AccessToken(appId, appKey, roomId, userId);
+    
+    // 添加订阅流权限（永久有效）
+    token.addPrivilege(Privilege.PrivSubscribeStream, 0);
+    
+    // 添加发布流权限（24小时有效）
+    const expireTime = Math.floor(new Date().getTime() / 1000) + 24 * 3600;
+    token.addPrivilege(Privilege.PrivPublishStream, expireTime);
+    
+    // 设置token过期时间（24小时）
+    token.expireTime(expireTime);
+    
+    // 序列化生成token字符串
+    const tokenString = token.serialize();
+    console.log('✅ RTC Token 生成成功');
+    
+    return tokenString;
   }
 
   // 完整的试穿流程
@@ -216,7 +252,7 @@ export class TryonService {
         appId: RTC_CONFIG.APP_ID,
         roomId: this.roomId,
         userId: this.config.userId,
-        token: RTC_CONFIG.DEFAULT_TOKEN // 可选
+        token: this.generateRTCToken() // 动态生成token
       }
     };
     
