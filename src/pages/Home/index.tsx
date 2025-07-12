@@ -437,7 +437,7 @@ const Home = () => {
         </div>
 
         {/* 重新登录按钮 */}
-        {/* <button
+        <button
           onClick={() => {
             clearLoginCache();
             navigate('/login');
@@ -456,7 +456,7 @@ const Home = () => {
           }}
         >
           🔄 重新登录
-        </button> */}
+        </button>
       </div>
     </div>
   );
