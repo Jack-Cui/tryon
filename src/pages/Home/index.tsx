@@ -12,6 +12,7 @@ const Home = () => {
   const locationState = location.state || {};
   const hasStartedTryon = useRef(false);
   const [videoStreams, setVideoStreams] = useState<Array<{userId: string, domId: string}>>([]);
+  const [videoPlayingStatus, setVideoPlayingStatus] = useState<{[key: string]: boolean}>({});
   const [loginParams, setLoginParams] = useState<{
     token: string;
     userId: string;
@@ -47,19 +48,66 @@ const Home = () => {
       });
     } else {
       console.log('❌ 缓存中没有有效的登录参数，跳转到登录页面');
-      // 清理可能存在的过期缓存
       clearLoginCache();
-      // 跳转到登录页面，并传递当前路径作为重定向参数
       navigate('/login?redirect=' + encodeURIComponent(location.pathname));
     }
   }, [locationState, navigate, location.pathname]);
+
+  // 检查视频是否真正开始播放的函数
+  const checkVideoPlayingStatus = (userId: string, domId: string) => {
+    const videoElement = document.getElementById(domId);
+    if (videoElement) {
+      const videoTag = videoElement.querySelector('video');
+      if (videoTag) {
+        // 设置视频样式以适应容器
+        videoTag.style.width = '100%';
+        videoTag.style.height = '100%';
+        videoTag.style.objectFit = 'cover';
+        
+        const checkPlaying = () => {
+          if (!videoTag.paused && !videoTag.ended && videoTag.readyState > 2) {
+            console.log(`✅ 视频 ${userId} 已开始播放`);
+            setVideoPlayingStatus(prev => ({
+              ...prev,
+              [userId]: true
+            }));
+          } else {
+            // 继续检查
+            setTimeout(checkPlaying, 500);
+          }
+        };
+        
+        // 监听视频事件
+        videoTag.addEventListener('playing', () => {
+          console.log(`✅ 视频 ${userId} 播放事件触发`);
+          setVideoPlayingStatus(prev => ({
+            ...prev,
+            [userId]: true
+          }));
+        });
+        
+        videoTag.addEventListener('loadeddata', () => {
+          console.log(`✅ 视频 ${userId} 数据加载完成`);
+          checkPlaying();
+        });
+        
+        // 立即检查一次
+        checkPlaying();
+      } else {
+        // 如果还没有video标签，延迟检查
+        setTimeout(() => checkVideoPlayingStatus(userId, domId), 1000);
+      }
+    } else {
+      // 如果DOM元素还没有创建，延迟检查
+      setTimeout(() => checkVideoPlayingStatus(userId, domId), 1000);
+    }
+  };
 
   // 设置RTC事件处理器
   useEffect(() => {
     webSocketService.setRTCEventHandlers({
       onUserJoin: (userId: string) => {
         console.log('👤 用户加入RTC房间:', userId);
-        // 只处理用户ID为1的视频
         if (userId === '1') {
           console.log('✅ 用户1加入房间');
         }
@@ -67,35 +115,56 @@ const Home = () => {
       
       onUserLeave: (userId: string) => {
         console.log('👤 用户离开RTC房间:', userId);
-        // 只处理用户ID为1的视频
         if (userId === '1') {
           setVideoStreams(prev => prev.filter(stream => stream.userId !== userId));
+          setVideoPlayingStatus(prev => {
+            const newStatus = { ...prev };
+            delete newStatus[userId];
+            return newStatus;
+          });
         }
       },
       
       onUserPublishStream: (userId: string, hasVideo: boolean, hasAudio: boolean) => {
         console.log('📹 用户发布流:', userId, { hasVideo, hasAudio });
-        // 只处理用户ID为1的视频
         if (userId === '1' && hasVideo) {
           const domId = `remoteStream_${userId}`;
           webSocketService.setRemoteVideoPlayer(userId, domId).catch(error => {
             console.error('设置视频播放器失败:', error);
           });
           setVideoStreams(prev => {
-            // 避免重复添加
             if (prev.find(stream => stream.userId === userId)) {
               return prev;
             }
             return [...prev, { userId, domId }];
           });
+          
+          // 开始检查视频播放状态
+          setTimeout(() => {
+            checkVideoPlayingStatus(userId, domId);
+            // 额外确保视频样式正确
+            const videoElement = document.getElementById(domId);
+            if (videoElement) {
+              const videoTag = videoElement.querySelector('video');
+              if (videoTag) {
+                videoTag.style.width = '100%';
+                videoTag.style.height = '100%';
+                videoTag.style.objectFit = 'cover';
+              }
+            }
+          }, 1000);
         }
       },
       
       onUserUnpublishStream: (userId: string) => {
         console.log('📹 用户取消发布流:', userId);
-        // 只处理用户ID为1的视频
         if (userId === '1') {
           setVideoStreams(prev => prev.filter(stream => stream.userId !== userId));
+          setVideoPlayingStatus(prev => {
+            const newStatus = { ...prev };
+            delete newStatus[userId];
+            return newStatus;
+          });
         }
       },
       
@@ -151,19 +220,37 @@ const Home = () => {
     const handleVideoStreamUpdate = (event: CustomEvent) => {
       const { userId, domId, type } = event.detail;
       
-      // 只处理用户ID为1的视频
       if (userId === '1') {
         if (type === 'add') {
           setVideoStreams(prev => {
-            // 避免重复添加
             if (prev.find(stream => stream.userId === userId)) {
               return prev;
             }
             return [...prev, { userId, domId }];
           });
           console.log('添加视频流:', userId, domId);
+          
+          // 开始检查视频播放状态
+          setTimeout(() => {
+            checkVideoPlayingStatus(userId, domId);
+            // 额外确保视频样式正确
+            const videoElement = document.getElementById(domId);
+            if (videoElement) {
+              const videoTag = videoElement.querySelector('video');
+              if (videoTag) {
+                videoTag.style.width = '100%';
+                videoTag.style.height = '100%';
+                videoTag.style.objectFit = 'cover';
+              }
+            }
+          }, 1000);
         } else if (type === 'remove') {
           setVideoStreams(prev => prev.filter(stream => stream.userId !== userId));
+          setVideoPlayingStatus(prev => {
+            const newStatus = { ...prev };
+            delete newStatus[userId];
+            return newStatus;
+          });
           console.log('移除视频流:', userId);
         }
       }
@@ -176,135 +263,200 @@ const Home = () => {
     };
   }, []);
 
+  // 如果缺少必要参数，显示加载页面
+  if (!loginParams) {
+    return (
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        minHeight: '100vh',
+        backgroundColor: '#f8f9fa',
+        flexDirection: 'column',
+        padding: '20px'
+      }}>
+        <div style={{ fontSize: '16px', marginBottom: '10px', color: '#1890ff' }}>
+          🔄 正在验证登录信息...
+        </div>
+        <div style={{ fontSize: '14px', color: '#666' }}>
+          请稍等，正在从缓存读取登录信息
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="home-container">
-      <div className="home-content">
-        {/* 登录参数加载状态 */}
-        {!loginParams && (
+    <div style={{
+      minHeight: '100vh',
+      backgroundColor: '#000',
+      display: 'flex',
+      flexDirection: 'column',
+      position: 'relative'
+    }}>
+      {/* 顶部标题区域 - 放在正中间 */}
+      <div style={{
+        position: 'fixed',
+        top: '0',
+        left: '0',
+        right: '0',
+        zIndex: 10,
+        background: 'linear-gradient(180deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 50%, transparent 100%)',
+        color: '#fff',
+        padding: '20px 20px 60px 20px',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center'
+      }}>
+        <h1 style={{
+          margin: 0,
+          fontSize: '24px',
+          fontWeight: 'bold',
+          textAlign: 'center'
+        }}>
+          🎥 用户1视频直播
+        </h1>
+      </div>
+
+      {/* 视频播放区域 */}
+      <div style={{
+        flex: 1,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '100px 20px 140px 20px'
+      }}>
+        {videoStreams.length === 0 ? (
+          <div style={{
+            textAlign: 'center',
+            color: '#fff',
+            padding: '40px 20px'
+          }}>
+            <div style={{ fontSize: '48px', marginBottom: '20px' }}>📹</div>
+            <div style={{ fontSize: '20px', marginBottom: '12px' }}>
+              等待用户1的视频流...
+            </div>
+            <div style={{ fontSize: '14px', opacity: 0.7 }}>
+              试穿流程正在进行中，请稍候
+            </div>
+          </div>
+        ) : (
           <div style={{
             display: 'flex',
+            flexWrap: 'wrap',
+            gap: '16px',
             justifyContent: 'center',
-            alignItems: 'center',
-            minHeight: '100vh',
-            backgroundColor: '#f8f9fa',
-            flexDirection: 'column',
-            padding: '20px'
+            maxWidth: '500px',
+            width: '100%'
           }}>
-            <div style={{ fontSize: '16px', marginBottom: '10px', color: '#1890ff' }}>
-              🔄 正在验证登录信息...
-            </div>
-            <div style={{ fontSize: '14px', color: '#666' }}>
-              请稍等，正在从缓存读取登录信息
-            </div>
-          </div>
-        )}
-        
-        {/* 视频播放器区域 */}
-        {loginParams && (
-          <div style={{
-            width: '100%',
-            height: '100vh',
-            backgroundColor: '#000',
-            display: 'flex',
-            flexDirection: 'column',
-            position: 'relative'
-          }}>
-            {/* 顶部信息栏 */}
-            <div style={{
-              position: 'absolute',
-              top: '0',
-              left: '0',
-              right: '0',
-              zIndex: 10,
-              background: 'linear-gradient(180deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 50%, transparent 100%)',
-              color: '#fff',
-              padding: '10px 15px',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
-            }}>
-              <div style={{ fontSize: '16px', fontWeight: 'bold' }}>
-                🎥 用户1视频直播
-              </div>
-              <button 
-                onClick={() => {
-                  clearLoginCache();
-                  navigate('/login');
-                }}
-                style={{
-                  padding: '6px 12px',
-                  fontSize: '12px',
-                  backgroundColor: 'rgba(255, 77, 79, 0.8)',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer'
-                }}
-              >
-                重新登录
-              </button>
-            </div>
-
-            {/* 底部用户信息 */}
-            <div style={{
-              position: 'absolute',
-              bottom: '0',
-              left: '0',
-              right: '0',
-              zIndex: 10,
-              background: 'linear-gradient(0deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 50%, transparent 100%)',
-              color: '#fff',
-              padding: '10px 15px',
-              fontSize: '12px'
-            }}>
-              当前用户: {loginParams.userId} | 手机: {loginParams.phone}
-            </div>
-
-            {/* 视频内容区域 */}
-            <div style={{
-              flex: 1,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '100%',
-              height: '100%'
-            }}>
-              {videoStreams.length === 0 ? (
-                <div style={{
-                  textAlign: 'center',
-                  color: '#fff',
-                  padding: '40px 20px'
-                }}>
-                  <div style={{ fontSize: '18px', marginBottom: '10px' }}>
-                    📹 等待用户1的视频流...
-                  </div>
-                  <div style={{ fontSize: '14px', opacity: 0.7 }}>
-                    当用户ID为1的用户发布视频流时，将在这里显示
-                  </div>
+            {videoStreams.map(stream => (
+              <div key={stream.userId} style={{
+                backgroundColor: '#000',
+                borderRadius: '12px',
+                overflow: 'hidden',
+                position: 'relative',
+                width: '100%',
+                maxWidth: '400px',
+                minHeight: '75vh',
+                maxHeight: '85vh',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.3)'
+              }}>
+                <div 
+                  id={stream.domId}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    backgroundColor: '#333',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#fff',
+                    fontSize: '16px',
+                    position: 'relative',
+                    minHeight: '75vh'
+                  }}
+                >
+                  {/* 只在视频未播放时显示加载文本 */}
+                  {!videoPlayingStatus[stream.userId] && (
+                    <div style={{
+                      position: 'absolute',
+                      top: '50%',
+                      left: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      textAlign: 'center',
+                      zIndex: 2,
+                      backgroundColor: 'rgba(0,0,0,0.7)',
+                      padding: '20px',
+                      borderRadius: '8px'
+                    }}>
+                      <div style={{ fontSize: '24px', marginBottom: '8px' }}>🎬</div>
+                      <div>加载视频中...</div>
+                    </div>
+                  )}
                 </div>
-              ) : (
-                videoStreams.map(stream => (
-                  <div 
-                    key={stream.userId}
-                    id={stream.domId}
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      backgroundColor: '#333',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: '#fff',
-                      fontSize: '14px'
-                    }}
-                  >
-                    加载视频中...
-                  </div>
-                ))
-              )}
-            </div>
+                <div style={{
+                  position: 'absolute',
+                  bottom: '12px',
+                  left: '12px',
+                  backgroundColor: 'rgba(0,0,0,0.7)',
+                  color: '#fff',
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  backdropFilter: 'blur(10px)'
+                }}>
+                  用户: {stream.userId}
+                </div>
+              </div>
+            ))}
           </div>
         )}
+      </div>
+
+      {/* 底部控制区域 - 重新登录按钮放到下方 */}
+      <div style={{
+        position: 'fixed',
+        bottom: '0',
+        left: '0',
+        right: '0',
+        zIndex: 10,
+        background: 'linear-gradient(0deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 50%, transparent 100%)',
+        color: '#fff',
+        padding: '60px 20px 20px 20px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: '16px'
+      }}>
+        {/* 用户信息 */}
+        <div style={{
+          fontSize: '12px',
+          opacity: 0.8,
+          textAlign: 'center'
+        }}>
+          {/* 当前用户: {loginParams.userId} | 手机: {loginParams.phone} | 共创ID: {loginParams.coCreationId} */}
+        </div>
+
+        {/* 重新登录按钮 */}
+        <button
+          onClick={() => {
+            clearLoginCache();
+            navigate('/login');
+          }}
+          style={{
+            backgroundColor: '#ff4d4f',
+            color: 'white',
+            border: 'none',
+            padding: '12px 24px',
+            borderRadius: '8px',
+            fontSize: '14px',
+            cursor: 'pointer',
+            fontWeight: 'bold',
+            transition: 'all 0.3s ease',
+            boxShadow: '0 4px 12px rgba(255, 77, 79, 0.3)'
+          }}
+        >
+          🔄 重新登录
+        </button>
       </div>
     </div>
   );
