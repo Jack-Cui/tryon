@@ -4,6 +4,7 @@ import './index.css';
 import logo from '../../assets/logo.png';
 import { authAPI } from '../../services/api';
 import { saveTokens } from '../../utils/auth';
+import { saveLoginCache } from '../../utils/loginCache';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -151,6 +152,14 @@ const Login = () => {
           console.log('Token已保存');
           const user_id = loginData.user_id || 'default_user_id';
           const co_creation_id = loginData.co_creation_id || 2;
+          
+          // 保存登录信息到缓存
+          saveLoginCache({
+            token: loginData.access_token,
+            userId: user_id,
+            phone: phoneNumber,
+            coCreationId: co_creation_id,
+          });
           
           // 登录成功后跳转到目标页面，并传递参数
           const redirectUrl = getRedirectUrl();
