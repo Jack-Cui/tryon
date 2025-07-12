@@ -61,7 +61,7 @@ const Home = () => {
         console.log('👤 用户加入RTC房间:', userId);
         // 只处理用户ID为1的视频
         if (userId === '1') {
-          createVideoPlayer(userId);
+          console.log('✅ 用户1加入房间');
         }
       },
       
@@ -69,7 +69,7 @@ const Home = () => {
         console.log('👤 用户离开RTC房间:', userId);
         // 只处理用户ID为1的视频
         if (userId === '1') {
-          removeVideoPlayer(userId);
+          setVideoStreams(prev => prev.filter(stream => stream.userId !== userId));
         }
       },
       
@@ -81,7 +81,13 @@ const Home = () => {
           webSocketService.setRemoteVideoPlayer(userId, domId).catch(error => {
             console.error('设置视频播放器失败:', error);
           });
-          setVideoStreams(prev => [...prev, { userId, domId }]);
+          setVideoStreams(prev => {
+            // 避免重复添加
+            if (prev.find(stream => stream.userId === userId)) {
+              return prev;
+            }
+            return [...prev, { userId, domId }];
+          });
         }
       },
       
@@ -89,7 +95,7 @@ const Home = () => {
         console.log('📹 用户取消发布流:', userId);
         // 只处理用户ID为1的视频
         if (userId === '1') {
-          removeVideoPlayer(userId);
+          setVideoStreams(prev => prev.filter(stream => stream.userId !== userId));
         }
       },
       
@@ -98,58 +104,6 @@ const Home = () => {
       }
     });
   }, []);
-
-  // 创建视频播放器
-  const createVideoPlayer = (userId: string) => {
-    const container = document.getElementById('video-container');
-    if (!container) {
-      console.error('找不到视频容器');
-      return;
-    }
-
-    const videoDiv = document.createElement('div');
-    videoDiv.id = `remoteStream_${userId}`;
-    videoDiv.style.cssText = `
-      width: 100%;
-      height: 400px;
-      background: #333;
-      border-radius: 8px;
-      position: relative;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #fff;
-      font-size: 14px;
-    `;
-    videoDiv.textContent = '加载视频中...';
-
-    const label = document.createElement('div');
-    label.textContent = `用户: ${userId}`;
-    label.style.cssText = `
-      position: absolute;
-      bottom: 10px;
-      left: 10px;
-      background: rgba(0,0,0,0.7);
-      color: #fff;
-      padding: 4px 8px;
-      border-radius: 4px;
-      font-size: 12px;
-    `;
-
-    videoDiv.appendChild(label);
-    container.appendChild(videoDiv);
-    console.log(`✅ 创建视频播放器: ${userId}`);
-  };
-
-  // 移除视频播放器
-  const removeVideoPlayer = (userId: string) => {
-    const videoDiv = document.getElementById(`remoteStream_${userId}`);
-    if (videoDiv) {
-      videoDiv.remove();
-      console.log(`✅ 移除视频播放器: ${userId}`);
-    }
-    setVideoStreams(prev => prev.filter(stream => stream.userId !== userId));
-  };
 
   useEffect(() => {
     if (!loginParams) {
@@ -200,7 +154,13 @@ const Home = () => {
       // 只处理用户ID为1的视频
       if (userId === '1') {
         if (type === 'add') {
-          setVideoStreams(prev => [...prev, { userId, domId }]);
+          setVideoStreams(prev => {
+            // 避免重复添加
+            if (prev.find(stream => stream.userId === userId)) {
+              return prev;
+            }
+            return [...prev, { userId, domId }];
+          });
           console.log('添加视频流:', userId, domId);
         } else if (type === 'remove') {
           setVideoStreams(prev => prev.filter(stream => stream.userId !== userId));
@@ -225,12 +185,10 @@ const Home = () => {
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
-            minHeight: '500px',
+            minHeight: '100vh',
             backgroundColor: '#f8f9fa',
-            borderRadius: '8px',
-            border: '1px solid #e9ecef',
-            margin: '20px',
-            flexDirection: 'column'
+            flexDirection: 'column',
+            padding: '20px'
           }}>
             <div style={{ fontSize: '16px', marginBottom: '10px', color: '#1890ff' }}>
               🔄 正在验证登录信息...
@@ -241,84 +199,97 @@ const Home = () => {
           </div>
         )}
         
-        {/* 只保留视频播放器区域 */}
+        {/* 视频播放器区域 */}
         {loginParams && (
-          <div className="video-container" id="video-container" style={{ 
-            padding: '20px',
-            backgroundColor: '#f8f9fa',
-            borderRadius: '8px',
-            border: '1px solid #e9ecef',
-            minHeight: '500px'
+          <div style={{
+            width: '100%',
+            height: '100vh',
+            backgroundColor: '#000',
+            display: 'flex',
+            flexDirection: 'column',
+            position: 'relative'
           }}>
+            {/* 顶部信息栏 */}
             <div style={{
+              position: 'absolute',
+              top: '0',
+              left: '0',
+              right: '0',
+              zIndex: 10,
+              background: 'linear-gradient(180deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 50%, transparent 100%)',
+              color: '#fff',
+              padding: '10px 15px',
               display: 'flex',
               justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '15px'
+              alignItems: 'center'
             }}>
-              <h3 style={{ margin: '0', color: '#1890ff' }}>
+              <div style={{ fontSize: '16px', fontWeight: 'bold' }}>
                 🎥 用户1视频直播
-              </h3>
-              <div style={{ fontSize: '12px', color: '#666' }}>
-                当前用户: {loginParams.userId} | 手机: {loginParams.phone}
-                <button 
-                  onClick={() => {
-                    clearLoginCache();
-                    navigate('/login');
-                  }}
-                  style={{
-                    marginLeft: '10px',
-                    padding: '4px 8px',
-                    fontSize: '12px',
-                    backgroundColor: '#ff4d4f',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  重新登录
-                </button>
               </div>
+              <button 
+                onClick={() => {
+                  clearLoginCache();
+                  navigate('/login');
+                }}
+                style={{
+                  padding: '6px 12px',
+                  fontSize: '12px',
+                  backgroundColor: 'rgba(255, 77, 79, 0.8)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer'
+                }}
+              >
+                重新登录
+              </button>
             </div>
-            <div style={{ 
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              minHeight: '400px'
+
+            {/* 底部用户信息 */}
+            <div style={{
+              position: 'absolute',
+              bottom: '0',
+              left: '0',
+              right: '0',
+              zIndex: 10,
+              background: 'linear-gradient(0deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 50%, transparent 100%)',
+              color: '#fff',
+              padding: '10px 15px',
+              fontSize: '12px'
             }}>
-              {videoStreams.length === 0 && (
+              当前用户: {loginParams.userId} | 手机: {loginParams.phone}
+            </div>
+
+            {/* 视频内容区域 */}
+            <div style={{
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '100%',
+              height: '100%'
+            }}>
+              {videoStreams.length === 0 ? (
                 <div style={{
-                  backgroundColor: '#f0f0f0',
-                  borderRadius: '8px',
-                  padding: '40px',
                   textAlign: 'center',
-                  color: '#666',
-                  width: '100%',
-                  maxWidth: '600px'
+                  color: '#fff',
+                  padding: '40px 20px'
                 }}>
-                  <div style={{ fontSize: '16px', marginBottom: '10px' }}>
+                  <div style={{ fontSize: '18px', marginBottom: '10px' }}>
                     📹 等待用户1的视频流...
                   </div>
-                  <div style={{ fontSize: '14px' }}>
+                  <div style={{ fontSize: '14px', opacity: 0.7 }}>
                     当用户ID为1的用户发布视频流时，将在这里显示
                   </div>
                 </div>
-              )}
-              {videoStreams.map(stream => (
-                <div key={stream.userId} style={{
-                  backgroundColor: '#000',
-                  borderRadius: '8px',
-                  overflow: 'hidden',
-                  position: 'relative',
-                  width: '100%',
-                  maxWidth: '600px'
-                }}>
+              ) : (
+                videoStreams.map(stream => (
                   <div 
+                    key={stream.userId}
                     id={stream.domId}
                     style={{
                       width: '100%',
-                      height: '400px',
+                      height: '100%',
                       backgroundColor: '#333',
                       display: 'flex',
                       alignItems: 'center',
@@ -329,20 +300,8 @@ const Home = () => {
                   >
                     加载视频中...
                   </div>
-                  <div style={{
-                    position: 'absolute',
-                    bottom: '10px',
-                    left: '10px',
-                    backgroundColor: 'rgba(0,0,0,0.7)',
-                    color: '#fff',
-                    padding: '4px 8px',
-                    borderRadius: '4px',
-                    fontSize: '12px'
-                  }}>
-                    用户: {stream.userId}
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
         )}

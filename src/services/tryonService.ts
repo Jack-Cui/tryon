@@ -92,12 +92,12 @@ export class TryonService {
       await this.getRoomInfo();
       
       // 2. 创建房间
-      // console.log('步骤2: 创建房间');
-      // const roomPrimaryId = await this.createRoom();
+      console.log('步骤2: 创建房间');
+      const roomPrimaryId = await this.createRoom();
       
       // 3. 加入房间
-      // console.log('步骤3: 加入房间');
-      // await this.joinRoom(roomPrimaryId);
+      console.log('步骤3: 加入房间');
+      await this.joinRoom(roomPrimaryId);
       
       // 4. 调度分配实例
       console.log('步骤4: 调度分配实例');
