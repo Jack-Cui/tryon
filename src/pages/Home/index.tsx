@@ -5,6 +5,10 @@ import { tryonService } from '../../services/tryonService';
 import { RTCVideoConfig } from '../../services/rtcVideoService';
 import { webSocketService } from '../../services/websocketService';
 import { getLoginCache, clearLoginCache } from '../../utils/loginCache';
+// 导入图片
+import actionIcon from '../../assets/动作.png';
+import dressIcon from '../../assets/连衣裙.png';
+import coatIcon from '../../assets/外套.png';
 
 const Home = () => {
   const location = useLocation();
@@ -13,6 +17,7 @@ const Home = () => {
   const hasStartedTryon = useRef(false);
   const [videoStreams, setVideoStreams] = useState<Array<{userId: string, domId: string}>>([]);
   const [videoPlayingStatus, setVideoPlayingStatus] = useState<{[key: string]: boolean}>({});
+  const [showSelectionScreen, setShowSelectionScreen] = useState(true); // 新增状态控制显示选择界面
   const [loginParams, setLoginParams] = useState<{
     token: string;
     userId: string;
@@ -174,9 +179,10 @@ const Home = () => {
     });
   }, []);
 
-  useEffect(() => {
+  // 登台按钮点击处理
+  const handleStartTryon = async () => {
     if (!loginParams) {
-      console.warn('缺少登录参数，试穿流程未执行');
+      console.warn('缺少登录参数，无法开始试穿');
       return;
     }
 
@@ -185,35 +191,33 @@ const Home = () => {
       return;
     }
 
-    const startTryon = async () => {
-      try {
-        hasStartedTryon.current = true;
-        
-        const rtcConfig: RTCVideoConfig = {
-          appId: '643e46acb15c24012c963951',
-          appKey: 'b329b39ca8df4b5185078f29d8d8025f',
-          roomId: '1939613403762253825',
-          userId: loginParams.userId
-        };
-        
-        const config = {
-          phone: loginParams.phone,
-          coCreationId: loginParams.coCreationId,
-          userId: loginParams.userId,
-          accessToken: loginParams.token,
-          rtcConfig,
-        };
-        
-        console.log('开始自动试穿流程，配置:', config);
-        await tryonService.startTryonFlow(config);
-      } catch (error) {
-        console.error('试穿流程启动失败:', error);
-        hasStartedTryon.current = false;
-      }
-    };
-
-    startTryon();
-  }, [loginParams]);
+    try {
+      hasStartedTryon.current = true;
+      setShowSelectionScreen(false); // 隐藏选择界面，显示视频播放界面
+      
+      const rtcConfig: RTCVideoConfig = {
+        appId: '643e46acb15c24012c963951',
+        appKey: 'b329b39ca8df4b5185078f29d8d8025f',
+        roomId: '1939613403762253825',
+        userId: loginParams.userId
+      };
+      
+      const config = {
+        phone: loginParams.phone,
+        coCreationId: loginParams.coCreationId,
+        userId: loginParams.userId,
+        accessToken: loginParams.token,
+        rtcConfig,
+      };
+      
+      console.log('开始自动试穿流程，配置:', config);
+      await tryonService.startTryonFlow(config);
+    } catch (error) {
+      console.error('试穿流程启动失败:', error);
+      hasStartedTryon.current = false;
+      setShowSelectionScreen(true); // 出错时重新显示选择界面
+    }
+  };
 
   // 监听RTC视频流更新事件
   useEffect(() => {
@@ -285,6 +289,224 @@ const Home = () => {
     );
   }
 
+  // 选择界面
+  if (showSelectionScreen) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        backgroundColor: '#a8d5ba', // 浅绿色背景
+        display: 'flex',
+        flexDirection: 'column',
+        position: 'relative'
+      }}>
+        {/* 顶部标题区域 - 与视频播放界面对齐 */}
+        <div style={{
+          position: 'fixed',
+          top: '0',
+          left: '0',
+          right: '0',
+          zIndex: 10,
+          background: 'linear-gradient(180deg, rgba(168,213,186,0.9) 0%, rgba(168,213,186,0.7) 50%, transparent 100%)',
+          color: '#333',
+          padding: '20px 20px 60px 20px',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center'
+        }}>
+          <h1 style={{
+            margin: 0,
+            fontSize: '24px',
+            fontWeight: 'bold',
+            textAlign: 'center'
+          }}>
+            PADA2024秀款礼服系列
+          </h1>
+        </div>
+
+        {/* 中间图标区域 - 与视频播放区域对齐 */}
+        <div style={{
+          flex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '100px 20px 140px 20px' // 与视频播放界面相同的padding
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            maxWidth: '500px', // 与视频播放区域相同宽度
+            width: '100%',
+            padding: '0 40px'
+          }}>
+            {/* 左侧动作图标 */}
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '12px'
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '60px',
+                height: '60px'
+              }}>
+                <img 
+                  src={actionIcon} 
+                  alt="动作" 
+                  style={{
+                    width: '40px',
+                    height: '40px',
+                    objectFit: 'contain'
+                  }}
+                />
+              </div>
+              <span style={{
+                fontSize: '12px',
+                color: '#333',
+                fontWeight: 'bold'
+              }}>
+                动作
+              </span>
+            </div>
+
+            {/* 右侧服装图标 */}
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '30px'
+            }}>
+              {/* 连衣裙 */}
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '12px'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '60px',
+                  height: '60px'
+                }}>
+                  <img 
+                    src={dressIcon} 
+                    alt="连衣裙" 
+                    style={{
+                      width: '40px',
+                      height: '40px',
+                      objectFit: 'contain'
+                    }}
+                  />
+                </div>
+                <span style={{
+                  fontSize: '12px',
+                  color: '#333',
+                  fontWeight: 'bold'
+                }}>
+                  连衣裙
+                </span>
+              </div>
+
+              {/* 外套 */}
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '12px'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '60px',
+                  height: '60px'
+                }}>
+                  <img 
+                    src={coatIcon} 
+                    alt="外套" 
+                    style={{
+                      width: '40px',
+                      height: '40px',
+                      objectFit: 'contain'
+                    }}
+                  />
+                </div>
+                <span style={{
+                  fontSize: '12px',
+                  color: '#333',
+                  fontWeight: 'bold'
+                }}>
+                  外套
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 底部登台按钮 - 与视频播放界面底部对齐 */}
+        <div style={{
+          position: 'fixed',
+          bottom: '0',
+          left: '0',
+          right: '0',
+          zIndex: 10,
+          background: 'linear-gradient(0deg, rgba(168,213,186,0.9) 0%, rgba(168,213,186,0.7) 50%, transparent 100%)',
+          padding: '60px 20px 20px 20px',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center'
+        }}>
+          <button
+            onClick={handleStartTryon}
+            style={{
+              backgroundColor: '#333',
+              color: 'white',
+              border: 'none',
+              padding: '16px 60px',
+              borderRadius: '25px',
+              fontSize: '18px',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+            }}
+          >
+            登台
+          </button>
+        </div>
+
+        {/* 右上角重新登录按钮 */}
+        <button
+          onClick={() => {
+            clearLoginCache();
+            navigate('/login');
+          }}
+          style={{
+            position: 'absolute',
+            top: '20px',
+            right: '20px',
+            backgroundColor: '#ff4d4f',
+            color: 'white',
+            border: 'none',
+            padding: '8px 16px',
+            borderRadius: '6px',
+            fontSize: '12px',
+            cursor: 'pointer',
+            fontWeight: 'bold',
+            transition: 'all 0.3s ease'
+          }}
+        >
+          重新登录
+        </button>
+      </div>
+    );
+  }
+
+  // 视频播放界面（原有的界面）
   return (
     <div style={{
       minHeight: '100vh',
@@ -427,14 +649,28 @@ const Home = () => {
         alignItems: 'center',
         gap: '16px'
       }}>
-        {/* 用户信息 */}
-        <div style={{
-          fontSize: '12px',
-          opacity: 0.8,
-          textAlign: 'center'
-        }}>
-          {/* 当前用户: {loginParams.userId} | 手机: {loginParams.phone} | 共创ID: {loginParams.coCreationId} */}
-        </div>
+        {/* 返回选择界面按钮 */}
+        <button
+          onClick={() => {
+            setShowSelectionScreen(true);
+            hasStartedTryon.current = false;
+          }}
+          style={{
+            backgroundColor: '#1890ff',
+            color: 'white',
+            border: 'none',
+            padding: '12px 24px',
+            borderRadius: '8px',
+            fontSize: '14px',
+            cursor: 'pointer',
+            fontWeight: 'bold',
+            transition: 'all 0.3s ease',
+            boxShadow: '0 4px 12px rgba(24, 144, 255, 0.3)',
+            marginBottom: '8px'
+          }}
+        >
+          🔙 返回选择
+        </button>
 
         {/* 重新登录按钮 */}
         <button
