@@ -552,7 +552,10 @@ const Home = () => {
 
         {/* 右上角重新登录按钮 */}
         <button
-          onClick={() => {
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('重新登录按钮被点击');
             clearLoginCache();
             navigate('/login');
           }}
@@ -560,18 +563,46 @@ const Home = () => {
             position: 'absolute',
             top: '20px',
             right: '20px',
-            backgroundColor: '#ff4d4f',
-            color: 'white',
-            border: 'none',
+            backgroundColor: '#ff4d4f !important',
+            color: 'white !important',
+            border: 'none !important',
             padding: '8px 16px',
             borderRadius: '6px',
             fontSize: '12px',
-            cursor: 'pointer',
+            cursor: 'pointer !important',
             fontWeight: 'bold',
-            transition: 'all 0.3s ease'
+            transition: 'all 0.3s ease',
+            zIndex: 9999,
+            boxShadow: '0 2px 8px rgba(255, 77, 79, 0.3)',
+            outline: 'none !important',
+            opacity: 1,
+            pointerEvents: 'auto',
+            display: 'inline-block',
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
+            MozUserSelect: 'none',
+            msUserSelect: 'none'
+          }}
+          onMouseEnter={(e) => {
+            console.log('鼠标悬停在重新登录按钮上');
+            e.currentTarget.style.backgroundColor = '#ff7875';
+            e.currentTarget.style.transform = 'scale(1.05)';
+          }}
+          onMouseLeave={(e) => {
+            console.log('鼠标离开重新登录按钮');
+            e.currentTarget.style.backgroundColor = '#ff4d4f';
+            e.currentTarget.style.transform = 'scale(1)';
+          }}
+          onMouseDown={(e) => {
+            console.log('重新登录按钮被按下');
+            e.currentTarget.style.transform = 'scale(0.95)';
+          }}
+          onMouseUp={(e) => {
+            console.log('重新登录按钮被释放');
+            e.currentTarget.style.transform = 'scale(1.05)';
           }}
         >
-          重新登录
+          🔄 重新登录
         </button>
       </div>
     );
