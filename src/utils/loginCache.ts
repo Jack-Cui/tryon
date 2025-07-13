@@ -4,6 +4,7 @@ export interface LoginCacheData {
   userId: string;
   phone: string;
   coCreationId: number;
+  roomName?: string; // 房间名称，可选
   timestamp: number; // 缓存时间戳
 }
 
@@ -107,4 +108,24 @@ export const getCacheRemainingTime = (): number => {
   const cacheDuration = cacheDurationStr ? parseInt(cacheDurationStr) : DEFAULT_CACHE_DURATION;
   
   return Math.max(0, cacheDuration - cacheAge);
+};
+
+/**
+ * 更新缓存中的房间名称
+ * @param roomName 房间名称
+ */
+export const updateRoomNameInCache = (roomName: string): void => {
+  try {
+    const cachedData = getLoginCache();
+    if (cachedData) {
+      const updatedData = { ...cachedData, roomName };
+      const cacheDurationStr = localStorage.getItem(CACHE_KEY + '_duration');
+      const cacheDuration = cacheDurationStr ? parseInt(cacheDurationStr) : DEFAULT_CACHE_DURATION;
+      
+      localStorage.setItem(CACHE_KEY, JSON.stringify(updatedData));
+      console.log('✅ 房间名称已更新到缓存:', roomName);
+    }
+  } catch (error) {
+    console.error('❌ 更新缓存中的房间名称失败:', error);
+  }
 }; 

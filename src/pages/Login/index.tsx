@@ -5,6 +5,7 @@ import logo from '../../assets/logo.png';
 import { authAPI } from '../../services/api';
 import { saveTokens } from '../../utils/auth';
 import { saveLoginCache } from '../../utils/loginCache';
+import { tryonService } from '../../services/tryonService';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -161,14 +162,31 @@ const Login = () => {
             coCreationId: co_creation_id,
           });
           
+          // 登录成功后立即初始化房间信息
+          try {
+            console.log('🏠 登录成功，开始初始化房间信息...');
+            await tryonService.initializeAfterLogin({
+              phone: phoneNumber,
+              coCreationId: co_creation_id,
+              userId: user_id,
+              accessToken: loginData.access_token,
+            });
+            console.log('✅ 房间信息初始化成功');
+          } catch (error) {
+            console.error('❌ 房间信息初始化失败:', error);
+            // 即使初始化失败，也允许用户继续，后续会使用完整流程
+          }
+          
           // 登录成功后跳转到目标页面，并传递参数
           const redirectUrl = getRedirectUrl();
+          const roomName = tryonService.getRoomName(); // 获取房间名称
           navigate(redirectUrl, {
             state: {
               token: loginData.access_token,
               userId: user_id,
               phone: phoneNumber,
               coCreationId: co_creation_id,
+              roomName: roomName, // 传递房间名称
             }
           });
         }

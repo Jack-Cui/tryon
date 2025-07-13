@@ -9,6 +9,7 @@ import { getLoginCache, clearLoginCache } from '../../utils/loginCache';
 import actionIcon from '../../assets/动作.png';
 import dressIcon from '../../assets/连衣裙.png';
 import coatIcon from '../../assets/外套.png';
+import realSceneIcon from '../../assets/实景.png';
 
 const Home = () => {
   const location = useLocation();
@@ -18,6 +19,7 @@ const Home = () => {
   const [videoStreams, setVideoStreams] = useState<Array<{userId: string, domId: string}>>([]);
   const [videoPlayingStatus, setVideoPlayingStatus] = useState<{[key: string]: boolean}>({});
   const [showSelectionScreen, setShowSelectionScreen] = useState(true); // 新增状态控制显示选择界面
+  const [roomName, setRoomName] = useState<string>('PADA2024秀款礼服系列'); // 添加房间名称状态，默认值为原来的文本
   const [loginParams, setLoginParams] = useState<{
     token: string;
     userId: string;
@@ -36,6 +38,12 @@ const Home = () => {
         phone: locationState.phone,
         coCreationId: locationState.coCreationId
       });
+      
+      // 如果路由state中有房间名称，也设置到状态中
+      if (locationState.roomName) {
+        setRoomName(locationState.roomName);
+        console.log('✅ 从路由state获取到房间名称:', locationState.roomName);
+      }
       return;
     }
 
@@ -51,12 +59,36 @@ const Home = () => {
         phone: cachedLoginData.phone,
         coCreationId: cachedLoginData.coCreationId
       });
+      
+      // 如果缓存中有房间名称，也设置到状态中
+      if (cachedLoginData.roomName) {
+        setRoomName(cachedLoginData.roomName);
+        console.log('✅ 从缓存获取到房间名称:', cachedLoginData.roomName);
+      }
     } else {
       console.log('❌ 缓存中没有有效的登录参数，跳转到登录页面');
       clearLoginCache();
       navigate('/login?redirect=' + encodeURIComponent(location.pathname));
     }
   }, [locationState, navigate, location.pathname]);
+
+  // 初始化房间名称
+  useEffect(() => {
+    if (loginParams) {
+      // 如果当前房间名称还是默认值，尝试从 tryonService 获取
+      if (roomName === 'PADA2024秀款礼服系列') {
+        const roomNameFromService = tryonService.getRoomName();
+        if (roomNameFromService) {
+          setRoomName(roomNameFromService);
+          console.log('✅ 从 tryonService 获取到房间名称:', roomNameFromService);
+        } else {
+          console.log('⚠️ tryonService 中没有房间名称，使用默认名称');
+        }
+      } else {
+        console.log('✅ 已从缓存获取到房间名称，跳过 tryonService 获取');
+      }
+    }
+  }, [loginParams, roomName]);
 
   // 检查视频是否真正开始播放的函数
   const checkVideoPlayingStatus = (userId: string, domId: string) => {
@@ -212,6 +244,9 @@ const Home = () => {
       
       console.log('开始自动试穿流程，配置:', config);
       await tryonService.startTryonFlow(config);
+      
+      console.log('✅ 试穿流程启动成功');
+      
     } catch (error) {
       console.error('试穿流程启动失败:', error);
       hasStartedTryon.current = false;
@@ -319,7 +354,7 @@ const Home = () => {
             fontWeight: 'bold',
             textAlign: 'center'
           }}>
-            PADA2024秀款礼服系列
+            {roomName}
           </h1>
         </div>
 
@@ -339,37 +374,75 @@ const Home = () => {
             width: '100%',
             padding: '0 40px'
           }}>
-            {/* 左侧动作图标 */}
+            {/* 左侧动作和实景图标 */}
             <div style={{
               display: 'flex',
               flexDirection: 'column',
-              alignItems: 'center',
-              gap: '12px'
+              gap: '30px'
             }}>
+              {/* 动作 */}
               <div style={{
                 display: 'flex',
+                flexDirection: 'column',
                 alignItems: 'center',
-                justifyContent: 'center',
-                width: '60px',
-                height: '60px'
+                gap: '12px'
               }}>
-                <img 
-                  src={actionIcon} 
-                  alt="动作" 
-                  style={{
-                    width: '40px',
-                    height: '40px',
-                    objectFit: 'contain'
-                  }}
-                />
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '60px',
+                  height: '60px'
+                }}>
+                  <img 
+                    src={actionIcon} 
+                    alt="动作" 
+                    style={{
+                      width: '40px',
+                      height: '40px',
+                      objectFit: 'contain'
+                    }}
+                  />
+                </div>
+                <span style={{
+                  fontSize: '12px',
+                  color: '#333',
+                  fontWeight: 'bold'
+                }}>
+                </span>
               </div>
-              <span style={{
-                fontSize: '12px',
-                color: '#333',
-                fontWeight: 'bold'
+
+              {/* 实景 */}
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '12px'
               }}>
-                动作
-              </span>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '60px',
+                  height: '60px'
+                }}>
+                  <img 
+                    src={realSceneIcon} 
+                    alt="实景" 
+                    style={{
+                      width: '40px',
+                      height: '40px',
+                      objectFit: 'contain'
+                    }}
+                  />
+                </div>
+                <span style={{
+                  fontSize: '12px',
+                  color: '#333',
+                  fontWeight: 'bold'
+                }}>
+                </span>
+              </div>
             </div>
 
             {/* 右侧服装图标 */}
@@ -407,7 +480,6 @@ const Home = () => {
                   color: '#333',
                   fontWeight: 'bold'
                 }}>
-                  连衣裙
                 </span>
               </div>
 
@@ -440,7 +512,6 @@ const Home = () => {
                   color: '#333',
                   fontWeight: 'bold'
                 }}>
-                  外套
                 </span>
               </div>
             </div>
@@ -535,7 +606,7 @@ const Home = () => {
           fontWeight: 'bold',
           textAlign: 'center'
         }}>
-          🎥 用户1视频直播
+          {roomName}
         </h1>
       </div>
 
@@ -615,7 +686,7 @@ const Home = () => {
                     </div>
                   )}
                 </div>
-                <div style={{
+                {/* <div style={{
                   position: 'absolute',
                   bottom: '12px',
                   left: '12px',
@@ -627,7 +698,7 @@ const Home = () => {
                   backdropFilter: 'blur(10px)'
                 }}>
                   用户: {stream.userId}
-                </div>
+                </div> */}
               </div>
             ))}
           </div>

@@ -50,6 +50,7 @@ export interface ClotheSizeResponse {
 export interface CreateRoomResponse {
   data: {
     id: number;
+    roomName?: string; // 添加房间名称字段
     [key: string]: any;
   };
   [key: string]: any;

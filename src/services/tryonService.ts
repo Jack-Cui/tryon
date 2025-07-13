@@ -4,6 +4,7 @@ import { webSocketService, WebSocketConfig } from './websocketService';
 import { RTCVideoService, RTCVideoConfig } from './rtcVideoService';
 import { RTC_CONFIG } from '../config/config';
 import { AccessToken, Privilege } from '../token/AccessToken';
+import { updateRoomNameInCache } from '../utils/loginCache';
 
 export interface TryonConfig {
   phone: string;
@@ -17,6 +18,8 @@ export class TryonService {
   private config: TryonConfig | null = null;
   private accessToken: string | null = null;
   private roomId: string | null = null;
+  private roomName: string | null = null; // 添加房间名称属性
+  private roomPrimaryId: number | null = null; // 添加房间主键ID属性
   private enterStageInfo: string | null = null;
   private rtcVideoService: RTCVideoService | null = null;
   private rtcStarted: boolean = false; // 防止重复启动RTC
@@ -79,13 +82,82 @@ export class TryonService {
     return tokenString;
   }
 
-  // 完整的试穿流程
-  async startTryonFlow(config: TryonConfig): Promise<void> {
+  // 登录成功后初始化房间信息
+  async initializeAfterLogin(config: TryonConfig): Promise<void> {
     this.config = config;
     this.accessToken = config.accessToken;
     
     try {
-      console.log('开始试穿流程...');
+      console.log('🏠 开始初始化房间信息...');
+      
+      // 1. 获取房间信息
+      console.log('步骤1: 获取房间信息');
+      await this.getRoomInfo();
+      
+      // 2. 创建房间
+      console.log('步骤2: 创建房间');
+      this.roomPrimaryId = await this.createRoom();
+      
+      console.log('✅ 房间信息初始化完成');
+      console.log('  - 房间ID:', this.roomId);
+      console.log('  - 房间名称:', this.roomName);
+      console.log('  - 房间主键ID:', this.roomPrimaryId);
+      
+      // 更新缓存中的房间名称
+      if (this.roomName) {
+        updateRoomNameInCache(this.roomName);
+      }
+      
+    } catch (error) {
+      console.error('❌ 房间信息初始化失败:', error);
+      throw error;
+    }
+  }
+
+  // 完整的试穿流程（简化版，跳过已执行的步骤）
+  async startTryonFlow(config: TryonConfig): Promise<void> {
+    // 如果没有预先初始化，则执行完整流程
+    if (!this.roomId || !this.roomPrimaryId || !this.accessToken) {
+      console.log('⚠️ 房间信息未初始化，执行完整流程...');
+      return this.startFullTryonFlow(config);
+    }
+    
+    // 更新配置（主要是RTC配置）
+    this.config = config;
+    
+    try {
+      console.log('🚀 开始简化试穿流程...');
+      console.log('  - 使用已获取的房间ID:', this.roomId);
+      console.log('  - 使用已获取的房间主键ID:', this.roomPrimaryId);
+      console.log('  - 使用已获取的房间名称:', this.roomName);
+      
+      // 3. 加入房间
+      console.log('步骤3: 加入房间');
+      await this.joinRoom(this.roomPrimaryId);
+      
+      // 4. 调度分配实例
+      console.log('步骤4: 调度分配实例');
+      const scheduleResult = await this.scheduleInstance();
+      
+      // 5. 连接WebSocket并执行登台流程
+      console.log('步骤5: 连接WebSocket并执行登台流程');
+      await this.connectAndPerformStage(scheduleResult);
+      
+      console.log('✅ 简化试穿流程完成！');
+      
+    } catch (error) {
+      console.error('❌ 简化试穿流程失败:', error);
+      throw error;
+    }
+  }
+
+  // 完整的试穿流程（原始版本）
+  private async startFullTryonFlow(config: TryonConfig): Promise<void> {
+    this.config = config;
+    this.accessToken = config.accessToken;
+    
+    try {
+      console.log('开始完整试穿流程...');
       
       // 1. 获取房间信息
       console.log('步骤1: 获取房间信息');
@@ -94,6 +166,7 @@ export class TryonService {
       // 2. 创建房间
       console.log('步骤2: 创建房间');
       const roomPrimaryId = await this.createRoom();
+      this.roomPrimaryId = roomPrimaryId;
       
       // 3. 加入房间
       console.log('步骤3: 加入房间');
@@ -188,6 +261,14 @@ export class TryonService {
     
     if (!createRoomData.data.id) {
       throw new Error('解析创建房间响应失败：响应数据中没有id字段');
+    }
+    
+    // 获取房间名称
+    if (createRoomData.data.roomName) {
+      this.roomName = createRoomData.data.roomName;
+      console.log('房间名称:', this.roomName);
+    } else {
+      console.log('创建房间响应中没有 roomName 字段');
     }
     
     console.log('房间创建成功，primary room key:', createRoomData.data.id);
@@ -361,6 +442,11 @@ export class TryonService {
     console.log('📡 发送视频播放器更新事件:', userId, domId);
   }
 
+  // 获取房间名称
+  getRoomName(): string | null {
+    return this.roomName;
+  }
+
   // 断开连接
   disconnect(): void {
     webSocketService.disconnect();
@@ -375,6 +461,12 @@ export class TryonService {
     
     // 重置RTC状态
     this.rtcStarted = false;
+    
+    // 清理房间相关数据
+    this.roomName = null;
+    this.roomId = null;
+    this.roomPrimaryId = null;
+    this.enterStageInfo = null;
   }
 
   // 获取连接状态
