@@ -69,6 +69,13 @@ const Home = () => {
         setRoomName(locationState.roomName);
         console.log('✅ 从路由state获取到房间名称:', locationState.roomName);
       }
+      
+      // 即使从路由state获取登录参数，也要检查缓存中的服饰列表
+      const cachedLoginData = getLoginCache();
+      if (cachedLoginData && cachedLoginData.clothesList && cachedLoginData.clothesList.length > 0) {
+        setClothesList(cachedLoginData.clothesList);
+        console.log('✅ 从缓存获取到服饰列表:', cachedLoginData.clothesList);
+      }
       return;
     }
 
