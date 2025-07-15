@@ -60,9 +60,10 @@ const Home = () => {
 
   // 获取分类的实际图标URL（优先使用服务器返回的classifyUrl）
   const getCategoryIcon = (classifyName: string): string => {
-    const categoryItem = clothesList.find(item => item.classifyName === classifyName);
-    // 优先使用服务器返回的classifyUrl，如果没有则使用本地图标
-    return categoryItem?.classifyUrl || getClothesIcon(classifyName);
+    // const categoryItem = clothesList.find(item => item.classifyName === classifyName);
+    // // 优先使用服务器返回的classifyUrl，如果没有则使用本地图标
+    // return categoryItem?.classifyUrl || getClothesIcon(classifyName);
+    return getClothesIcon(classifyName);
   };
 
   // 获取第一个分类的第一个服装（用于顶部显示）
