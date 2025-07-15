@@ -90,6 +90,12 @@ const Home = () => {
         setRoomName(cachedLoginData.roomName);
         console.log('✅ 从缓存获取到房间名称:', cachedLoginData.roomName);
       }
+      
+      // 如果缓存中有服饰列表，也设置到状态中
+      if (cachedLoginData.clothesList && cachedLoginData.clothesList.length > 0) {
+        setClothesList(cachedLoginData.clothesList);
+        console.log('✅ 从缓存获取到服饰列表:', cachedLoginData.clothesList);
+      }
     } else {
       console.log('❌ 缓存中没有有效的登录参数，跳转到登录页面');
       clearLoginCache();
@@ -113,20 +119,18 @@ const Home = () => {
         console.log('✅ 已从缓存获取到房间名称，跳过 tryonService 获取');
       }
 
-      // 获取服饰列表
-      const clothesListFromService = tryonService.getClothesList();
-      if (clothesListFromService && clothesListFromService.length > 0) {
-        setClothesList(clothesListFromService);
-        console.log('✅ 从 tryonService 获取到服饰列表:', clothesListFromService);
+      // 获取服饰列表（只有当前状态为空时才尝试从服务获取）
+      if (clothesList.length === 0) {
+        const clothesListFromService = tryonService.getClothesList();
+        if (clothesListFromService && clothesListFromService.length > 0) {
+          setClothesList(clothesListFromService);
+          console.log('✅ 从 tryonService 获取到服饰列表:', clothesListFromService);
+        } else {
+          console.log('⚠️ tryonService 中没有服饰列表，等待服务器数据');
+          // 不清空列表，保持从缓存读取的数据
+        }
       } else {
-        console.log('⚠️ tryonService 中没有服饰列表，使用默认数据');
-        // 暂时使用默认的服饰列表用于测试
-        const defaultClothesList = [
-          { classifyName: '套装' },
-          { classifyName: '裙子' },
-          { classifyName: '外套' }
-        ];
-        setClothesList(defaultClothesList);
+        console.log('✅ 服饰列表已存在，跳过从 tryonService 获取:', clothesList);
       }
     }
   }, [loginParams, roomName]);
@@ -563,7 +567,10 @@ const Home = () => {
             e.preventDefault();
             e.stopPropagation();
             console.log('重新登录按钮被点击');
+            // 清除缓存和服务状态
             clearLoginCache();
+            tryonService.disconnect();
+            console.log('✅ 已清除登录缓存和服务状态');
             navigate('/login');
           }}
           style={{
@@ -784,7 +791,11 @@ const Home = () => {
         {/* 重新登录按钮 */}
         <button
           onClick={() => {
+            console.log('重新登录按钮被点击');
+            // 清除缓存和服务状态
             clearLoginCache();
+            tryonService.disconnect();
+            console.log('✅ 已清除登录缓存和服务状态');
             navigate('/login');
           }}
           style={{

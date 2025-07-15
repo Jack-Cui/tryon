@@ -4,7 +4,7 @@ import { webSocketService, WebSocketConfig } from './websocketService';
 import { RTCVideoService, RTCVideoConfig } from './rtcVideoService';
 import { RTC_CONFIG } from '../config/config';
 import { AccessToken, Privilege } from '../token/AccessToken';
-import { updateRoomNameInCache } from '../utils/loginCache';
+import { updateRoomNameInCache, updateClothesListInCache } from '../utils/loginCache';
 import { ClothesItem } from '../types/api';
 
 export interface TryonConfig {
@@ -277,6 +277,9 @@ export class TryonService {
     if (createRoomData.data.clothesList && Array.isArray(createRoomData.data.clothesList)) {
       this.clothesList = createRoomData.data.clothesList;
       console.log('服饰列表:', this.clothesList);
+      
+      // 更新缓存中的服饰列表
+      updateClothesListInCache(this.clothesList);
       
       // 触发服饰列表更新事件
       this.triggerClothesListUpdate();

@@ -1,3 +1,5 @@
+import { ClothesItem } from '../types/api';
+
 // 登录缓存工具
 export interface LoginCacheData {
   token: string;
@@ -5,6 +7,7 @@ export interface LoginCacheData {
   phone: string;
   coCreationId: number;
   roomName?: string; // 房间名称，可选
+  clothesList?: ClothesItem[]; // 服饰列表，可选
   timestamp: number; // 缓存时间戳
 }
 
@@ -127,5 +130,25 @@ export const updateRoomNameInCache = (roomName: string): void => {
     }
   } catch (error) {
     console.error('❌ 更新缓存中的房间名称失败:', error);
+  }
+};
+
+/**
+ * 更新缓存中的服饰列表
+ * @param clothesList 服饰列表
+ */
+export const updateClothesListInCache = (clothesList: ClothesItem[]): void => {
+  try {
+    const cachedData = getLoginCache();
+    if (cachedData) {
+      const updatedData = { ...cachedData, clothesList };
+      const cacheDurationStr = localStorage.getItem(CACHE_KEY + '_duration');
+      const cacheDuration = cacheDurationStr ? parseInt(cacheDurationStr) : DEFAULT_CACHE_DURATION;
+      
+      localStorage.setItem(CACHE_KEY, JSON.stringify(updatedData));
+      console.log('✅ 服饰列表已更新到缓存:', clothesList);
+    }
+  } catch (error) {
+    console.error('❌ 更新缓存中的服饰列表失败:', error);
   }
 }; 
