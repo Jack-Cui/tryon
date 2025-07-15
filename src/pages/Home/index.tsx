@@ -5,11 +5,19 @@ import { tryonService } from '../../services/tryonService';
 import { RTCVideoConfig } from '../../services/rtcVideoService';
 import { webSocketService } from '../../services/websocketService';
 import { getLoginCache, clearLoginCache } from '../../utils/loginCache';
+import { ClothesItem } from '../../types/api';
 // 导入图片
 import actionIcon from '../../assets/动作.png';
 import dressIcon from '../../assets/连衣裙.png';
 import coatIcon from '../../assets/外套.png';
 import realSceneIcon from '../../assets/实景.png';
+import suitIcon from '../../assets/套装.png';
+import skirtIcon from '../../assets/裙子.png';
+import hatIcon from '../../assets/帽子.png';
+import topIcon from '../../assets/上衣.png';
+import socksIcon from '../../assets/袜子.png';
+import pantsIcon from '../../assets/下装.png';
+import shoesIcon from '../../assets/鞋子.png';
 
 const Home = () => {
   const location = useLocation();
@@ -20,12 +28,29 @@ const Home = () => {
   const [videoPlayingStatus, setVideoPlayingStatus] = useState<{[key: string]: boolean}>({});
   const [showSelectionScreen, setShowSelectionScreen] = useState(true); // 新增状态控制显示选择界面
   const [roomName, setRoomName] = useState<string>('PADA2024秀款礼服系列'); // 添加房间名称状态，默认值为原来的文本
+  const [clothesList, setClothesList] = useState<ClothesItem[]>([]); // 添加服饰列表状态
   const [loginParams, setLoginParams] = useState<{
     token: string;
     userId: string;
     phone: string;
     coCreationId: number;
   } | null>(null);
+
+  // 服饰分类名称映射到图标
+  const getClothesIcon = (classifyName: string) => {
+    const iconMap: {[key: string]: string} = {
+      '套装': suitIcon,
+      '裙子': skirtIcon,
+      '帽子': hatIcon,
+      '上衣': topIcon,
+      '袜子': socksIcon,
+      '外套': coatIcon,
+      '下装': pantsIcon,
+      '鞋子': shoesIcon,
+      '连衣裙': dressIcon,
+    };
+    return iconMap[classifyName] || topIcon; // 默认使用上衣图标
+  };
 
   // 初始化登录参数
   useEffect(() => {
@@ -72,7 +97,7 @@ const Home = () => {
     }
   }, [locationState, navigate, location.pathname]);
 
-  // 初始化房间名称
+  // 初始化房间名称和服饰列表
   useEffect(() => {
     if (loginParams) {
       // 如果当前房间名称还是默认值，尝试从 tryonService 获取
@@ -86,6 +111,22 @@ const Home = () => {
         }
       } else {
         console.log('✅ 已从缓存获取到房间名称，跳过 tryonService 获取');
+      }
+
+      // 获取服饰列表
+      const clothesListFromService = tryonService.getClothesList();
+      if (clothesListFromService && clothesListFromService.length > 0) {
+        setClothesList(clothesListFromService);
+        console.log('✅ 从 tryonService 获取到服饰列表:', clothesListFromService);
+      } else {
+        console.log('⚠️ tryonService 中没有服饰列表，使用默认数据');
+        // 暂时使用默认的服饰列表用于测试
+        const defaultClothesList = [
+          { classifyName: '套装' },
+          { classifyName: '裙子' },
+          { classifyName: '外套' }
+        ];
+        setClothesList(defaultClothesList);
       }
     }
   }, [loginParams, roomName]);
@@ -254,6 +295,21 @@ const Home = () => {
     }
   };
 
+  // 监听服饰列表更新事件
+  useEffect(() => {
+    const handleClothesListUpdate = (event: CustomEvent) => {
+      const { clothesList } = event.detail;
+      console.log('收到服饰列表更新事件:', clothesList);
+      setClothesList(clothesList || []);
+    };
+
+    window.addEventListener('clothesListUpdate', handleClothesListUpdate as EventListener);
+
+    return () => {
+      window.removeEventListener('clothesListUpdate', handleClothesListUpdate as EventListener);
+    };
+  }, []);
+
   // 监听RTC视频流更新事件
   useEffect(() => {
     const handleVideoStreamUpdate = (event: CustomEvent) => {
@@ -358,7 +414,7 @@ const Home = () => {
           </h1>
         </div>
 
-        {/* 中间图标区域 - 与视频播放区域对齐 */}
+        {/* 中间图标区域 - 左右布局 */}
         <div style={{
           flex: 1,
           display: 'flex',
@@ -404,12 +460,6 @@ const Home = () => {
                     }}
                   />
                 </div>
-                <span style={{
-                  fontSize: '12px',
-                  color: '#333',
-                  fontWeight: 'bold'
-                }}>
-                </span>
               </div>
 
               {/* 实景 */}
@@ -436,84 +486,41 @@ const Home = () => {
                     }}
                   />
                 </div>
-                <span style={{
-                  fontSize: '12px',
-                  color: '#333',
-                  fontWeight: 'bold'
-                }}>
-                </span>
               </div>
             </div>
 
-            {/* 右侧服装图标 */}
+            {/* 右侧动态服饰图标 - 纵向排列 */}
             <div style={{
               display: 'flex',
               flexDirection: 'column',
               gap: '30px'
             }}>
-              {/* 连衣裙 */}
-              <div style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: '12px'
-              }}>
-                <div style={{
+              {clothesList.map((clothes, index) => (
+                <div key={index} style={{
                   display: 'flex',
+                  flexDirection: 'column',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  width: '60px',
-                  height: '60px'
+                  gap: '12px'
                 }}>
-                  <img 
-                    src={dressIcon} 
-                    alt="连衣裙" 
-                    style={{
-                      width: '40px',
-                      height: '40px',
-                      objectFit: 'contain'
-                    }}
-                  />
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '60px',
+                    height: '60px'
+                  }}>
+                    <img 
+                      src={getClothesIcon(clothes.classifyName)} 
+                      alt={clothes.classifyName} 
+                      style={{
+                        width: '40px',
+                        height: '40px',
+                        objectFit: 'contain'
+                      }}
+                    />
+                  </div>
                 </div>
-                <span style={{
-                  fontSize: '12px',
-                  color: '#333',
-                  fontWeight: 'bold'
-                }}>
-                </span>
-              </div>
-
-              {/* 外套 */}
-              <div style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: '12px'
-              }}>
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: '60px',
-                  height: '60px'
-                }}>
-                  <img 
-                    src={coatIcon} 
-                    alt="外套" 
-                    style={{
-                      width: '40px',
-                      height: '40px',
-                      objectFit: 'contain'
-                    }}
-                  />
-                </div>
-                <span style={{
-                  fontSize: '12px',
-                  color: '#333',
-                  fontWeight: 'bold'
-                }}>
-                </span>
-              </div>
+              ))}
             </div>
           </div>
         </div>

@@ -46,11 +46,18 @@ export interface ClotheSizeResponse {
   [key: string]: any;
 }
 
+// 服饰分类类型
+export interface ClothesItem {
+  classifyName: string;
+  [key: string]: any;
+}
+
 // 创建房间响应类型
 export interface CreateRoomResponse {
   data: {
     id: number;
     roomName?: string; // 添加房间名称字段
+    clothesList?: ClothesItem[]; // 添加服饰列表字段
     [key: string]: any;
   };
   [key: string]: any;

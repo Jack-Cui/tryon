@@ -5,6 +5,7 @@ import { RTCVideoService, RTCVideoConfig } from './rtcVideoService';
 import { RTC_CONFIG } from '../config/config';
 import { AccessToken, Privilege } from '../token/AccessToken';
 import { updateRoomNameInCache } from '../utils/loginCache';
+import { ClothesItem } from '../types/api';
 
 export interface TryonConfig {
   phone: string;
@@ -20,6 +21,7 @@ export class TryonService {
   private roomId: string | null = null;
   private roomName: string | null = null; // 添加房间名称属性
   private roomPrimaryId: number | null = null; // 添加房间主键ID属性
+  private clothesList: ClothesItem[] = []; // 添加服饰列表属性
   private enterStageInfo: string | null = null;
   private rtcVideoService: RTCVideoService | null = null;
   private rtcStarted: boolean = false; // 防止重复启动RTC
@@ -271,6 +273,17 @@ export class TryonService {
       console.log('创建房间响应中没有 roomName 字段');
     }
     
+    // 获取服饰列表
+    if (createRoomData.data.clothesList && Array.isArray(createRoomData.data.clothesList)) {
+      this.clothesList = createRoomData.data.clothesList;
+      console.log('服饰列表:', this.clothesList);
+      
+      // 触发服饰列表更新事件
+      this.triggerClothesListUpdate();
+    } else {
+      console.log('创建房间响应中没有 clothesList 字段或格式不正确');
+    }
+    
     console.log('房间创建成功，primary room key:', createRoomData.data.id);
     return createRoomData.data.id;
   }
@@ -442,9 +455,27 @@ export class TryonService {
     console.log('📡 发送视频播放器更新事件:', userId, domId);
   }
 
+  // 触发服饰列表更新事件
+  private triggerClothesListUpdate(): void {
+    // 创建自定义事件，通知UI组件更新服饰列表
+    const event = new CustomEvent('clothesListUpdate', {
+      detail: {
+        clothesList: this.clothesList
+      }
+    });
+    
+    window.dispatchEvent(event);
+    console.log('📡 发送服饰列表更新事件:', this.clothesList);
+  }
+
   // 获取房间名称
   getRoomName(): string | null {
     return this.roomName;
+  }
+
+  // 获取服饰列表
+  getClothesList(): ClothesItem[] {
+    return this.clothesList;
   }
 
   // 断开连接
@@ -467,6 +498,7 @@ export class TryonService {
     this.roomId = null;
     this.roomPrimaryId = null;
     this.enterStageInfo = null;
+    this.clothesList = []; // 清理服饰列表
   }
 
   // 获取连接状态
