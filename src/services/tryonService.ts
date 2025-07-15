@@ -276,7 +276,25 @@ export class TryonService {
     // 获取服饰列表
     if (createRoomData.data.clothesList && Array.isArray(createRoomData.data.clothesList)) {
       this.clothesList = createRoomData.data.clothesList;
-      console.log('服饰列表:', this.clothesList);
+      console.log('服饰分类数量:', this.clothesList.length);
+      
+      // 打印第一个分类的信息用于验证数据结构
+      if (this.clothesList.length > 0) {
+        const firstCategory = this.clothesList[0];
+        console.log('第一个分类信息:', {
+          classifyName: firstCategory.classifyName,
+          classifyUrl: firstCategory.classifyUrl,
+          clothesItemsCount: firstCategory.clothesItems?.length || 0
+        });
+        
+        if (firstCategory.clothesItems && firstCategory.clothesItems.length > 0) {
+          const firstClothes = firstCategory.clothesItems[0];
+          console.log('第一个分类的第一个服装:', {
+            clothesName: firstClothes.clothesName,
+            clothesImageUrl: firstClothes.clothesImageUrl
+          });
+        }
+      }
       
       // 更新缓存中的服饰列表
       updateClothesListInCache(this.clothesList);

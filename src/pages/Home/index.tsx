@@ -18,6 +18,7 @@ import topIcon from '../../assets/上衣.png';
 import socksIcon from '../../assets/袜子.png';
 import pantsIcon from '../../assets/下装.png';
 import shoesIcon from '../../assets/鞋子.png';
+import sizeIcon from '../../assets/尺码.png';
 
 const Home = () => {
   const location = useLocation();
@@ -36,6 +37,11 @@ const Home = () => {
     coCreationId: number;
   } | null>(null);
 
+  // 新增状态：服装浏览相关
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null); // 当前选中的分类
+  const [isBrowsingClothes, setIsBrowsingClothes] = useState(false); // 是否在浏览具体服装
+  const [selectedClothesIndex, setSelectedClothesIndex] = useState(0); // 选中的服装索引（用于顶部显示）
+
   // 服饰分类名称映射到图标
   const getClothesIcon = (classifyName: string) => {
     const iconMap: {[key: string]: string} = {
@@ -51,6 +57,75 @@ const Home = () => {
     };
     return iconMap[classifyName] || topIcon; // 默认使用上衣图标
   };
+
+  // 获取分类的实际图标URL（优先使用服务器返回的classifyUrl）
+  const getCategoryIcon = (classifyName: string): string => {
+    const categoryItem = clothesList.find(item => item.classifyName === classifyName);
+    // 优先使用服务器返回的classifyUrl，如果没有则使用本地图标
+    return categoryItem?.classifyUrl || getClothesIcon(classifyName);
+  };
+
+  // 获取第一个分类的第一个服装（用于顶部显示）
+  const getFirstClothesOfFirstCategory = (): any | null => {
+    if (clothesList.length === 0) return null;
+    
+    const firstCategory = getUniqueCategories()[0];
+    if (!firstCategory) return null;
+    
+    const firstCategoryClothes = getClothesForCategory(firstCategory);
+    return firstCategoryClothes.length > 0 ? firstCategoryClothes[0] : null;
+  };
+
+  // 获取当前应该在顶部显示的服装
+  const getCurrentDisplayClothes = (): any | null => {
+    // 如果正在浏览某个分类，显示选中的服装
+    if (isBrowsingClothes && selectedCategory) {
+      const categoryClothes = getClothesForCategory(selectedCategory);
+      return categoryClothes.length > selectedClothesIndex ? categoryClothes[selectedClothesIndex] : null;
+    }
+    
+    // 否则显示第一个分类的第一个服装
+    return getFirstClothesOfFirstCategory();
+  };
+
+  // 获取某个分类下的所有服装（从clothesItems中获取）
+  const getClothesForCategory = (category: string): any[] => {
+    const categoryItem = clothesList.find(item => item.classifyName === category);
+    return categoryItem?.clothesItems || [];
+  };
+
+  // 获取所有分类
+  const getUniqueCategories = (): string[] => {
+    return clothesList.map(item => item.classifyName);
+  };
+
+  // 处理分类点击
+  const handleCategoryClick = (category: string) => {
+    setSelectedCategory(category);
+    setIsBrowsingClothes(true);
+    
+    // 调试：打印分类下的服装数量
+    const categoryClothes = getClothesForCategory(category);
+    console.log(`分类 "${category}" 下的服装数量:`, categoryClothes.length);
+    console.log(`分类 "${category}" 下的服装列表:`, categoryClothes.slice(0, 3)); // 只打印前3个用于调试
+  };
+
+  // 处理返回到分类列表
+  const handleBackToCategories = () => {
+    setIsBrowsingClothes(false);
+    setSelectedCategory(null);
+    setSelectedClothesIndex(0); // 重置到第一个服装
+  };
+
+  // 处理服装点击
+  const handleClothesClick = (clothesItem: any, index: number) => {
+    // 更新顶部显示的服装 - 使用在当前分类下的相对索引
+    setSelectedClothesIndex(index);
+    console.log('选中服装:', clothesItem, '分类内索引:', index);
+    console.log('选中服装图片URL:', clothesItem.clothesImageUrl);
+  };
+
+
 
   // 初始化登录参数
   useEffect(() => {
@@ -131,13 +206,21 @@ const Home = () => {
         const clothesListFromService = tryonService.getClothesList();
         if (clothesListFromService && clothesListFromService.length > 0) {
           setClothesList(clothesListFromService);
-          console.log('✅ 从 tryonService 获取到服饰列表:', clothesListFromService);
+          console.log('✅ 从 tryonService 获取到服饰列表');
+          console.log('服饰分类数量:', clothesListFromService.length);
         } else {
           console.log('⚠️ tryonService 中没有服饰列表，等待服务器数据');
           // 不清空列表，保持从缓存读取的数据
         }
       } else {
-        console.log('✅ 服饰列表已存在，跳过从 tryonService 获取:', clothesList);
+        console.log('✅ 服饰列表已存在，跳过从 tryonService 获取');
+        console.log('服饰分类数量:', clothesList.length);
+        // 打印第一个分类的第一个服装用于验证
+        const firstClothes = getFirstClothesOfFirstCategory();
+        if (firstClothes) {
+          console.log('第一个分类的第一个服装:', firstClothes);
+          console.log('第一个服装图片URL:', firstClothes.clothesImageUrl);
+        }
       }
     }
   }, [loginParams, roomName]);
@@ -310,7 +393,8 @@ const Home = () => {
   useEffect(() => {
     const handleClothesListUpdate = (event: CustomEvent) => {
       const { clothesList } = event.detail;
-      console.log('收到服饰列表更新事件:', clothesList);
+      console.log('收到服饰列表更新事件');
+      console.log('服饰分类数量:', clothesList?.length || 0);
       setClothesList(clothesList || []);
     };
 
@@ -500,38 +584,234 @@ const Home = () => {
               </div>
             </div>
 
-            {/* 右侧动态服饰图标 - 纵向排列 */}
+            {/* 右侧服装展示区域 - 纵向排列 */}
             <div style={{
               display: 'flex',
               flexDirection: 'column',
-              gap: '30px'
+              gap: '20px',
+              alignItems: 'center',
+              maxHeight: '70vh',
+              overflow: 'hidden'
             }}>
-              {clothesList.map((clothes, index) => (
-                <div key={index} style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: '12px'
-                }}>
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    width: '60px',
-                    height: '60px'
-                  }}>
-                    <img 
-                      src={getClothesIcon(clothes.classifyName)} 
-                      alt={clothes.classifyName} 
-                      style={{
-                        width: '40px',
-                        height: '40px',
-                        objectFit: 'contain'
+                             {/* 1. 顶部：当前选中服装的缩略图 */}
+               {getCurrentDisplayClothes() && (
+                 <div style={{
+                   display: 'flex',
+                   alignItems: 'center',
+                   justifyContent: 'center',
+                   width: '60px',
+                   height: '60px',
+                   borderRadius: '12px',
+                   overflow: 'hidden',
+                   backgroundColor: '#fff',
+                   boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                   border: '2px solid #333'
+                 }}>
+                   <img 
+                     src={getCurrentDisplayClothes()?.clothesImageUrl} 
+                     alt={getCurrentDisplayClothes()?.clothesName || getCurrentDisplayClothes()?.classifyName || ''} 
+                     style={{
+                       width: '100%',
+                       height: '100%',
+                       objectFit: 'cover'
+                     }}
+                     onError={(e) => {
+                       // 如果图片加载失败，使用分类图标
+                       const target = e.target as HTMLImageElement;
+                       const displayClothes = getCurrentDisplayClothes();
+                       if (displayClothes) {
+                         // 如果是具体服装，使用其分类的图标；如果是分类，使用分类图标
+                         const categoryName = displayClothes.classifyName || selectedCategory || '';
+                         target.src = getCategoryIcon(categoryName);
+                       }
+                       console.log('顶部服装图片加载失败，使用分类图标:', getCurrentDisplayClothes()?.clothesImageUrl);
+                     }}
+                     onLoad={() => {
+                       console.log('顶部服装图片加载成功:', getCurrentDisplayClothes()?.clothesImageUrl);
+                     }}
+                   />
+                 </div>
+               )}
+
+              {/* 2. 中间：服装分类或具体服装列表 */}
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '15px',
+                alignItems: 'center',
+                flex: 1,
+                overflow: 'hidden',
+                maxHeight: '400px'
+              }}>
+                {!isBrowsingClothes ? (
+                  // 显示服装分类图标
+                  <>
+                    {getUniqueCategories().map((category, index) => (
+                      <div key={index} style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: '8px',
+                        cursor: 'pointer',
+                        transition: 'transform 0.2s ease'
                       }}
-                    />
-                  </div>
+                        onClick={() => handleCategoryClick(category)}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'scale(1.1)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'scale(1)';
+                        }}
+                      >
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: '60px',
+                          height: '60px',
+                          borderRadius: '12px',
+                          backgroundColor: 'rgba(255,255,255,0.8)',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                        }}>
+                          <img 
+                            src={getCategoryIcon(category)} 
+                            alt={category} 
+                            style={{
+                              width: '40px',
+                              height: '40px',
+                              objectFit: 'contain'
+                            }}
+                            onError={(e) => {
+                              // 如果服务器图片加载失败，使用本地图标
+                              const target = e.target as HTMLImageElement;
+                              target.src = getClothesIcon(category);
+                              console.log('分类图片加载失败，使用本地图标:', category);
+                            }}
+                            onLoad={() => {
+                              console.log('分类图片加载成功:', category, getCategoryIcon(category));
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                ) : (
+                  // 显示具体服装列表
+                  <>
+                    {/* 可滚动的服装缩略图列表 */}
+                    <div 
+                      className="clothes-scroll-container"
+                      style={{
+                        position: 'relative', // 为伪元素定位
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '10px',
+                        alignItems: 'center',
+                        maxHeight: '280px', // 固定高度以确保返回按钮可见
+                        overflowY: 'auto', // 允许垂直滚动
+                        overflowX: 'hidden',
+                        paddingRight: '8px', // 为滚动条留出空间
+                        // 自定义滚动条样式（Webkit浏览器）
+                        WebkitOverflowScrolling: 'touch'
+                      }}>
+                      {selectedCategory && getClothesForCategory(selectedCategory)
+                        .map((clothes, index) => (
+                        <div key={clothes.id || index} 
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '50px',
+                            height: '50px',
+                            borderRadius: '8px',
+                            overflow: 'hidden',
+                            backgroundColor: '#fff',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                            cursor: 'pointer',
+                            transition: 'transform 0.2s ease',
+                            flexShrink: 0 // 防止在滚动容器中收缩
+                          }}
+                          onClick={() => handleClothesClick(clothes, index)}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.transform = 'scale(1.1)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = 'scale(1)';
+                          }}
+                        >
+                          <img 
+                            src={clothes.clothesImageUrl} 
+                            alt={clothes.clothesName || clothes.classifyName || selectedCategory} 
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover'
+                            }}
+                            onError={(e) => {
+                              // 如果图片加载失败，使用分类图标
+                              const target = e.target as HTMLImageElement;
+                              target.src = getCategoryIcon(selectedCategory || '');
+                              console.log('服装图片加载失败，使用分类图标:', clothes.clothesImageUrl, '服装名:', clothes.clothesName);
+                            }}
+                            onLoad={() => {
+                              console.log('服装图片加载成功:', clothes.clothesImageUrl, '服装名:', clothes.clothesName);
+                            }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* 返回按钮 - 固定在底部 */}
+                    <button
+                      onClick={handleBackToCategories}
+                      style={{
+                        backgroundColor: 'rgba(255,255,255,0.9)',
+                        border: 'none',
+                        borderRadius: '8px',
+                        padding: '8px 16px',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                        color: '#333',
+                        fontWeight: 'bold',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                        marginTop: '12px',
+                        flexShrink: 0 // 确保按钮不会被挤压
+                      }}
+                    >
+                      返回
+                    </button>
+                  </>
+                )}
+              </div>
+
+              {/* 3. 底部：尺码图标 */}
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '60px',
+                  height: '60px',
+                  borderRadius: '12px',
+                  backgroundColor: 'rgba(255,255,255,0.8)',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                }}>
+                  <img 
+                    src={sizeIcon} 
+                    alt="尺码" 
+                    style={{
+                      width: '40px',
+                      height: '40px',
+                      objectFit: 'contain'
+                    }}
+                  />
                 </div>
-              ))}
+              </div>
             </div>
           </div>
         </div>
