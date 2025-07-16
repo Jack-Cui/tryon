@@ -196,11 +196,19 @@ const Home = () => {
     setIconHideTimer(timer);
   };
 
-  // 处理视频区域点击（重新显示图标）
+  // 处理视频区域点击（切换图标显示/隐藏）
   const handleVideoAreaClick = () => {
     if (!showVideoIcons) {
       setShowVideoIcons(true);
       startIconHideTimer(); // 重新开始隐藏定时器
+    } else {
+      // 如果图标正在显示，则隐藏图标
+      setShowVideoIcons(false);
+      // 清除定时器
+      if (iconHideTimer) {
+        clearTimeout(iconHideTimer);
+        setIconHideTimer(null);
+      }
     }
   };
 
@@ -1748,22 +1756,18 @@ const Home = () => {
         )}
       </div>
 
-      {/* 底部控制区域 - 重新登录按钮放到下方 */}
+      {/* 底部控制区域 - 离开舞台按钮 */}
       <div style={{
         position: 'fixed',
-        bottom: '0',
-        left: '0',
-        right: '0',
+        bottom: '30px',
+        left: '50%',
+        transform: 'translateX(-50%)',
         zIndex: 200, // 提高z-index确保显示在视频上方
-        background: 'linear-gradient(0deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 50%, transparent 100%)',
-        color: '#fff',
-        padding: '60px 20px 20px 20px',
         display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: '16px'
+        justifyContent: 'center',
+        alignItems: 'center'
       }}>
-        {/* 返回选择界面按钮 */}
+        {/* 离开舞台按钮 */}
         <button
           onClick={() => {
             setShowSelectionScreen(true);
@@ -1775,46 +1779,27 @@ const Home = () => {
             }
           }}
           style={{
-            backgroundColor: '#1890ff',
+            backgroundColor: 'rgba(255, 255, 255, 0.2)',
             color: 'white',
-            border: 'none',
-            padding: '12px 24px',
-            borderRadius: '8px',
+            border: '1px solid rgba(255, 255, 255, 0.3)',
+            padding: '10px 20px',
+            borderRadius: '20px',
             fontSize: '14px',
             cursor: 'pointer',
-            fontWeight: 'bold',
+            fontWeight: 'normal',
             transition: 'all 0.3s ease',
-            boxShadow: '0 4px 12px rgba(24, 144, 255, 0.3)',
-            marginBottom: '8px'
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
           }}
         >
-          🔙 返回选择
-        </button>
-
-        {/* 重新登录按钮 */}
-        <button
-          onClick={() => {
-            console.log('重新登录按钮被点击');
-            // 清除缓存和服务状态
-            clearLoginCache();
-            tryonService.disconnect();
-            console.log('✅ 已清除登录缓存和服务状态');
-            navigate('/login');
-          }}
-          style={{
-            backgroundColor: '#ff4d4f',
-            color: 'white',
-            border: 'none',
-            padding: '12px 24px',
-            borderRadius: '8px',
-            fontSize: '14px',
-            cursor: 'pointer',
-            fontWeight: 'bold',
-            transition: 'all 0.3s ease',
-            boxShadow: '0 4px 12px rgba(255, 77, 79, 0.3)'
-          }}
-        >
-          🔄 重新登录
+          离开舞台
         </button>
       </div>
     </div>
