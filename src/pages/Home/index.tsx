@@ -698,21 +698,28 @@ const Home = () => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          padding: '100px 20px 140px 20px' // 与视频播放界面相同的padding
+          padding: '100px 20px 140px 20px', // 与视频播放界面相同的padding
+          position: 'relative'
         }}>
           <div style={{
             display: 'flex',
-            alignItems: 'center',
+            alignItems: 'stretch', // 改为stretch，让左右两侧高度一致
             justifyContent: 'space-between',
-            maxWidth: '500px', // 与视频播放区域相同宽度
+            maxWidth: '600px', // 增加最大宽度，给展开提供更多空间
             width: '100%',
-            padding: '0 40px'
+            padding: '0 10px', // 减少左右padding，让icon更靠边缘
+            height: '400px' // 固定高度，确保对齐
           }}>
             {/* 左侧动作和实景图标 */}
             <div style={{
               display: 'flex',
               flexDirection: 'column',
-              gap: '30px'
+              justifyContent: 'center', // 居中对齐
+              alignItems: 'flex-start',
+              height: '100%',
+              gap: '40px', // 与右侧保持一致的间距
+              position: 'relative',
+              transform: 'translateY(30px)' // 向下移动
             }}>
               {/* 动作区域 */}
               <div style={{
@@ -764,7 +771,7 @@ const Home = () => {
                 {isActionExpanded && (
                   <div style={{
                     display: 'flex',
-                    gap: '8px',
+                    gap: '8px', // 减少间距，确保不超出屏幕
                     animation: 'slideInFromLeft 0.3s ease'
                   }}>
                     {actionIcons.map((action, index) => (
@@ -772,9 +779,9 @@ const Home = () => {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        width: '50px',
-                        height: '50px',
-                        borderRadius: '12px',
+                        width: '42px', // 适度缩小展开icon
+                        height: '42px',
+                        borderRadius: '10px', // 相应缩小圆角
                         backgroundColor: selectedActionIndex === index ? 'rgba(24,144,255,0.2)' : 'rgba(255,255,255,0.8)',
                         boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
                         cursor: 'pointer',
@@ -793,8 +800,8 @@ const Home = () => {
                           src={action.icon} 
                           alt={action.name} 
                           style={{
-                            width: '30px',
-                            height: '30px',
+                            width: '26px', // 相应缩小图片
+                            height: '26px',
                             objectFit: 'contain'
                           }}
                         />
@@ -808,7 +815,8 @@ const Home = () => {
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '10px'
+                gap: '10px',
+                position: 'relative' // 为绝对定位的展开选项提供定位基准
               }}>
                 {/* 主实景图标 */}
                 <div style={{
@@ -853,18 +861,22 @@ const Home = () => {
                 {/* 展开的实景选项 */}
                 {isRealSceneExpanded && (
                   <div style={{
+                    position: 'absolute',
+                    left: '70px', // 向右展开
+                    top: '0',
                     display: 'flex',
-                    gap: '8px',
-                    animation: 'slideInFromLeft 0.3s ease'
+                    gap: '8px', // 减少间距，确保不超出屏幕
+                    animation: 'slideInFromLeft 0.3s ease',
+                    zIndex: 20
                   }}>
                     {realSceneIcons.map((scene, index) => (
                       <div key={index} style={{
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        width: '50px',
-                        height: '50px',
-                        borderRadius: '12px',
+                        width: '42px', // 适度缩小展开icon
+                        height: '42px',
+                        borderRadius: '10px', // 相应缩小圆角
                         backgroundColor: selectedRealSceneIndex === index ? 'rgba(82,196,26,0.2)' : 'rgba(255,255,255,0.8)',
                         boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
                         cursor: 'pointer',
@@ -883,8 +895,8 @@ const Home = () => {
                           src={scene.icon} 
                           alt={scene.name} 
                           style={{
-                            width: '30px',
-                            height: '30px',
+                            width: '26px', // 相应缩小图片
+                            height: '26px',
                             objectFit: 'contain'
                           }}
                         />
@@ -899,9 +911,10 @@ const Home = () => {
             <div style={{
               display: 'flex',
               flexDirection: 'column',
-              gap: '20px',
+              gap: '40px', // 与左侧保持一致的间距
               alignItems: 'center',
-              maxHeight: '70vh',
+              height: '100%',
+              justifyContent: 'center', // 与左侧对齐方式一致
               overflow: 'hidden'
             }}>
                              {/* 1. 顶部：当前选中服装的缩略图 */}
@@ -1271,12 +1284,15 @@ const Home = () => {
         {showVideoIcons && (
           <div style={{
             position: 'absolute',
-            left: '20px',
+            left: '10px', // 更靠近左边缘
             top: '50%',
-            transform: 'translateY(-50%)',
+            transform: 'translateY(-20px)', // 向下移动，与选择界面保持一致
             display: 'flex',
             flexDirection: 'column',
-            gap: '30px',
+            justifyContent: 'center', // 居中对齐
+            alignItems: 'flex-start',
+            gap: '40px', // 与选择界面保持一致的间距
+            height: '200px', // 固定高度，确保对齐
             zIndex: 100, // 提高z-index确保显示在视频上方
             transition: 'opacity 0.3s ease',
             opacity: showVideoIcons ? 1 : 0
@@ -1330,58 +1346,59 @@ const Home = () => {
                 </div>
               </div>
 
-              {/* 展开的动作选项 */}
-              {isActionExpanded && (
-                <div style={{
-                  display: 'flex',
-                  gap: '8px',
-                  animation: 'slideInFromLeft 0.3s ease'
-                }}>
-                  {actionIcons.map((action, index) => (
-                    <div key={index} style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      width: '50px',
-                      height: '50px',
-                      borderRadius: '12px',
-                      backgroundColor: selectedActionIndex === index ? 'rgba(24,144,255,0.2)' : 'rgba(255,255,255,0.8)',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      border: selectedActionIndex === index ? '2px solid #1890ff' : '2px solid transparent'
-                    }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleVideoActionClick(index);
+                              {/* 展开的动作选项 */}
+                {isActionExpanded && (
+                  <div style={{
+                    display: 'flex',
+                    gap: '8px', // 减少间距，确保不超出屏幕
+                    animation: 'slideInFromLeft 0.3s ease'
+                  }}>
+                    {actionIcons.map((action, index) => (
+                      <div key={index} style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '42px', // 适度缩小展开icon
+                        height: '42px',
+                        borderRadius: '10px', // 相应缩小圆角
+                        backgroundColor: selectedActionIndex === index ? 'rgba(24,144,255,0.2)' : 'rgba(255,255,255,0.8)',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        border: selectedActionIndex === index ? '2px solid #1890ff' : '2px solid transparent'
                       }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = 'scale(1.1)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = 'scale(1)';
-                      }}
-                    >
-                      <img 
-                        src={action.icon} 
-                        alt={action.name} 
-                        style={{
-                          width: '30px',
-                          height: '30px',
-                          objectFit: 'contain'
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleVideoActionClick(index);
                         }}
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'scale(1.1)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'scale(1)';
+                        }}
+                      >
+                        <img 
+                          src={action.icon} 
+                          alt={action.name} 
+                          style={{
+                            width: '26px', // 相应缩小图片
+                            height: '26px',
+                            objectFit: 'contain'
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
             </div>
 
             {/* 实景区域 */}
             <div style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '10px'
+              gap: '10px',
+              position: 'relative' // 为绝对定位的展开选项提供定位基准
             }}>
               {/* 主实景图标 */}
               <div style={{
@@ -1429,18 +1446,22 @@ const Home = () => {
               {/* 展开的实景选项 */}
               {isRealSceneExpanded && (
                 <div style={{
+                  position: 'absolute',
+                  left: '70px', // 向右展开
+                  top: '0',
                   display: 'flex',
-                  gap: '8px',
-                  animation: 'slideInFromLeft 0.3s ease'
+                  gap: '8px', // 减少间距，确保不超出屏幕
+                  animation: 'slideInFromLeft 0.3s ease',
+                  zIndex: 120
                 }}>
                   {realSceneIcons.map((scene, index) => (
                     <div key={index} style={{
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      width: '50px',
-                      height: '50px',
-                      borderRadius: '12px',
+                      width: '42px', // 适度缩小展开icon
+                      height: '42px',
+                      borderRadius: '10px', // 相应缩小圆角
                       backgroundColor: selectedRealSceneIndex === index ? 'rgba(82,196,26,0.2)' : 'rgba(255,255,255,0.8)',
                       boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
                       cursor: 'pointer',
@@ -1462,8 +1483,8 @@ const Home = () => {
                         src={scene.icon} 
                         alt={scene.name} 
                         style={{
-                          width: '30px',
-                          height: '30px',
+                          width: '26px', // 相应缩小图片
+                          height: '26px',
                           objectFit: 'contain'
                         }}
                       />
@@ -1557,14 +1578,15 @@ const Home = () => {
         {showVideoIcons && (
           <div style={{
             position: 'absolute',
-            right: '20px',
+            right: '10px', // 更靠近右边缘
             top: '50%',
             transform: 'translateY(-50%)',
             display: 'flex',
             flexDirection: 'column',
-            gap: '20px',
+            justifyContent: 'center', // 与左侧对齐方式一致
             alignItems: 'center',
-            maxHeight: '70vh',
+            gap: '20px', // 减少间距，给服装列表更多空间
+            height: '400px', // 增加高度，与首页保持一致
             overflow: 'hidden',
             zIndex: 100, // 提高z-index确保显示在视频上方
             transition: 'opacity 0.3s ease',
@@ -1612,7 +1634,7 @@ const Home = () => {
               alignItems: 'center',
               flex: 1,
               overflow: 'hidden',
-              maxHeight: '350px'
+              maxHeight: '400px' // 与首页保持一致
             }}>
               {!isBrowsingClothes ? (
                 // 显示服装分类图标
@@ -1676,7 +1698,7 @@ const Home = () => {
                       flexDirection: 'column',
                       gap: '10px',
                       alignItems: 'center',
-                      maxHeight: '250px',
+                      maxHeight: '280px', // 与首页保持一致
                       overflowY: 'auto',
                       overflowX: 'hidden',
                       paddingRight: '8px',
