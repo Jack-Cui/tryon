@@ -11,7 +11,6 @@ import actionIcon from '../../assets/动作.png';
 import balletIcon from '../../assets/芭蕾.png';
 import dressIcon from '../../assets/连衣裙.png';
 import coatIcon from '../../assets/外套.png';
-import realSceneIcon from '../../assets/实景.png';
 import suitIcon from '../../assets/套装.png';
 import skirtIcon from '../../assets/裙子.png';
 import hatIcon from '../../assets/帽子.png';
@@ -19,7 +18,6 @@ import topIcon from '../../assets/上衣.png';
 import socksIcon from '../../assets/袜子.png';
 import pantsIcon from '../../assets/下装.png';
 import shoesIcon from '../../assets/鞋子.png';
-import sizeIcon from '../../assets/尺码.png';
 
 const Home = () => {
   const location = useLocation();
@@ -904,8 +902,8 @@ const Home = () => {
                    display: 'flex',
                    alignItems: 'center',
                    justifyContent: 'center',
-                   width: '60px',
-                   height: '60px',
+                   width: '50px',
+                   height: '50px',
                    borderRadius: '12px',
                    overflow: 'hidden',
                    backgroundColor: '#fff',
@@ -1229,7 +1227,7 @@ const Home = () => {
         top: '0',
         left: '0',
         right: '0',
-        zIndex: 10,
+        zIndex: 200, // 提高z-index确保显示在视频和图标上方
         background: 'linear-gradient(180deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 50%, transparent 100%)',
         color: '#fff',
         padding: '20px 20px 60px 20px',
@@ -1249,12 +1247,16 @@ const Home = () => {
 
       {/* 主要内容区域 - 包含左侧图标、视频和右侧图标 */}
       <div style={{
-        flex: 1,
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '80px 20px 120px 20px', // 调整padding，视频向上移动
-        position: 'relative'
+        padding: '0', // 移除padding让视频铺满
+        zIndex: 1
       }} onClick={handleVideoAreaClick}>
         
         {/* 左侧图标区域 */}
@@ -1267,7 +1269,7 @@ const Home = () => {
             display: 'flex',
             flexDirection: 'column',
             gap: '30px',
-            zIndex: 15,
+            zIndex: 100, // 提高z-index确保显示在视频上方
             transition: 'opacity 0.3s ease',
             opacity: showVideoIcons ? 1 : 0
           }}>
@@ -1490,36 +1492,33 @@ const Home = () => {
             <div style={{
               display: 'flex',
               flexWrap: 'wrap',
-              gap: '16px',
+              gap: '0px', // 移除间距让视频铺满
               justifyContent: 'center',
-              maxWidth: '500px',
-              width: '100%'
+              width: '100vw', // 铺满屏幕宽度
+              height: '100vh' // 铺满屏幕高度
             }}>
               {videoStreams.map(stream => (
                 <div key={stream.userId} style={{
                   backgroundColor: '#000',
-                  borderRadius: '12px',
+                  borderRadius: '0px', // 移除圆角，铺满屏幕
                   overflow: 'hidden',
                   position: 'relative',
-                  width: '100%',
-                  maxWidth: '400px',
-                  minHeight: '70vh', // 调整视频高度，向上移动
-                  maxHeight: '80vh',
-                  boxShadow: '0 8px 24px rgba(0,0,0,0.3)'
+                  width: '100vw', // 铺满屏幕宽度
+                  height: '100vh', // 铺满屏幕高度
+                  boxShadow: 'none' // 移除阴影
                 }}>
                   <div 
                     id={stream.domId}
                     style={{
-                      width: '100%',
-                      height: '100%',
+                      width: '100vw',
+                      height: '100vh',
                       backgroundColor: '#333',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       color: '#fff',
                       fontSize: '16px',
-                      position: 'relative',
-                      minHeight: '70vh'
+                      position: 'relative'
                     }}
                   >
                     {/* 只在视频未播放时显示加载文本 */}
@@ -1559,7 +1558,7 @@ const Home = () => {
             alignItems: 'center',
             maxHeight: '70vh',
             overflow: 'hidden',
-            zIndex: 15,
+            zIndex: 100, // 提高z-index确保显示在视频上方
             transition: 'opacity 0.3s ease',
             opacity: showVideoIcons ? 1 : 0
           }}>
@@ -1569,8 +1568,8 @@ const Home = () => {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                width: '60px',
-                height: '60px',
+                width: '50px',
+                height: '50px',
                 borderRadius: '12px',
                 overflow: 'hidden',
                 backgroundColor: '#fff',
@@ -1755,7 +1754,7 @@ const Home = () => {
         bottom: '0',
         left: '0',
         right: '0',
-        zIndex: 10,
+        zIndex: 200, // 提高z-index确保显示在视频上方
         background: 'linear-gradient(0deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 50%, transparent 100%)',
         color: '#fff',
         padding: '60px 20px 20px 20px',
