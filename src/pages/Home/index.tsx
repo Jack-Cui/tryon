@@ -848,8 +848,8 @@ const Home = () => {
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          width: '60px',
-                          height: '60px',
+                          width: '50px',
+                          height: '50px',
                           borderRadius: '12px',
                           backgroundColor: 'rgba(255,255,255,0.8)',
                           boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
@@ -858,8 +858,8 @@ const Home = () => {
                             src={getCategoryIcon(category)} 
                             alt={category} 
                             style={{
-                              width: '40px',
-                              height: '40px',
+                              width: '30px',
+                              height: '30px',
                               objectFit: 'contain'
                             }}
                             onError={(e) => {
