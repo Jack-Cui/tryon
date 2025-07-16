@@ -49,6 +49,10 @@ const Home = () => {
   const [selectedActionIndex, setSelectedActionIndex] = useState(0); // 当前选中的动作索引（0: 动作.png, 1: 芭蕾.png）
   const [selectedRealSceneIndex, setSelectedRealSceneIndex] = useState(0); // 当前选中的实景索引
 
+  // 新增状态：视频播放界面的图标控制
+  const [showVideoIcons, setShowVideoIcons] = useState(true); // 视频播放时是否显示左右侧图标
+  const [iconHideTimer, setIconHideTimer] = useState<NodeJS.Timeout | null>(null); // 图标自动隐藏定时器
+
   // 服饰分类名称映射到图标
   const getClothesIcon = (classifyName: string) => {
     const iconMap: {[key: string]: string} = {
@@ -178,6 +182,100 @@ const Home = () => {
     console.log('选中服装图片URL:', clothesItem.clothesImageUrl);
   };
 
+  // 开始图标自动隐藏定时器（视频播放界面用）
+  const startIconHideTimer = () => {
+    // 清除现有定时器
+    if (iconHideTimer) {
+      clearTimeout(iconHideTimer);
+    }
+    
+    // 设置新的定时器，3秒后隐藏图标
+    const timer = setTimeout(() => {
+      setShowVideoIcons(false);
+      setIconHideTimer(null);
+    }, 3000);
+    
+    setIconHideTimer(timer);
+  };
+
+  // 处理视频区域点击（重新显示图标）
+  const handleVideoAreaClick = () => {
+    if (!showVideoIcons) {
+      setShowVideoIcons(true);
+      startIconHideTimer(); // 重新开始隐藏定时器
+    }
+  };
+
+  // 处理视频播放界面的动作点击
+  const handleVideoActionClick = (index?: number) => {
+    if (index === undefined) {
+      // 点击主动作图标，切换展开/收起状态
+      setIsActionExpanded(!isActionExpanded);
+      // 收起实景展开状态
+      setIsRealSceneExpanded(false);
+    } else {
+      // 点击具体的动作，更新选中状态和主图标，然后自动收起
+      setSelectedActionIndex(index);
+      setIsActionExpanded(false); // 自动收起
+      console.log('选中动作:', actionIcons[index].name);
+    }
+    
+    // 重新开始隐藏定时器
+    startIconHideTimer();
+  };
+
+  // 处理视频播放界面的实景点击
+  const handleVideoRealSceneClick = (index?: number) => {
+    if (index === undefined) {
+      // 点击主实景图标，切换展开/收起状态
+      setIsRealSceneExpanded(!isRealSceneExpanded);
+      // 收起动作展开状态
+      setIsActionExpanded(false);
+    } else {
+      // 点击具体的实景，更新选中状态和主图标，然后自动收起
+      setSelectedRealSceneIndex(index);
+      setIsRealSceneExpanded(false); // 自动收起
+      console.log('选中实景:', realSceneIcons[index].name);
+    }
+    
+    // 重新开始隐藏定时器
+    startIconHideTimer();
+  };
+
+  // 处理视频播放界面的服装分类点击
+  const handleVideoCategoryClick = (category: string) => {
+    setSelectedCategory(category);
+    setIsBrowsingClothes(true);
+    
+    // 重新开始隐藏定时器
+    startIconHideTimer();
+    
+    // 调试：打印分类下的服装数量
+    const categoryClothes = getClothesForCategory(category);
+    console.log(`分类 "${category}" 下的服装数量:`, categoryClothes.length);
+    console.log(`分类 "${category}" 下的服装列表:`, categoryClothes.slice(0, 3)); // 只打印前3个用于调试
+  };
+
+  // 处理视频播放界面的返回到分类列表
+  const handleVideoBackToCategories = () => {
+    setIsBrowsingClothes(false);
+    setSelectedCategory(null);
+    setSelectedClothesIndex(0); // 重置到第一个服装
+    
+    // 重新开始隐藏定时器
+    startIconHideTimer();
+  };
+
+  // 处理视频播放界面的服装点击
+  const handleVideoClothesClick = (clothesItem: any, index: number) => {
+    // 更新顶部显示的服装 - 使用在当前分类下的相对索引
+    setSelectedClothesIndex(index);
+    console.log('选中服装:', clothesItem, '分类内索引:', index);
+    console.log('选中服装图片URL:', clothesItem.clothesImageUrl);
+    
+    // 重新开始隐藏定时器
+    startIconHideTimer();
+  };
 
 
   // 初始化登录参数
@@ -441,6 +539,32 @@ const Home = () => {
       setShowSelectionScreen(true); // 出错时重新显示选择界面
     }
   };
+
+  // 管理视频播放界面图标的自动隐藏
+  useEffect(() => {
+    if (!showSelectionScreen) {
+      // 进入视频播放界面时，显示图标并开始定时器
+      setShowVideoIcons(true);
+      startIconHideTimer();
+      
+      return () => {
+        // 清理定时器
+        if (iconHideTimer) {
+          clearTimeout(iconHideTimer);
+          setIconHideTimer(null);
+        }
+      };
+    }
+  }, [showSelectionScreen]);
+
+  // 清理定时器
+  useEffect(() => {
+    return () => {
+      if (iconHideTimer) {
+        clearTimeout(iconHideTimer);
+      }
+    };
+  }, [iconHideTimer]);
 
   // 监听服饰列表更新事件
   useEffect(() => {
@@ -1123,97 +1247,504 @@ const Home = () => {
         </h1>
       </div>
 
-      {/* 视频播放区域 */}
+      {/* 主要内容区域 - 包含左侧图标、视频和右侧图标 */}
       <div style={{
         flex: 1,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '100px 20px 140px 20px'
-      }}>
-        {videoStreams.length === 0 ? (
+        padding: '80px 20px 120px 20px', // 调整padding，视频向上移动
+        position: 'relative'
+      }} onClick={handleVideoAreaClick}>
+        
+        {/* 左侧图标区域 */}
+        {showVideoIcons && (
           <div style={{
-            textAlign: 'center',
-            color: '#fff',
-            padding: '40px 20px'
+            position: 'absolute',
+            left: '20px',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '30px',
+            zIndex: 15,
+            transition: 'opacity 0.3s ease',
+            opacity: showVideoIcons ? 1 : 0
           }}>
-            <div style={{ fontSize: '48px', marginBottom: '20px' }}>📹</div>
-            <div style={{ fontSize: '20px', marginBottom: '12px' }}>
-              等待用户1的视频流...
+            {/* 动作区域 */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px'
+            }}>
+              {/* 主动作图标 */}
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '8px',
+                cursor: 'pointer',
+                transition: 'transform 0.2s ease'
+              }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleVideoActionClick();
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'scale(1.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)';
+                }}
+              >
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '50px',
+                  height: '50px',
+                  borderRadius: '12px',
+                  backgroundColor: isActionExpanded ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.6)',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                  border: isActionExpanded ? '2px solid #1890ff' : '2px solid transparent'
+                }}>
+                  <img 
+                    src={actionIcons[selectedActionIndex].icon} 
+                    alt={actionIcons[selectedActionIndex].name} 
+                    style={{
+                      width: '30px',
+                      height: '30px',
+                      objectFit: 'contain'
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* 展开的动作选项 */}
+              {isActionExpanded && (
+                <div style={{
+                  display: 'flex',
+                  gap: '8px',
+                  animation: 'slideInFromLeft 0.3s ease'
+                }}>
+                  {actionIcons.map((action, index) => (
+                    <div key={index} style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: '50px',
+                      height: '50px',
+                      borderRadius: '12px',
+                      backgroundColor: selectedActionIndex === index ? 'rgba(24,144,255,0.2)' : 'rgba(255,255,255,0.8)',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      border: selectedActionIndex === index ? '2px solid #1890ff' : '2px solid transparent'
+                    }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleVideoActionClick(index);
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = 'scale(1.1)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'scale(1)';
+                      }}
+                    >
+                      <img 
+                        src={action.icon} 
+                        alt={action.name} 
+                        style={{
+                          width: '30px',
+                          height: '30px',
+                          objectFit: 'contain'
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-            <div style={{ fontSize: '14px', opacity: 0.7 }}>
-              试穿流程正在进行中，请稍候
+
+            {/* 实景区域 */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px'
+            }}>
+              {/* 主实景图标 */}
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '8px',
+                cursor: 'pointer',
+                transition: 'transform 0.2s ease'
+              }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleVideoRealSceneClick();
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'scale(1.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)';
+                }}
+              >
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '50px',
+                  height: '50px',
+                  borderRadius: '12px',
+                  backgroundColor: isRealSceneExpanded ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.6)',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                  border: isRealSceneExpanded ? '2px solid #52c41a' : '2px solid transparent'
+                }}>
+                  <img 
+                    src={realSceneIcons[selectedRealSceneIndex].icon} 
+                    alt={realSceneIcons[selectedRealSceneIndex].name} 
+                    style={{
+                      width: '30px',
+                      height: '30px',
+                      objectFit: 'contain'
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* 展开的实景选项 */}
+              {isRealSceneExpanded && (
+                <div style={{
+                  display: 'flex',
+                  gap: '8px',
+                  animation: 'slideInFromLeft 0.3s ease'
+                }}>
+                  {realSceneIcons.map((scene, index) => (
+                    <div key={index} style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: '50px',
+                      height: '50px',
+                      borderRadius: '12px',
+                      backgroundColor: selectedRealSceneIndex === index ? 'rgba(82,196,26,0.2)' : 'rgba(255,255,255,0.8)',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      border: selectedRealSceneIndex === index ? '2px solid #52c41a' : '2px solid transparent'
+                    }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleVideoRealSceneClick(index);
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = 'scale(1.1)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'scale(1)';
+                      }}
+                    >
+                      <img 
+                        src={scene.icon} 
+                        alt={scene.name} 
+                        style={{
+                          width: '30px',
+                          height: '30px',
+                          objectFit: 'contain'
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
-        ) : (
+        )}
+
+        {/* 视频播放区域 */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 5
+        }}>
+          {videoStreams.length === 0 ? (
+            <div style={{
+              textAlign: 'center',
+              color: '#fff',
+              padding: '40px 20px'
+            }}>
+              <div style={{ fontSize: '48px', marginBottom: '20px' }}>📹</div>
+              <div style={{ fontSize: '20px', marginBottom: '12px' }}>
+                等待用户1的视频流...
+              </div>
+              <div style={{ fontSize: '14px', opacity: 0.7 }}>
+                试穿流程正在进行中，请稍候
+              </div>
+            </div>
+          ) : (
+            <div style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '16px',
+              justifyContent: 'center',
+              maxWidth: '500px',
+              width: '100%'
+            }}>
+              {videoStreams.map(stream => (
+                <div key={stream.userId} style={{
+                  backgroundColor: '#000',
+                  borderRadius: '12px',
+                  overflow: 'hidden',
+                  position: 'relative',
+                  width: '100%',
+                  maxWidth: '400px',
+                  minHeight: '70vh', // 调整视频高度，向上移动
+                  maxHeight: '80vh',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.3)'
+                }}>
+                  <div 
+                    id={stream.domId}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      backgroundColor: '#333',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#fff',
+                      fontSize: '16px',
+                      position: 'relative',
+                      minHeight: '70vh'
+                    }}
+                  >
+                    {/* 只在视频未播放时显示加载文本 */}
+                    {!videoPlayingStatus[stream.userId] && (
+                      <div style={{
+                        position: 'absolute',
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        textAlign: 'center',
+                        zIndex: 2,
+                        backgroundColor: 'rgba(0,0,0,0.7)',
+                        padding: '20px',
+                        borderRadius: '8px'
+                      }}>
+                        <div style={{ fontSize: '24px', marginBottom: '8px' }}>🎬</div>
+                        <div>加载视频中...</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* 右侧服装图标区域 */}
+        {showVideoIcons && (
           <div style={{
+            position: 'absolute',
+            right: '20px',
+            top: '50%',
+            transform: 'translateY(-50%)',
             display: 'flex',
-            flexWrap: 'wrap',
-            gap: '16px',
-            justifyContent: 'center',
-            maxWidth: '500px',
-            width: '100%'
+            flexDirection: 'column',
+            gap: '20px',
+            alignItems: 'center',
+            maxHeight: '70vh',
+            overflow: 'hidden',
+            zIndex: 15,
+            transition: 'opacity 0.3s ease',
+            opacity: showVideoIcons ? 1 : 0
           }}>
-            {videoStreams.map(stream => (
-              <div key={stream.userId} style={{
-                backgroundColor: '#000',
+            {/* 顶部：当前选中服装的缩略图 */}
+            {getCurrentDisplayClothes() && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '60px',
+                height: '60px',
                 borderRadius: '12px',
                 overflow: 'hidden',
-                position: 'relative',
-                width: '100%',
-                maxWidth: '400px',
-                minHeight: '75vh',
-                maxHeight: '85vh',
-                boxShadow: '0 8px 24px rgba(0,0,0,0.3)'
+                backgroundColor: '#fff',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                border: '2px solid #fff'
               }}>
-                <div 
-                  id={stream.domId}
+                <img 
+                  src={getCurrentDisplayClothes()?.clothesImageUrl} 
+                  alt={getCurrentDisplayClothes()?.clothesName || getCurrentDisplayClothes()?.classifyName || ''} 
                   style={{
                     width: '100%',
                     height: '100%',
-                    backgroundColor: '#333',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#fff',
-                    fontSize: '16px',
-                    position: 'relative',
-                    minHeight: '75vh'
+                    objectFit: 'cover'
                   }}
-                >
-                  {/* 只在视频未播放时显示加载文本 */}
-                  {!videoPlayingStatus[stream.userId] && (
-                    <div style={{
-                      position: 'absolute',
-                      top: '50%',
-                      left: '50%',
-                      transform: 'translate(-50%, -50%)',
-                      textAlign: 'center',
-                      zIndex: 2,
-                      backgroundColor: 'rgba(0,0,0,0.7)',
-                      padding: '20px',
-                      borderRadius: '8px'
-                    }}>
-                      <div style={{ fontSize: '24px', marginBottom: '8px' }}>🎬</div>
-                      <div>加载视频中...</div>
-                    </div>
-                  )}
-                </div>
-                {/* <div style={{
-                  position: 'absolute',
-                  bottom: '12px',
-                  left: '12px',
-                  backgroundColor: 'rgba(0,0,0,0.7)',
-                  color: '#fff',
-                  padding: '6px 12px',
-                  borderRadius: '6px',
-                  fontSize: '12px',
-                  backdropFilter: 'blur(10px)'
-                }}>
-                  用户: {stream.userId}
-                </div> */}
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    const displayClothes = getCurrentDisplayClothes();
+                    if (displayClothes) {
+                      const categoryName = displayClothes.classifyName || selectedCategory || '';
+                      target.src = getCategoryIcon(categoryName);
+                    }
+                  }}
+                />
               </div>
-            ))}
+            )}
+
+            {/* 中间：服装分类或具体服装列表 */}
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '15px',
+              alignItems: 'center',
+              flex: 1,
+              overflow: 'hidden',
+              maxHeight: '350px'
+            }}>
+              {!isBrowsingClothes ? (
+                // 显示服装分类图标
+                <>
+                  {getUniqueCategories().map((category, index) => (
+                    <div key={index} style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '8px',
+                      cursor: 'pointer',
+                      transition: 'transform 0.2s ease'
+                    }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleVideoCategoryClick(category);
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = 'scale(1.1)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'scale(1)';
+                      }}
+                    >
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '50px',
+                        height: '50px',
+                        borderRadius: '12px',
+                        backgroundColor: 'rgba(255,255,255,0.8)',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
+                      }}>
+                        <img 
+                          src={getCategoryIcon(category)} 
+                          alt={category} 
+                          style={{
+                            width: '30px',
+                            height: '30px',
+                            objectFit: 'contain'
+                          }}
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = getClothesIcon(category);
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </>
+              ) : (
+                // 显示具体服装列表
+                <>
+                  {/* 可滚动的服装缩略图列表 */}
+                  <div 
+                    className="clothes-scroll-container"
+                    style={{
+                      position: 'relative',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '10px',
+                      alignItems: 'center',
+                      maxHeight: '250px',
+                      overflowY: 'auto',
+                      overflowX: 'hidden',
+                      paddingRight: '8px',
+                      WebkitOverflowScrolling: 'touch'
+                    }}>
+                    {selectedCategory && getClothesForCategory(selectedCategory)
+                      .map((clothes, index) => (
+                      <div key={clothes.id || index} 
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: '50px',
+                          height: '50px',
+                          borderRadius: '8px',
+                          overflow: 'hidden',
+                          backgroundColor: '#fff',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                          cursor: 'pointer',
+                          transition: 'transform 0.2s ease',
+                          flexShrink: 0
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleVideoClothesClick(clothes, index);
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'scale(1.1)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'scale(1)';
+                        }}
+                      >
+                        <img 
+                          src={clothes.clothesImageUrl} 
+                          alt={clothes.clothesName || clothes.classifyName || selectedCategory} 
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover'
+                          }}
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = getCategoryIcon(selectedCategory || '');
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* 返回按钮 */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleVideoBackToCategories();
+                    }}
+                    style={{
+                      backgroundColor: 'rgba(255,255,255,0.9)',
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '8px 16px',
+                      cursor: 'pointer',
+                      fontSize: '12px',
+                      color: '#333',
+                      fontWeight: 'bold',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                      marginTop: '12px',
+                      flexShrink: 0
+                    }}
+                  >
+                    返回
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -1238,6 +1769,11 @@ const Home = () => {
           onClick={() => {
             setShowSelectionScreen(true);
             hasStartedTryon.current = false;
+            // 清理定时器
+            if (iconHideTimer) {
+              clearTimeout(iconHideTimer);
+              setIconHideTimer(null);
+            }
           }}
           style={{
             backgroundColor: '#1890ff',
