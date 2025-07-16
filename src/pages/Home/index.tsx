@@ -8,6 +8,7 @@ import { getLoginCache, clearLoginCache } from '../../utils/loginCache';
 import { ClothesItem } from '../../types/api';
 // 导入图片
 import actionIcon from '../../assets/动作.png';
+import balletIcon from '../../assets/芭蕾.png';
 import dressIcon from '../../assets/连衣裙.png';
 import coatIcon from '../../assets/外套.png';
 import realSceneIcon from '../../assets/实景.png';
@@ -42,6 +43,12 @@ const Home = () => {
   const [isBrowsingClothes, setIsBrowsingClothes] = useState(false); // 是否在浏览具体服装
   const [selectedClothesIndex, setSelectedClothesIndex] = useState(0); // 选中的服装索引（用于顶部显示）
 
+  // 新增状态：动作和实景展开相关
+  const [isActionExpanded, setIsActionExpanded] = useState(false); // 动作是否展开
+  const [isRealSceneExpanded, setIsRealSceneExpanded] = useState(false); // 实景是否展开
+  const [selectedActionIndex, setSelectedActionIndex] = useState(0); // 当前选中的动作索引（0: 动作.png, 1: 芭蕾.png）
+  const [selectedRealSceneIndex, setSelectedRealSceneIndex] = useState(0); // 当前选中的实景索引
+
   // 服饰分类名称映射到图标
   const getClothesIcon = (classifyName: string) => {
     const iconMap: {[key: string]: string} = {
@@ -56,6 +63,51 @@ const Home = () => {
       '连衣裙': dressIcon,
     };
     return iconMap[classifyName] || topIcon; // 默认使用上衣图标
+  };
+
+  // 动作图标数组
+  const actionIcons = [
+    { icon: actionIcon, name: '动作' },
+    { icon: balletIcon, name: '芭蕾' }
+  ];
+
+  // 实景图标数组（暂时用指定的5个图标占位）
+  const realSceneIcons = [
+    { icon: hatIcon, name: '帽子' },
+    { icon: coatIcon, name: '外套' },
+    { icon: topIcon, name: '上衣' },
+    { icon: pantsIcon, name: '下装' },
+    { icon: shoesIcon, name: '鞋子' }
+  ];
+
+  // 处理动作图标点击
+  const handleActionClick = (index?: number) => {
+    if (index === undefined) {
+      // 点击主动作图标，切换展开/收起状态
+      setIsActionExpanded(!isActionExpanded);
+      // 收起实景展开状态
+      setIsRealSceneExpanded(false);
+    } else {
+      // 点击具体的动作，更新选中状态和主图标，然后自动收起
+      setSelectedActionIndex(index);
+      setIsActionExpanded(false); // 自动收起
+      console.log('选中动作:', actionIcons[index].name);
+    }
+  };
+
+  // 处理实景图标点击
+  const handleRealSceneClick = (index?: number) => {
+    if (index === undefined) {
+      // 点击主实景图标，切换展开/收起状态
+      setIsRealSceneExpanded(!isRealSceneExpanded);
+      // 收起动作展开状态
+      setIsActionExpanded(false);
+    } else {
+      // 点击具体的实景，更新选中状态和主图标，然后自动收起
+      setSelectedRealSceneIndex(index);
+      setIsRealSceneExpanded(false); // 自动收起
+      console.log('选中实景:', realSceneIcons[index].name);
+    }
   };
 
   // 获取分类的实际图标URL（优先使用服务器返回的classifyUrl）
@@ -532,56 +584,184 @@ const Home = () => {
               flexDirection: 'column',
               gap: '30px'
             }}>
-              {/* 动作 */}
+              {/* 动作区域 */}
               <div style={{
                 display: 'flex',
-                flexDirection: 'column',
                 alignItems: 'center',
-                gap: '12px'
+                gap: '10px'
               }}>
+                {/* 主动作图标 */}
                 <div style={{
                   display: 'flex',
+                  flexDirection: 'column',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  width: '60px',
-                  height: '60px'
-                }}>
-                  <img 
-                    src={actionIcon} 
-                    alt="动作" 
-                    style={{
-                      width: '40px',
-                      height: '40px',
-                      objectFit: 'contain'
-                    }}
-                  />
+                  gap: '8px',
+                  cursor: 'pointer',
+                  transition: 'transform 0.2s ease'
+                }}
+                  onClick={() => handleActionClick()}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'scale(1.1)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'scale(1)';
+                  }}
+                >
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '50px',
+                    height: '50px',
+                    borderRadius: '12px',
+                    backgroundColor: isActionExpanded ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.6)',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                    border: isActionExpanded ? '2px solid #1890ff' : '2px solid transparent'
+                  }}>
+                    <img 
+                      src={actionIcons[selectedActionIndex].icon} 
+                      alt={actionIcons[selectedActionIndex].name} 
+                      style={{
+                        width: '30px',
+                        height: '30px',
+                        objectFit: 'contain'
+                      }}
+                    />
+                  </div>
                 </div>
+
+                {/* 展开的动作选项 */}
+                {isActionExpanded && (
+                  <div style={{
+                    display: 'flex',
+                    gap: '8px',
+                    animation: 'slideInFromLeft 0.3s ease'
+                  }}>
+                    {actionIcons.map((action, index) => (
+                      <div key={index} style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '50px',
+                        height: '50px',
+                        borderRadius: '12px',
+                        backgroundColor: selectedActionIndex === index ? 'rgba(24,144,255,0.2)' : 'rgba(255,255,255,0.8)',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        border: selectedActionIndex === index ? '2px solid #1890ff' : '2px solid transparent'
+                      }}
+                        onClick={() => handleActionClick(index)}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'scale(1.1)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'scale(1)';
+                        }}
+                      >
+                        <img 
+                          src={action.icon} 
+                          alt={action.name} 
+                          style={{
+                            width: '30px',
+                            height: '30px',
+                            objectFit: 'contain'
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              {/* 实景 */}
+              {/* 实景区域 */}
               <div style={{
                 display: 'flex',
-                flexDirection: 'column',
                 alignItems: 'center',
-                gap: '12px'
+                gap: '10px'
               }}>
+                {/* 主实景图标 */}
                 <div style={{
                   display: 'flex',
+                  flexDirection: 'column',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  width: '60px',
-                  height: '60px'
-                }}>
-                  <img 
-                    src={realSceneIcon} 
-                    alt="实景" 
-                    style={{
-                      width: '40px',
-                      height: '40px',
-                      objectFit: 'contain'
-                    }}
-                  />
+                  gap: '8px',
+                  cursor: 'pointer',
+                  transition: 'transform 0.2s ease'
+                }}
+                  onClick={() => handleRealSceneClick()}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'scale(1.1)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'scale(1)';
+                  }}
+                >
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '50px',
+                    height: '50px',
+                    borderRadius: '12px',
+                    backgroundColor: isRealSceneExpanded ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.6)',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                    border: isRealSceneExpanded ? '2px solid #52c41a' : '2px solid transparent'
+                  }}>
+                    <img 
+                      src={realSceneIcons[selectedRealSceneIndex].icon} 
+                      alt={realSceneIcons[selectedRealSceneIndex].name} 
+                      style={{
+                        width: '30px',
+                        height: '30px',
+                        objectFit: 'contain'
+                      }}
+                    />
+                  </div>
                 </div>
+
+                {/* 展开的实景选项 */}
+                {isRealSceneExpanded && (
+                  <div style={{
+                    display: 'flex',
+                    gap: '8px',
+                    animation: 'slideInFromLeft 0.3s ease'
+                  }}>
+                    {realSceneIcons.map((scene, index) => (
+                      <div key={index} style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '50px',
+                        height: '50px',
+                        borderRadius: '12px',
+                        backgroundColor: selectedRealSceneIndex === index ? 'rgba(82,196,26,0.2)' : 'rgba(255,255,255,0.8)',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        border: selectedRealSceneIndex === index ? '2px solid #52c41a' : '2px solid transparent'
+                      }}
+                        onClick={() => handleRealSceneClick(index)}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'scale(1.1)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'scale(1)';
+                        }}
+                      >
+                        <img 
+                          src={scene.icon} 
+                          alt={scene.name} 
+                          style={{
+                            width: '30px',
+                            height: '30px',
+                            objectFit: 'contain'
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -792,7 +972,7 @@ const Home = () => {
                 alignItems: 'center',
                 gap: '8px'
               }}>
-                <div style={{
+                {/* <div style={{
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -811,7 +991,7 @@ const Home = () => {
                       objectFit: 'contain'
                     }}
                   />
-                </div>
+                </div> */}
               </div>
             </div>
           </div>

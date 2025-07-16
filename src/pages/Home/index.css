@@ -154,3 +154,34 @@
   bottom: 0;
   background: linear-gradient(to top, rgba(168,213,186,1), transparent);
 }
+
+/* 动作和实景展开动画 */
+@keyframes slideInFromLeft {
+  0% {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+/* 图标悬停效果优化 */
+.icon-hover-effect {
+  transition: all 0.2s ease;
+}
+
+.icon-hover-effect:hover {
+  transform: scale(1.1);
+  filter: brightness(1.1);
+}
