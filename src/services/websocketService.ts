@@ -44,8 +44,10 @@ export class WebSocketService {
 
   // 心跳相关属性
   private heartbeatTimer: NodeJS.Timeout | null = null;
-  private heartbeatInterval: number = 20000; // 20秒发送一次心跳
+  private heartbeatInterval: number = 15000; // 15秒发送一次心跳，更频繁
   private lastHeartbeatTime: number = 0;
+  private heartbeatTimeoutTimer: NodeJS.Timeout | null = null; // 心跳超时检查
+  private heartbeatTimeout: number = 10000; // 10秒心跳超时
 
   // RTC相关属性
   private rtcEngine: any = null;
@@ -352,10 +354,13 @@ export class WebSocketService {
     // 立即发送一次心跳
     this.sendHeartbeat();
     
-    // 设置定时器，每20秒发送一次心跳
+    // 设置定时器，每15秒发送一次心跳
     this.heartbeatTimer = setInterval(() => {
       this.sendHeartbeat();
     }, this.heartbeatInterval);
+    
+    // 启动心跳超时检查
+    this.startHeartbeatTimeoutCheck();
   }
 
   // 停止心跳
@@ -365,6 +370,37 @@ export class WebSocketService {
       clearInterval(this.heartbeatTimer);
       this.heartbeatTimer = null;
     }
+    
+    // 停止心跳超时检查
+    if (this.heartbeatTimeoutTimer) {
+      clearTimeout(this.heartbeatTimeoutTimer);
+      this.heartbeatTimeoutTimer = null;
+    }
+  }
+
+  // 启动心跳超时检查
+  private startHeartbeatTimeoutCheck(): void {
+    // 清除可能存在的旧超时检查
+    if (this.heartbeatTimeoutTimer) {
+      clearTimeout(this.heartbeatTimeoutTimer);
+    }
+    
+    // 设置心跳超时检查
+    this.heartbeatTimeoutTimer = setTimeout(() => {
+      const now = Date.now();
+      const timeSinceLastHeartbeat = now - this.lastHeartbeatTime;
+      
+      if (timeSinceLastHeartbeat > this.heartbeatTimeout) {
+        console.warn('⚠️ 心跳超时，可能连接异常');
+        console.log(`💓 距离上次心跳: ${timeSinceLastHeartbeat}ms`);
+        
+        // 如果心跳超时，尝试重连
+        if (this.isConnected) {
+          console.log('🔄 心跳超时，尝试重连...');
+          this.handleReconnect();
+        }
+      }
+    }, this.heartbeatTimeout);
   }
 
   // 发送心跳消息
@@ -390,6 +426,12 @@ export class WebSocketService {
       
     } catch (error) {
       console.error('❌ 发送心跳消息失败:', error);
+      
+      // 如果心跳发送失败，可能是连接有问题，尝试重连
+      if (this.isConnected) {
+        console.log('🔄 心跳发送失败，可能连接异常，尝试重连...');
+        this.handleReconnect();
+      }
     }
   }
 
@@ -398,6 +440,12 @@ export class WebSocketService {
     try {
       const heartbeatAsw = proto.oHeartBeatAsw.decode(new Uint8Array(payload));
       console.log('💓 收到心跳响应:', heartbeatAsw);
+      
+      // 更新最后心跳时间
+      this.lastHeartbeatTime = Date.now();
+      
+      // 重新启动心跳超时检查
+      this.startHeartbeatTimeoutCheck();
       
       // 可以在这里添加心跳延迟计算
       const now = Date.now();
@@ -439,13 +487,44 @@ export class WebSocketService {
         };
         
         this.websocket.onclose = (event) => {
-          console.log('WebSocket 连接关闭', event);
+          console.log('🔌 WebSocket 连接关闭', {
+            code: event.code,
+            reason: event.reason,
+            wasClean: event.wasClean,
+            type: event.type
+          });
+          
+          // 解析关闭代码的含义
+          const closeCodeMessages: {[key: number]: string} = {
+            1000: '正常关闭',
+            1001: '端点离开',
+            1002: '协议错误',
+            1003: '不支持的数据类型',
+            1005: '无状态码',
+            1006: '异常关闭',
+            1007: '数据类型不一致',
+            1008: '违反政策',
+            1009: '消息过大',
+            1010: '客户端需要扩展',
+            1011: '服务器遇到意外情况',
+            1015: 'TLS握手失败'
+          };
+          
+          const closeMessage = closeCodeMessages[event.code] || `未知关闭代码: ${event.code}`;
+          console.log(`🔌 连接关闭原因: ${closeMessage}`);
+          
           this.isConnected = false;
           
           // 停止心跳机制
           this.stopHeartbeat();
           
-          this.handleReconnect();
+          // 如果不是正常关闭，尝试重连
+          if (event.code !== 1000) {
+            console.log('🔄 检测到异常关闭，启动重连机制...');
+            this.handleReconnect();
+          } else {
+            console.log('✅ 正常关闭，不进行重连');
+          }
         };
         
         this.websocket.onerror = (error) => {
@@ -471,13 +550,27 @@ export class WebSocketService {
   private handleReconnect(): void {
     if (this.reconnectAttempts < this.maxReconnectAttempts && this.config) {
       this.reconnectAttempts++;
-      console.log(`尝试重连 (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+      console.log(`🔄 尝试重连 (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+      
+      const delay = this.reconnectDelay * this.reconnectAttempts;
+      console.log(`⏰ 等待 ${delay}ms 后重连...`);
       
       setTimeout(() => {
+        console.log('🚀 开始重连...');
         this.connect(this.config!).catch(error => {
-          console.error('重连失败:', error);
+          console.error('❌ 重连失败:', error);
+          // 如果重连失败，继续尝试
+          if (this.reconnectAttempts < this.maxReconnectAttempts) {
+            console.log('🔄 重连失败，将继续尝试...');
+          } else {
+            console.log('❌ 重连次数已达上限，停止重连');
+          }
         });
-      }, this.reconnectDelay * this.reconnectAttempts);
+      }, delay);
+    } else {
+      console.log('❌ 重连次数已达上限或配置无效，停止重连');
+      console.log(`  - 重连次数: ${this.reconnectAttempts}/${this.maxReconnectAttempts}`);
+      console.log(`  - 配置状态: ${this.config ? '有效' : '无效'}`);
     }
   }
 
@@ -746,26 +839,8 @@ export class WebSocketService {
       // 即使RTC启动失败，也继续后续流程
     }
     
-    console.log('⏰ 等待20秒后离开房间...');
-    
-    // 等待20秒后离开房间
-    setTimeout(async () => {
-      console.log('准备离开房间...');
-      
-      // 先离开RTC房间
-      try {
-        await this.leaveRTCRoom();
-        console.log('✅ 已离开RTC房间');
-      } catch (error) {
-        console.error('❌ 离开RTC房间失败:', error);
-      }
-      
-      // 清理RTC资源
-      this.cleanupRTC();
-      
-      // 然后离开WebSocket房间
-      this.sendLeaveRoomRequest();
-    }, 20000);
+    console.log('✅ 登台流程完成，RTC视频服务已启动，用户可以正常观看视频');
+    console.log('💡 提示：用户可以通过"离开舞台"按钮手动离开房间');
   }
 
   // 触发RTC启动事件
