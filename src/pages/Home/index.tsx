@@ -73,13 +73,13 @@ const Home = () => {
     { icon: balletIcon, name: '芭蕾' }
   ];
 
-  // 实景图标数组（暂时用指定的5个图标占位）
+  // 实景图标数组，对应不同的地图
   const realSceneIcons = [
-    { icon: hatIcon, name: '帽子' },
-    { icon: coatIcon, name: '外套' },
-    { icon: topIcon, name: '上衣' },
-    { icon: pantsIcon, name: '下装' },
-    { icon: shoesIcon, name: '鞋子' }
+    { icon: hatIcon, name: '博物馆', mapName: 'Maps_Museum' },
+    { icon: coatIcon, name: '教堂', mapName: 'Maps_jiaotang' },
+    { icon: topIcon, name: '广场', mapName: 'Maps_guangchang' },
+    { icon: pantsIcon, name: '沙滩', mapName: 'Maps_shatan' },
+    { icon: shoesIcon, name: '商店', mapName: 'Maps_udraper' }
   ];
 
   // 处理动作图标点击
@@ -98,7 +98,7 @@ const Home = () => {
   };
 
   // 处理实景图标点击
-  const handleRealSceneClick = (index?: number) => {
+  const handleRealSceneClick = async (index?: number) => {
     if (index === undefined) {
       // 点击主实景图标，切换展开/收起状态
       setIsRealSceneExpanded(!isRealSceneExpanded);
@@ -108,7 +108,32 @@ const Home = () => {
       // 点击具体的实景，更新选中状态和主图标，然后自动收起
       setSelectedRealSceneIndex(index);
       setIsRealSceneExpanded(false); // 自动收起
-      console.log('选中实景:', realSceneIcons[index].name);
+      
+      const selectedScene = realSceneIcons[index];
+      console.log('选中实景:', selectedScene.name, '地图名称:', selectedScene.mapName);
+      
+      // 检查WebSocket连接状态
+      if (!webSocketService.getConnectionStatus()) {
+        console.error('❌ WebSocket未连接，无法切换地图');
+        return;
+      }
+      
+      // 检查是否在视频播放状态（已登台）
+      if (showSelectionScreen) {
+        console.error('❌ 未在视频播放状态，无法切换地图');
+        return;
+      }
+      
+      // 发送切换地图的websocket请求
+      try {
+        console.log('🚀 开始发送切换地图请求...');
+        await webSocketService.sendChangeMapRequest(selectedScene.mapName);
+        console.log('✅ 切换地图请求已发送:', selectedScene.mapName);
+      } catch (error) {
+        console.error('❌ 发送切换地图请求失败:', error);
+        // 显示错误提示
+        alert(`切换地图失败: ${error instanceof Error ? error.message : String(error)}`);
+      }
     }
   };
 
@@ -231,7 +256,7 @@ const Home = () => {
   };
 
   // 处理视频播放界面的实景点击
-  const handleVideoRealSceneClick = (index?: number) => {
+  const handleVideoRealSceneClick = async (index?: number) => {
     if (index === undefined) {
       // 点击主实景图标，切换展开/收起状态
       setIsRealSceneExpanded(!isRealSceneExpanded);
@@ -241,7 +266,26 @@ const Home = () => {
       // 点击具体的实景，更新选中状态和主图标，然后自动收起
       setSelectedRealSceneIndex(index);
       setIsRealSceneExpanded(false); // 自动收起
-      console.log('选中实景:', realSceneIcons[index].name);
+      
+      const selectedScene = realSceneIcons[index];
+      console.log('选中实景:', selectedScene.name, '地图名称:', selectedScene.mapName);
+      
+      // 检查WebSocket连接状态
+      if (!webSocketService.getConnectionStatus()) {
+        console.error('❌ WebSocket未连接，无法切换地图');
+        return;
+      }
+      
+      // 发送切换地图的websocket请求
+      try {
+        console.log('🚀 开始发送切换地图请求...');
+        await webSocketService.sendChangeMapRequest(selectedScene.mapName);
+        console.log('✅ 切换地图请求已发送:', selectedScene.mapName);
+      } catch (error) {
+        console.error('❌ 发送切换地图请求失败:', error);
+        // 显示错误提示
+        alert(`切换地图失败: ${error instanceof Error ? error.message : String(error)}`);
+      }
     }
     
     // 重新开始隐藏定时器
@@ -633,6 +677,32 @@ const Home = () => {
 
     return () => {
       window.removeEventListener('rtcVideoStreamUpdate', handleVideoStreamUpdate as EventListener);
+    };
+  }, []);
+
+  // 监听地图切换结果事件
+  useEffect(() => {
+    const handleMapChangeResult = (event: CustomEvent) => {
+      const { success, code, mapName, errorText } = event.detail;
+      
+      console.log('🗺️ 地图切换结果事件:', {
+        success,
+        code,
+        mapName,
+        errorText
+      });
+      
+      if (success) {
+        console.log('✅ 地图切换成功!', mapName);
+      } else {
+        console.log('❌ 地图切换失败!', mapName, '原因:', errorText);
+      }
+    };
+
+    window.addEventListener('mapChangeResult', handleMapChangeResult as EventListener);
+
+    return () => {
+      window.removeEventListener('mapChangeResult', handleMapChangeResult as EventListener);
     };
   }, []);
 

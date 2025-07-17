@@ -338,6 +338,8 @@ export class WebSocketService {
     this.messageHandlers.set(1204, this.handleLeaveRoomPush.bind(this));
     // 心跳响应
     this.messageHandlers.set(1111, this.handleHeartBeatResponse.bind(this));
+    // 切换地图响应
+    this.messageHandlers.set(11008, this.handleChangeMapPush.bind(this));
   }
 
   // 启动心跳
@@ -1088,6 +1090,123 @@ export class WebSocketService {
     }
     this.isConnected = false;
     console.log('✅ WebSocket连接已断开');
+  }
+
+  // 发送切换地图请求
+  async sendChangeMapRequest(mapName: string): Promise<void> {
+    console.log('🗺️ 准备发送切换地图请求...', mapName);
+    
+    // 检查连接状态
+    if (!this.isConnected) {
+      console.error('❌ WebSocket未连接，无法发送切换地图请求');
+      throw new Error('WebSocket未连接');
+    }
+    
+    // 检查配置是否有效
+    if (!this.config || !this.config.roomId) {
+      console.error('❌ WebSocket配置无效或未进房，无法发送切换地图请求');
+      throw new Error('WebSocket配置无效或未进房');
+    }
+    
+    console.log('🔍 切换地图请求状态检查:');
+    console.log('  - WebSocket连接状态:', this.isConnected);
+    console.log('  - 房间ID:', this.config.roomId);
+    console.log('  - 用户ID:', this.config.uid);
+    console.log('  - 目标地图:', mapName);
+    
+    try {
+      // 创建 oChangeMapReq 消息
+      const message = proto.oChangeMapReq.create({
+        mapName: mapName
+      });
+      
+      // 编码消息
+      const payload = proto.oChangeMapReq.encode(message).finish();
+      
+      console.log('📦 切换地图消息编码完成:', {
+        mapName: mapName,
+        payloadSize: payload.length,
+        payloadBytes: Array.from(payload)
+      });
+      
+      // 发送消息 (ChangeMapReq = 1008)
+      this.sendMessage(1008, payload);
+      
+      console.log('✅ 切换地图请求发送成功:', mapName);
+      
+    } catch (error) {
+      console.error('❌ 发送切换地图请求失败:', error);
+      throw error;
+    }
+  }
+
+  // 处理切换地图响应
+  private handleChangeMapPush(data: Uint8Array): void {
+    try {
+      console.log('🗺️ 收到切换地图响应, 数据长度:', data.length);
+      console.log('🗺️ 原始响应数据:', Array.from(data));
+      
+      // 解码消息
+      const message = proto.oChangeMapPush.decode(data);
+      
+      console.log('📦 切换地图响应解码成功:', {
+        code: message.code,
+        mapName: message.mapName,
+        codeText: this.getErrorCodeText(message.code)
+      });
+      
+      // 打印详细日志
+      if (message.code === proto.eError.SUCCESS) {
+        console.log('✅ 地图切换成功!');
+        console.log('  - 新地图名称:', message.mapName);
+      } else {
+        console.log('❌ 地图切换失败!');
+        console.log('  - 错误代码:', message.code);
+        console.log('  - 错误描述:', this.getErrorCodeText(message.code));
+        console.log('  - 请求的地图名称:', message.mapName);
+      }
+      
+      // 触发自定义事件，通知UI组件
+      const event = new CustomEvent('mapChangeResult', {
+        detail: {
+          success: message.code === proto.eError.SUCCESS,
+          code: message.code,
+          mapName: message.mapName,
+          errorText: this.getErrorCodeText(message.code)
+        }
+      });
+      
+      window.dispatchEvent(event);
+      
+    } catch (error) {
+      console.error('❌ 处理切换地图响应失败:', error);
+      console.error('原始数据:', Array.from(data)); // 打印完整数据用于调试
+    }
+  }
+
+  // 获取错误代码对应的文本描述
+  private getErrorCodeText(code: proto.eError): string {
+    const errorTexts: {[key: number]: string} = {
+      [proto.eError.UNKNOWN]: '未知错误',
+      [proto.eError.SUCCESS]: '成功',
+      [proto.eError.FAILD]: '失败',
+      [proto.eError.ERROR_REQ_PARAM]: '请求参数有误',
+      [proto.eError.ERROR_OTHER_ROOM_OPEN]: '本实例已经开着其他房间了',
+      [proto.eError.ERROR_CREATE_ROOM_FAIL]: '创建房间失败',
+      [proto.eError.ERROR_ENTER_ROOM_FAIL]: '进入房间失败',
+      [proto.eError.EMPTY_INS_TOKEN]: '未传递insToken',
+      [proto.eError.UNSET_INS_TOKEN]: '未设置insToken',
+      [proto.eError.ERROR_INS_TOKEN]: '不匹配insToken',
+      [proto.eError.ERROR_NO_ROOM]: '没有房间',
+      [proto.eError.ERROR_NOT_IN_ROOM]: '不在房间内',
+      [proto.eError.ERROR_ALREADY_IN_STAGE]: '已经在小窗里了',
+      [proto.eError.ERROR_ALREADY_IN_QUEUE]: '已经在排队了',
+      [proto.eError.ERROR_ENTER_STAGE_FAIL]: '上台失败',
+      [proto.eError.ERROR_ENTER_STAGE_TIMEOUT]: '上台超时',
+      [proto.eError.ERROR_NOT_IN_STAGE]: '不在小窗里'
+    };
+    
+    return errorTexts[code] || `未知错误代码: ${code}`;
   }
 
   // 获取连接状态
