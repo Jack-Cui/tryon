@@ -147,6 +147,20 @@ export const PROXY_CONFIG = {
   }
 };
 
+// 微信分享配置
+export const WECHAT_CONFIG = {
+  // 微信应用ID
+  APP_ID: 'wxb9f44b8faeead9f7', // 请替换为实际的微信AppID
+  
+  // 默认分享配置
+  DEFAULT_SHARE: {
+    title: 'PADA2024秀款礼服系列',
+    desc: '快来体验最新的AI试穿功能！',
+    link: window.location.href,
+    imgUrl: 'https://admins3.tos-cn-shanghai.volces.com/af208b78e74547e49e86e92df252bf66.png' // 请替换为实际的分享图片URL
+  }
+};
+
 // 导出默认配置
 export default {
   ENV_CONFIG,

@@ -4,8 +4,10 @@ import './index.css';
 import { tryonService } from '../../services/tryonService';
 import { RTCVideoConfig } from '../../services/rtcVideoService';
 import { webSocketService } from '../../services/websocketService';
+import { wechatShareService } from '../../services/wechatShareService';
 import { getLoginCache, clearLoginCache } from '../../utils/loginCache';
 import { ClothesItem } from '../../types/api';
+import { WECHAT_CONFIG } from '../../config/config';
 // 导入图片
 import actionIcon from '../../assets/动作.png';
 import balletIcon from '../../assets/芭蕾.png';
@@ -18,6 +20,7 @@ import topIcon from '../../assets/上衣.png';
 import socksIcon from '../../assets/袜子.png';
 import pantsIcon from '../../assets/下装.png';
 import shoesIcon from '../../assets/鞋子.png';
+import shareIcon from '../../assets/分享.png';
 
 const Home = () => {
   const location = useLocation();
@@ -50,6 +53,10 @@ const Home = () => {
   // 新增状态：视频播放界面的图标控制
   const [showVideoIcons, setShowVideoIcons] = useState(true); // 视频播放时是否显示左右侧图标
   const [iconHideTimer, setIconHideTimer] = useState<NodeJS.Timeout | null>(null); // 图标自动隐藏定时器
+
+  // 新增状态：微信分享相关
+  const [isWechatShareReady, setIsWechatShareReady] = useState(false); // 微信分享是否已准备好
+  const [showShareTip, setShowShareTip] = useState(false); // 是否显示分享提示
 
   // 服饰分类名称映射到图标
   const getClothesIcon = (classifyName: string) => {
@@ -327,6 +334,66 @@ const Home = () => {
     startIconHideTimer();
   };
 
+  // 处理微信分享点击
+  const handleWechatShare = async () => {
+    try {
+      console.log('📤 开始微信分享...');
+      
+      // 检查微信分享服务是否已初始化
+      if (!wechatShareService.isInitialized()) {
+        console.log('🔧 初始化微信分享服务...');
+        
+        // 初始化微信分享服务
+        await wechatShareService.initialize({
+          appId: WECHAT_CONFIG.APP_ID,
+          title: WECHAT_CONFIG.DEFAULT_SHARE.title,
+          desc: WECHAT_CONFIG.DEFAULT_SHARE.desc,
+          link: WECHAT_CONFIG.DEFAULT_SHARE.link,
+          imgUrl: WECHAT_CONFIG.DEFAULT_SHARE.imgUrl
+        });
+      }
+      
+      // 执行分享
+      await wechatShareService.share({
+        title: `${roomName} - AI试穿体验`,
+        desc: '快来体验最新的AI试穿功能，感受科技与时尚的完美结合！',
+        link: window.location.href,
+        imgUrl: getCurrentDisplayClothes()?.clothesImageUrl || WECHAT_CONFIG.DEFAULT_SHARE.imgUrl
+      });
+      
+      console.log('✅ 微信分享配置完成');
+      
+    } catch (error) {
+      console.error('❌ 微信分享失败:', error);
+      
+      // 显示错误提示
+      alert(`微信分享失败: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
+
+  // 监听微信分享准备就绪事件
+  useEffect(() => {
+    const handleWechatShareReady = (event: CustomEvent) => {
+      console.log('📤 微信分享准备就绪:', event.detail);
+      setIsWechatShareReady(true);
+      setShowShareTip(true);
+      
+      // 根据不同类型显示不同的提示信息
+      const { message, type } = event.detail;
+      console.log('📤 分享提示类型:', type, '消息:', message);
+      
+      // 3秒后自动隐藏提示
+      setTimeout(() => {
+        setShowShareTip(false);
+      }, 3000);
+    };
+
+    window.addEventListener('wechatShareReady', handleWechatShareReady as EventListener);
+
+    return () => {
+      window.removeEventListener('wechatShareReady', handleWechatShareReady as EventListener);
+    };
+  }, []);
 
   // 初始化登录参数
   useEffect(() => {
@@ -1206,6 +1273,54 @@ const Home = () => {
                   />
                 </div> */}
               </div>
+
+              {/* 4. 微信分享图标 */}
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '8px',
+                marginTop: '20px'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '8px',
+                  cursor: 'pointer',
+                  transition: 'transform 0.2s ease'
+                }}
+                  onClick={handleWechatShare}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'scale(1.1)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'scale(1)';
+                  }}
+                >
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '50px',
+                    height: '50px',
+                    borderRadius: '12px',
+                    backgroundColor: 'rgba(255,255,255,0.8)',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                    border: '2px solid #07c160'
+                  }}>
+                    <img 
+                      src={shareIcon} 
+                      alt="微信分享" 
+                      style={{
+                        width: '30px',
+                        height: '30px',
+                        objectFit: 'contain'
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1299,6 +1414,52 @@ const Home = () => {
         >
           🔄 重新登录
         </button>
+
+        {/* 开发环境测试微信分享按钮 */}
+        {process.env.NODE_ENV === 'development' && (
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              console.log('测试微信分享按钮被点击');
+              handleWechatShare();
+            }}
+            style={{
+              position: 'absolute',
+              top: '20px',
+              right: '120px',
+              backgroundColor: '#07c160 !important',
+              color: 'white !important',
+              border: 'none !important',
+              padding: '8px 16px',
+              borderRadius: '6px',
+              fontSize: '12px',
+              cursor: 'pointer !important',
+              fontWeight: 'bold',
+              transition: 'all 0.3s ease',
+              zIndex: 9999,
+              boxShadow: '0 2px 8px rgba(7, 193, 96, 0.3)',
+              outline: 'none !important',
+              opacity: 1,
+              pointerEvents: 'auto',
+              display: 'inline-block',
+              userSelect: 'none',
+              WebkitUserSelect: 'none',
+              MozUserSelect: 'none',
+              msUserSelect: 'none'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#52c41a';
+              e.currentTarget.style.transform = 'scale(1.05)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '#07c160';
+              e.currentTarget.style.transform = 'scale(1)';
+            }}
+          >
+            📤 测试分享
+          </button>
+        )}
       </div>
     );
   }
@@ -1844,6 +2005,57 @@ const Home = () => {
                 </>
               )}
             </div>
+
+            {/* 微信分享图标 */}
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '8px',
+              marginTop: '20px'
+            }}>
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '8px',
+                cursor: 'pointer',
+                transition: 'transform 0.2s ease'
+              }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleWechatShare();
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'scale(1.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)';
+                }}
+              >
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '50px',
+                  height: '50px',
+                  borderRadius: '12px',
+                  backgroundColor: 'rgba(255,255,255,0.8)',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                  border: '2px solid #07c160'
+                }}>
+                  <img 
+                    src={shareIcon} 
+                    alt="微信分享" 
+                    style={{
+                      width: '30px',
+                      height: '30px',
+                      objectFit: 'contain'
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -1894,6 +2106,34 @@ const Home = () => {
           离开舞台
         </button>
       </div>
+
+      {/* 微信分享提示 */}
+      {showShareTip && (
+        <div style={{
+          position: 'fixed',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          zIndex: 300,
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          color: 'white',
+          padding: '20px',
+          borderRadius: '12px',
+          textAlign: 'center',
+          backdropFilter: 'blur(10px)',
+          WebkitBackdropFilter: 'blur(10px)',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+          animation: 'fadeIn 0.3s ease',
+          maxWidth: '300px',
+          minWidth: '250px'
+        }}>
+          <div style={{ fontSize: '24px', marginBottom: '10px' }}>📤</div>
+          <div style={{ fontSize: '16px', marginBottom: '8px' }}>微信分享</div>
+          <div style={{ fontSize: '14px', opacity: 0.8, lineHeight: '1.4' }}>
+            请在微信中点击右上角菜单进行分享
+          </div>
+        </div>
+      )}
     </div>
   );
 };
