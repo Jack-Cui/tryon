@@ -1,10 +1,12 @@
 import VERTC, { MediaType, StreamIndex } from '@volcengine/rtc';
+import { rtcMessageHandler } from './rtcMessageHandler';
 
 export interface RTCVideoConfig {
   appId: string;
   appKey: string;
   roomId: string;
   userId: string;
+  token?: string;
 }
 
 export interface RemoteStream {
@@ -25,9 +27,19 @@ export class RTCVideoService {
     onUserPublishStream?: (userId: string, hasVideo: boolean, hasAudio: boolean) => void;
     onUserUnpublishStream?: (userId: string) => void;
     onError?: (error: any) => void;
+    onHeartbeat?: (delay: number) => void;
   } = {};
 
-  constructor() {}
+  constructor() {
+    // 初始化消息处理器
+    rtcMessageHandler.initialize();
+    
+    // 注册心跳响应处理
+    rtcMessageHandler.onMessage('heartbeat_ack', (data) => {
+      const delay = rtcMessageHandler.getLastHeartbeatDelay();
+      this.eventHandlers.onHeartbeat?.(delay);
+    });
+  }
 
   // 设置事件处理器
   setEventHandlers(handlers: typeof this.eventHandlers): void {
@@ -50,10 +62,7 @@ export class RTCVideoService {
       // 绑定事件监听器
       this.bindEngineEvents();
       
-      // 设置连接状态为已连接（因为用户已经在API中加入了房间）
-      this.isConnected = true;
-      
-      console.log('✅ RTC引擎初始化成功（跳过加入房间步骤）');
+      console.log('✅ RTC引擎初始化成功');
     } catch (error) {
       console.error('❌ RTC引擎初始化失败:', error);
       throw error;
@@ -109,6 +118,19 @@ export class RTCVideoService {
     // 播放器事件
     this.engine.on(VERTC.events.onPlayerEvent, (event: any) => {
       console.log('🎬 播放器事件:', event);
+      // 检查是否是视频开始播放的事件
+      if (event.eventType === 'onFirstFrame') {
+        console.log('🎬 视频第一帧渲染完成:', event.userId);
+        
+        // 发送自定义事件到首页
+        const customEvent = new CustomEvent('rtcPlayerEvent', {
+          detail: {
+            eventType: event.eventType,
+            userId: event.userId
+          }
+        });
+        window.dispatchEvent(customEvent);
+      }
     });
 
     // 错误处理
@@ -118,16 +140,47 @@ export class RTCVideoService {
     });
   }
 
-  // 加入房间 - 已跳过，因为用户已经在API中加入了房间
-  async joinRoom(): Promise<void> {
-    console.log('🚪 跳过加入RTC房间步骤（用户已在API中加入房间）');
-    // 不需要执行任何操作，因为用户已经在API中加入了房间
-    return Promise.resolve();
+  // 加入房间
+  async joinRoom(token?: string): Promise<void> {
+    if (!this.engine || !this.config) {
+      throw new Error('RTC引擎未初始化');
+    }
+
+    console.log('🚪 加入RTC房间...');
+    console.log('  - roomId:', this.config.roomId);
+    console.log('  - userId:', this.config.userId);
+    console.log('  - token:', token || '无token');
+
+    try {
+      await this.engine.joinRoom(
+        token || null,
+        this.config.roomId,
+        {
+          userId: this.config.userId,
+        },
+        {
+          // 只订阅，不发布本地流
+          isAutoPublish: false,
+          isAutoSubscribeAudio: true,
+          isAutoSubscribeVideo: true,
+        }
+      );
+      
+      this.isConnected = true;
+      
+      // 开始心跳
+      rtcMessageHandler.startHeartbeat();
+      
+      console.log('✅ 成功加入RTC房间');
+    } catch (error) {
+      console.error('❌ 加入RTC房间失败:', error);
+      throw error;
+    }
   }
 
   // 添加远程流
   private addRemoteStream(userId: string, hasVideo: boolean, hasAudio: boolean): void {
-    const domId = `remote-video-${userId}`;
+    const domId = `remoteStream_${userId}`;
     
     this.remoteStreams.set(userId, {
       userId,
@@ -154,8 +207,16 @@ export class RTCVideoService {
     console.log('🎬 设置远程视频播放器:', userId, 'DOM ID:', domId);
 
     try {
+      // 确保DOM元素存在
+      const domElement = document.getElementById(domId);
+      if (!domElement) {
+        throw new Error(`DOM元素不存在: ${domId}`);
+      }
+      console.log('✅ DOM元素存在:', domId);
+
       // 订阅用户的音视频流
       await this.engine.subscribeStream(userId, MediaType.AUDIO_AND_VIDEO);
+      console.log('✅ 订阅流成功:', userId);
       
       // 设置远程视频播放器
       await this.engine.setRemoteVideoPlayer(StreamIndex.STREAM_INDEX_MAIN, {
@@ -187,6 +248,9 @@ export class RTCVideoService {
     console.log('🚪 准备离开RTC房间...');
 
     try {
+      // 停止心跳
+      rtcMessageHandler.stopHeartbeat();
+      
       await this.engine.leaveRoom();
       this.isConnected = false;
       this.remoteStreams.clear();
@@ -205,6 +269,10 @@ export class RTCVideoService {
     }
     this.isConnected = false;
     this.remoteStreams.clear();
+    
+    // 销毁消息处理器
+    rtcMessageHandler.destroy();
+    
     console.log('🗑️ RTC引擎已销毁');
   }
 
@@ -216,6 +284,11 @@ export class RTCVideoService {
   // 获取SDK版本
   getSDKVersion(): string {
     return VERTC.getSdkVersion();
+  }
+
+  // 获取心跳延迟
+  getHeartbeatDelay(): number {
+    return rtcMessageHandler.getLastHeartbeatDelay();
   }
 }
 

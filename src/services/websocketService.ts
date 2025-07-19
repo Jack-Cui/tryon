@@ -20,6 +20,7 @@ export interface WebSocketConfig {
 // RTC配置接口
 export interface RTCConfig {
   appId: string;
+  appKey: string;
   roomId: string;
   userId: string;
   token?: string;
@@ -39,15 +40,15 @@ export class WebSocketService {
   private isConnected: boolean = false;
   private messageHandlers: Map<number, (data: any) => void> = new Map();
   private reconnectAttempts: number = 0;
-  private maxReconnectAttempts: number = 5;
+  private maxReconnectAttempts: number = 3;
   private reconnectDelay: number = 1000;
 
   // 心跳相关属性
   private heartbeatTimer: NodeJS.Timeout | null = null;
-  private heartbeatInterval: number = 15000; // 15秒发送一次心跳，更频繁
+  private heartbeatInterval: number = 10000; // 10秒发送一次心跳，更频繁
   private lastHeartbeatTime: number = 0;
   private heartbeatTimeoutTimer: NodeJS.Timeout | null = null; // 心跳超时检查
-  private heartbeatTimeout: number = 10000; // 10秒心跳超时
+  private heartbeatTimeout: number = 15000; // 15秒心跳超时
 
   // RTC相关属性
   private rtcEngine: any = null;
@@ -845,43 +846,19 @@ export class WebSocketService {
 
   // 触发RTC启动事件
   private async triggerRTCStart(): Promise<void> {
-    console.log('🚀 启动RTC视频服务...');
+    console.log('🚀 触发RTC启动事件...');
     
-    if (!this.config) {
-      console.error('❌ 未配置WebSocket参数，无法启动RTC');
-      return;
-    }
-
-    try {
-      // 检查是否有RTC配置
-      if (!this.config.rtcConfig) {
-        console.log('⚠️ 未配置RTC参数，跳过RTC启动');
-        return;
+    // 创建自定义事件，通知tryonService启动RTC
+    const event = new CustomEvent('stageSuccessRTCStart', {
+      detail: {
+        timestamp: Date.now(),
+        roomId: this.config?.roomId,
+        userId: this.config?.uid
       }
-
-      // 如果RTC已经连接，不需要重复连接
-      if (this.isRTCConnected) {
-        console.log('✅ RTC已经连接，无需重复启动');
-        return;
-      }
-
-      // 初始化RTC配置
-      console.log('🔧 初始化RTC配置...');
-      await this.initializeRTCConfig(this.config.rtcConfig);
-      
-      // 加入RTC房间（仅观看模式）
-      console.log('🚪 加入RTC房间...');
-      await this.joinRTCRoom();
-      
-      console.log('✅ RTC视频服务启动成功（仅观看模式）');
-      
-      // 可以在这里添加其他RTC相关的初始化逻辑
-      // 比如设置远程视频播放器等
-      
-    } catch (error) {
-      console.error('❌ RTC视频服务启动失败:', error);
-      // 这里可以触发错误处理逻辑
-    }
+    });
+    
+    window.dispatchEvent(event);
+    console.log('📡 RTC启动事件已发送');
   }
 
   // 发送离开房间请求

@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import './index.css';
 import { tryonService } from '../../services/tryonService';
+import { rtcVideoService } from '../../services/rtcVideoService';
 import { RTCVideoConfig } from '../../services/rtcVideoService';
 import { webSocketService } from '../../services/websocketService';
 import { wechatShareService } from '../../services/wechatShareService';
@@ -451,53 +452,61 @@ const Home = () => {
       clearLoginCache();
       navigate('/login?redirect=' + encodeURIComponent(location.pathname));
     }
-  }, [locationState, navigate, location.pathname]);
+  }, [locationState]); // 只依赖locationState，避免重复执行
 
   // 初始化房间名称和服饰列表
+  const initializedRef = useRef(false);
+  
   useEffect(() => {
-    if (loginParams) {
-      // 如果当前房间名称还是默认值，尝试从 tryonService 获取
-      if (roomName === 'PADA2024秀款礼服系列') {
-        const roomNameFromService = tryonService.getRoomName();
-        if (roomNameFromService) {
-          setRoomName(roomNameFromService);
-          console.log('✅ 从 tryonService 获取到房间名称:', roomNameFromService);
-        } else {
-          console.log('⚠️ tryonService 中没有房间名称，使用默认名称');
-        }
+    if (!loginParams || initializedRef.current) return;
+    
+    initializedRef.current = true;
+    
+    // 如果当前房间名称还是默认值，尝试从 tryonService 获取
+    if (roomName === 'PADA2024秀款礼服系列') {
+      const roomNameFromService = tryonService.getRoomName();
+      if (roomNameFromService) {
+        setRoomName(roomNameFromService);
+        console.log('✅ 从 tryonService 获取到房间名称:', roomNameFromService);
       } else {
-        console.log('✅ 已从缓存获取到房间名称，跳过 tryonService 获取');
+        console.log('⚠️ tryonService 中没有房间名称，使用默认名称');
       }
-
-      // 获取服饰列表（只有当前状态为空时才尝试从服务获取）
-      if (clothesList.length === 0) {
-        const clothesListFromService = tryonService.getClothesList();
-        if (clothesListFromService && clothesListFromService.length > 0) {
-          setClothesList(clothesListFromService);
-          console.log('✅ 从 tryonService 获取到服饰列表');
-          console.log('服饰分类数量:', clothesListFromService.length);
-        } else {
-          console.log('⚠️ tryonService 中没有服饰列表，等待服务器数据');
-          // 不清空列表，保持从缓存读取的数据
-        }
-      } else {
-        console.log('✅ 服饰列表已存在，跳过从 tryonService 获取');
-        console.log('服饰分类数量:', clothesList.length);
-        // 打印第一个分类的第一个服装用于验证
-        const firstClothes = getFirstClothesOfFirstCategory();
-        if (firstClothes) {
-          console.log('第一个分类的第一个服装:', firstClothes);
-          console.log('第一个服装图片URL:', firstClothes.clothesImageUrl);
-        }
-      }
+    } else {
+      console.log('✅ 已从缓存获取到房间名称，跳过 tryonService 获取');
     }
-  }, [loginParams, roomName]);
+
+    // 获取服饰列表（只有当前状态为空时才尝试从服务获取）
+    if (clothesList.length === 0) {
+      const clothesListFromService = tryonService.getClothesList();
+      if (clothesListFromService && clothesListFromService.length > 0) {
+        setClothesList(clothesListFromService);
+        console.log('✅ 从 tryonService 获取到服饰列表');
+        console.log('服饰分类数量:', clothesListFromService.length);
+      } else {
+        console.log('⚠️ tryonService 中没有服饰列表，等待服务器数据');
+        // 不清空列表，保持从缓存读取的数据
+      }
+    } else {
+      console.log('✅ 服饰列表已存在，跳过从 tryonService 获取');
+      console.log('服饰分类数量:', clothesList.length);
+    }
+  }, [loginParams, roomName, clothesList.length]); // 添加依赖项，但使用ref防止重复执行
 
   // 检查视频是否真正开始播放的函数
   const checkVideoPlayingStatus = (userId: string, domId: string) => {
     const videoElement = document.getElementById(domId);
     if (videoElement) {
-      const videoTag = videoElement.querySelector('video');
+      // 尝试多种方式查找video标签
+      let videoTag = videoElement.querySelector('video');
+      if (!videoTag) {
+        // 如果直接查找不到，尝试查找canvas（RTC可能使用canvas）
+        const canvas = videoElement.querySelector('canvas');
+        if (canvas) {
+          console.log(`✅ 找到canvas标签用于视频播放: ${domId}`);
+          videoTag = canvas as any; // 临时处理
+        }
+      }
+      
       if (videoTag) {
         // 设置视频样式以适应容器
         videoTag.style.width = '100%';
@@ -505,41 +514,44 @@ const Home = () => {
         videoTag.style.objectFit = 'cover';
         
         const checkPlaying = () => {
-          if (!videoTag.paused && !videoTag.ended && videoTag.readyState > 2) {
+          // 对于canvas，我们假设它总是"播放"的
+          if (videoTag && (videoTag.tagName === 'CANVAS' || (!videoTag.paused && !videoTag.ended && videoTag.readyState > 2))) {
             console.log(`✅ 视频 ${userId} 已开始播放`);
             setVideoPlayingStatus(prev => ({
               ...prev,
               [userId]: true
             }));
           } else {
-            // 继续检查
-            setTimeout(checkPlaying, 500);
+            // 继续检查，但限制检查次数
+            setTimeout(checkPlaying, 1000);
           }
         };
         
-        // 监听视频事件
-        videoTag.addEventListener('playing', () => {
-          console.log(`✅ 视频 ${userId} 播放事件触发`);
-          setVideoPlayingStatus(prev => ({
-            ...prev,
-            [userId]: true
-          }));
-        });
-        
-        videoTag.addEventListener('loadeddata', () => {
-          console.log(`✅ 视频 ${userId} 数据加载完成`);
-          checkPlaying();
-        });
+        // 监听视频事件（仅对video标签）
+        if (videoTag && videoTag.tagName === 'VIDEO') {
+          videoTag.addEventListener('playing', () => {
+            console.log(`✅ 视频 ${userId} 播放事件触发`);
+            setVideoPlayingStatus(prev => ({
+              ...prev,
+              [userId]: true
+            }));
+          });
+          
+          videoTag.addEventListener('loadeddata', () => {
+            console.log(`✅ 视频 ${userId} 数据加载完成`);
+            checkPlaying();
+          });
+        }
         
         // 立即检查一次
         checkPlaying();
       } else {
-        // 如果还没有video标签，延迟检查
-        setTimeout(() => checkVideoPlayingStatus(userId, domId), 1000);
+        // 如果还没有video标签，延迟检查，但限制重试次数
+        setTimeout(() => checkVideoPlayingStatus(userId, domId), 2000);
       }
     } else {
-      // 如果DOM元素还没有创建，延迟检查
-      setTimeout(() => checkVideoPlayingStatus(userId, domId), 1000);
+      // 如果DOM元素还没有创建，延迟检查，但限制重试次数
+      setTimeout(() => checkVideoPlayingStatus(userId, domId), 2000);
     }
   };
 
@@ -555,57 +567,27 @@ const Home = () => {
       
       onUserLeave: (userId: string) => {
         console.log('👤 用户离开RTC房间:', userId);
-        if (userId === '1') {
-          setVideoStreams(prev => prev.filter(stream => stream.userId !== userId));
-          setVideoPlayingStatus(prev => {
-            const newStatus = { ...prev };
-            delete newStatus[userId];
-            return newStatus;
-          });
-        }
+        setVideoStreams(prev => prev.filter(stream => stream.userId !== userId));
+        setVideoPlayingStatus(prev => {
+          const newStatus = { ...prev };
+          delete newStatus[userId];
+          return newStatus;
+        });
       },
       
       onUserPublishStream: (userId: string, hasVideo: boolean, hasAudio: boolean) => {
         console.log('📹 用户发布流:', userId, { hasVideo, hasAudio });
-        if (userId === '1' && hasVideo) {
-          const domId = `remoteStream_${userId}`;
-          webSocketService.setRemoteVideoPlayer(userId, domId).catch(error => {
-            console.error('设置视频播放器失败:', error);
-          });
-          setVideoStreams(prev => {
-            if (prev.find(stream => stream.userId === userId)) {
-              return prev;
-            }
-            return [...prev, { userId, domId }];
-          });
-          
-          // 开始检查视频播放状态
-          setTimeout(() => {
-            checkVideoPlayingStatus(userId, domId);
-            // 额外确保视频样式正确
-            const videoElement = document.getElementById(domId);
-            if (videoElement) {
-              const videoTag = videoElement.querySelector('video');
-              if (videoTag) {
-                videoTag.style.width = '100%';
-                videoTag.style.height = '100%';
-                videoTag.style.objectFit = 'cover';
-              }
-            }
-          }, 1000);
-        }
+        // 这个事件由tryonService处理，不需要在这里重复处理
       },
       
       onUserUnpublishStream: (userId: string) => {
         console.log('📹 用户取消发布流:', userId);
-        if (userId === '1') {
-          setVideoStreams(prev => prev.filter(stream => stream.userId !== userId));
-          setVideoPlayingStatus(prev => {
-            const newStatus = { ...prev };
-            delete newStatus[userId];
-            return newStatus;
-          });
-        }
+        setVideoStreams(prev => prev.filter(stream => stream.userId !== userId));
+        setVideoPlayingStatus(prev => {
+          const newStatus = { ...prev };
+          delete newStatus[userId];
+          return newStatus;
+        });
       },
       
       onError: (error: any) => {
@@ -689,7 +671,17 @@ const Home = () => {
       const { clothesList } = event.detail;
       console.log('收到服饰列表更新事件');
       console.log('服饰分类数量:', clothesList?.length || 0);
-      setClothesList(clothesList || []);
+      
+      // 避免重复设置相同的数据
+      setClothesList(prevClothesList => {
+        // 如果新数据与当前数据相同，则不更新
+        if (JSON.stringify(prevClothesList) === JSON.stringify(clothesList)) {
+          console.log('服饰列表数据未变化，跳过更新');
+          return prevClothesList;
+        }
+        console.log('服饰列表数据已更新');
+        return clothesList || [];
+      });
     };
 
     window.addEventListener('clothesListUpdate', handleClothesListUpdate as EventListener);
@@ -704,46 +696,126 @@ const Home = () => {
     const handleVideoStreamUpdate = (event: CustomEvent) => {
       const { userId, domId, type } = event.detail;
       
-      if (userId === '1') {
-        if (type === 'add') {
-          setVideoStreams(prev => {
-            if (prev.find(stream => stream.userId === userId)) {
-              return prev;
-            }
-            return [...prev, { userId, domId }];
-          });
-          console.log('添加视频流:', userId, domId);
+      // 处理所有用户的视频流，不限制特定用户ID
+      if (type === 'add') {
+        setVideoStreams(prev => {
+          if (prev.find(stream => stream.userId === userId)) {
+            return prev;
+          }
+          return [...prev, { userId, domId }];
+        });
+        console.log('添加视频流:', userId, domId);
+        
+
+        
+        // 开始检查视频播放状态
+        setTimeout(() => {
+          console.log(`🔍 开始检查视频播放状态: ${userId} -> ${domId}`);
+          checkVideoPlayingStatus(userId, domId);
           
-          // 开始检查视频播放状态
-          setTimeout(() => {
-            checkVideoPlayingStatus(userId, domId);
-            // 额外确保视频样式正确
+          // 多次检查，因为RTC SDK渲染可能需要时间
+          const checkVideoElement = (attempt: number = 1) => {
+            console.log(`🔍 第${attempt}次检查视频元素: ${domId}`);
+            
             const videoElement = document.getElementById(domId);
             if (videoElement) {
-              const videoTag = videoElement.querySelector('video');
+              console.log(`✅ 找到视频DOM元素: ${domId}`);
+              console.log(`🔍 DOM元素内容:`, videoElement.innerHTML);
+              console.log(`🔍 DOM元素标签名:`, videoElement.tagName);
+              console.log(`🔍 DOM元素类名:`, videoElement.className);
+              
+              // 尝试多种方式查找video标签
+              let videoTag = videoElement.querySelector('video');
+              if (!videoTag) {
+                // 如果直接查找不到，尝试查找canvas（RTC可能使用canvas）
+                const canvas = videoElement.querySelector('canvas');
+                if (canvas) {
+                  console.log(`✅ 找到canvas标签: ${domId}`);
+                  videoTag = canvas as any; // 临时处理
+                }
+              }
+              
               if (videoTag) {
+                console.log(`✅ 找到video标签: ${domId}`);
                 videoTag.style.width = '100%';
                 videoTag.style.height = '100%';
                 videoTag.style.objectFit = 'cover';
+                
+                // 添加更多调试信息
+                console.log(`📹 视频元素信息:`, {
+                  paused: videoTag.paused,
+                  ended: videoTag.ended,
+                  readyState: videoTag.readyState,
+                  currentTime: videoTag.currentTime,
+                  duration: videoTag.duration,
+                  src: videoTag.src
+                });
+                
+                // 标记视频为播放状态
+                setVideoPlayingStatus(prev => ({
+                  ...prev,
+                  [userId]: true
+                }));
+                
+                return true; // 找到视频元素，停止检查
+              } else {
+                console.log(`❌ 未找到video标签: ${domId}`);
+                // 打印所有子元素
+                const children = videoElement.children;
+                console.log(`🔍 子元素数量:`, children.length);
+                for (let i = 0; i < children.length; i++) {
+                  const child = children[i];
+                  console.log(`🔍 子元素 ${i}:`, {
+                    tagName: child.tagName,
+                    className: child.className,
+                    id: child.id
+                  });
+                }
               }
+            } else {
+              console.log(`❌ 未找到视频DOM元素: ${domId}`);
             }
-          }, 1000);
-        } else if (type === 'remove') {
-          setVideoStreams(prev => prev.filter(stream => stream.userId !== userId));
-          setVideoPlayingStatus(prev => {
-            const newStatus = { ...prev };
-            delete newStatus[userId];
-            return newStatus;
-          });
-          console.log('移除视频流:', userId);
-        }
+            
+            // 如果还没找到且尝试次数少于10次，继续检查（增加重试次数）
+            if (attempt < 10) {
+              setTimeout(() => checkVideoElement(attempt + 1), 3000); // 增加间隔到3秒
+            } else {
+              console.log(`⚠️ 视频元素检查超时: ${domId}`);
+            }
+          };
+          
+          // 开始检查
+          checkVideoElement();
+        }, 2000); // 减少初始等待时间到2秒
+      } else if (type === 'remove') {
+        setVideoStreams(prev => prev.filter(stream => stream.userId !== userId));
+        setVideoPlayingStatus(prev => {
+          const newStatus = { ...prev };
+          delete newStatus[userId];
+          return newStatus;
+        });
+        console.log('移除视频流:', userId);
+      }
+    };
+
+    // 监听播放器事件
+    const handlePlayerEvent = (event: CustomEvent) => {
+      const { eventType, userId } = event.detail;
+      console.log('🎬 收到播放器事件:', eventType, userId);
+      
+      if (eventType === 'onFirstFrame') {
+        console.log('🎬 视频第一帧渲染完成，立即检查视频元素:', userId);
+        const domId = `remoteStream_${userId}`;
+        checkVideoPlayingStatus(userId, domId);
       }
     };
 
     window.addEventListener('rtcVideoStreamUpdate', handleVideoStreamUpdate as EventListener);
+    window.addEventListener('rtcPlayerEvent', handlePlayerEvent as EventListener);
 
     return () => {
       window.removeEventListener('rtcVideoStreamUpdate', handleVideoStreamUpdate as EventListener);
+      window.removeEventListener('rtcPlayerEvent', handlePlayerEvent as EventListener);
     };
   }, []);
 
@@ -1514,7 +1586,7 @@ const Home = () => {
         {/* 左侧图标区域 */}
         {showVideoIcons && (
           <div style={{
-            position: 'absolute',
+            position: 'fixed',
             left: '10px', // 更靠近左边缘
             top: '50%',
             transform: 'translateY(-20px)', // 向下移动，与选择界面保持一致
@@ -1524,7 +1596,7 @@ const Home = () => {
             alignItems: 'flex-start',
             gap: '40px', // 与选择界面保持一致的间距
             height: '200px', // 固定高度，确保对齐
-            zIndex: 100, // 提高z-index确保显示在视频上方
+            zIndex: 200, // 提高z-index确保显示在视频上方
             transition: 'opacity 0.3s ease',
             opacity: showVideoIcons ? 1 : 0
           }}>
@@ -1727,14 +1799,20 @@ const Home = () => {
           </div>
         )}
 
-        {/* 视频播放区域 */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 5
-        }}>
-          {videoStreams.length === 0 ? (
+        {/* 视频播放区域 - 全屏显示 */}
+        {videoStreams.length === 0 ? (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100vh',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: '#000',
+            zIndex: 10
+          }}>
             <div style={{
               textAlign: 'center',
               color: '#fff',
@@ -1742,73 +1820,97 @@ const Home = () => {
             }}>
               <div style={{ fontSize: '48px', marginBottom: '20px' }}>📹</div>
               <div style={{ fontSize: '20px', marginBottom: '12px' }}>
-                等待用户1的视频流...
+                等待视频流...
               </div>
               <div style={{ fontSize: '14px', opacity: 0.7 }}>
                 试穿流程正在进行中，请稍候
               </div>
+              <div style={{ fontSize: '12px', opacity: 0.5, marginTop: '10px' }}>
+                当前视频流数量: {videoStreams.length}
+              </div>
+              <button 
+                onClick={() => {
+                  console.log('🔍 调试：检查所有视频流DOM元素');
+                  videoStreams.forEach(stream => {
+                    const element = document.getElementById(stream.domId);
+                    if (element) {
+                      console.log(`🔍 ${stream.domId}:`, {
+                        tagName: element.tagName,
+                        className: element.className,
+                        innerHTML: element.innerHTML,
+                        children: element.children.length
+                      });
+                    }
+                  });
+                }}
+                style={{
+                  marginTop: '10px',
+                  padding: '5px 10px',
+                  fontSize: '12px',
+                  backgroundColor: '#1890ff',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer'
+                }}
+              >
+                调试DOM结构
+              </button>
             </div>
-          ) : (
-            <div style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: '0px', // 移除间距让视频铺满
-              justifyContent: 'center',
-              width: '100vw', // 铺满屏幕宽度
-              height: '100vh' // 铺满屏幕高度
+          </div>
+        ) : (
+          // 视频流全屏显示
+          videoStreams.map(stream => (
+            <div key={stream.userId} style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              width: '100vw',
+              height: '100vh',
+              backgroundColor: '#000',
+              zIndex: 10,
+              overflow: 'hidden'
             }}>
-              {videoStreams.map(stream => (
-                <div key={stream.userId} style={{
-                  backgroundColor: '#000',
-                  borderRadius: '0px', // 移除圆角，铺满屏幕
-                  overflow: 'hidden',
-                  position: 'relative',
-                  width: '100vw', // 铺满屏幕宽度
-                  height: '100vh', // 铺满屏幕高度
-                  boxShadow: 'none' // 移除阴影
-                }}>
-                  <div 
-                    id={stream.domId}
-                    style={{
-                      width: '100vw',
-                      height: '100vh',
-                      backgroundColor: '#333',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: '#fff',
-                      fontSize: '16px',
-                      position: 'relative'
-                    }}
-                  >
-                    {/* 只在视频未播放时显示加载文本 */}
-                    {!videoPlayingStatus[stream.userId] && (
-                      <div style={{
-                        position: 'absolute',
-                        top: '50%',
-                        left: '50%',
-                        transform: 'translate(-50%, -50%)',
-                        textAlign: 'center',
-                        zIndex: 2,
-                        backgroundColor: 'rgba(0,0,0,0.7)',
-                        padding: '20px',
-                        borderRadius: '8px'
-                      }}>
-                        <div style={{ fontSize: '24px', marginBottom: '8px' }}>🎬</div>
-                        <div>加载视频中...</div>
-                      </div>
-                    )}
+              <div 
+                id={stream.domId}
+                style={{
+                  width: '100vw',
+                  height: '100vh',
+                  backgroundColor: '#333',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#fff',
+                  fontSize: '16px',
+                  position: 'relative'
+                }}
+              >
+                {/* 只在视频未播放时显示加载文本 */}
+                {!videoPlayingStatus[stream.userId] && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    textAlign: 'center',
+                    zIndex: 2,
+                    backgroundColor: 'rgba(0,0,0,0.7)',
+                    padding: '20px',
+                    borderRadius: '8px'
+                  }}>
+                    <div style={{ fontSize: '24px', marginBottom: '8px' }}>🎬</div>
+                    <div>加载视频中...</div>
                   </div>
-                </div>
-              ))}
+                )}
+              </div>
             </div>
-          )}
-        </div>
+          ))
+        )}
 
         {/* 右侧服装图标区域 */}
         {showVideoIcons && (
           <div style={{
-            position: 'absolute',
+            position: 'fixed',
             right: '10px', // 更靠近右边缘
             top: '50%',
             transform: 'translateY(-50%)',
@@ -1819,7 +1921,7 @@ const Home = () => {
             gap: '20px', // 减少间距，给服装列表更多空间
             height: '400px', // 增加高度，与首页保持一致
             overflow: 'hidden',
-            zIndex: 100, // 提高z-index确保显示在视频上方
+            zIndex: 200, // 提高z-index确保显示在视频上方
             transition: 'opacity 0.3s ease',
             opacity: showVideoIcons ? 1 : 0
           }}>

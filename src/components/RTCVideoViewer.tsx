@@ -20,6 +20,7 @@ const RTCVideoViewer: React.FC<RTCVideoViewerProps> = ({
   const [remoteStreams, setRemoteStreams] = useState<RemoteStream[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [heartbeatDelay, setHeartbeatDelay] = useState<number>(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // 初始化RTC服务
@@ -51,19 +52,22 @@ const RTCVideoViewer: React.FC<RTCVideoViewerProps> = ({
             console.error('RTC错误:', error);
             setError(`RTC错误: ${error.message || error}`);
             onError?.(error);
+          },
+          onHeartbeat: (delay: number) => {
+            setHeartbeatDelay(delay);
           }
         });
 
         // 初始化RTC引擎
         await rtcVideoService.initialize(config);
         
-        // 跳过加入房间步骤（用户已在API中加入房间）
-        // await rtcVideoService.joinRoom();
+        // 加入房间
+        await rtcVideoService.joinRoom(config.token);
         
         setIsConnected(true);
         updateRemoteStreams();
         
-        console.log('✅ RTC视频服务初始化完成（跳过加入房间）');
+        console.log('✅ RTC视频服务初始化完成');
       } catch (err: any) {
         const errorMessage = err.message || '初始化失败';
         console.error('❌ RTC初始化失败:', errorMessage);
@@ -80,7 +84,7 @@ const RTCVideoViewer: React.FC<RTCVideoViewerProps> = ({
     return () => {
       rtcVideoService.leaveRoom().catch(console.error);
     };
-  }, [config.appId, config.roomId, config.userId]);
+  }, [config.appId, config.roomId, config.userId, config.token]);
 
   // 更新远程流列表
   const updateRemoteStreams = () => {
@@ -218,6 +222,11 @@ const RTCVideoViewer: React.FC<RTCVideoViewerProps> = ({
         color: isConnected ? '#52c41a' : '#fa8c16'
       }}>
         {isConnected ? '✅ 已连接到RTC房间' : '⏳ 正在连接...'}
+        {isConnected && heartbeatDelay > 0 && (
+          <span style={{ marginLeft: '10px', fontSize: '12px' }}>
+            延迟: {heartbeatDelay}ms
+          </span>
+        )}
       </div>
       
       <div style={{ marginBottom: '10px' }}>

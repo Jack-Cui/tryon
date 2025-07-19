@@ -365,6 +365,7 @@ export class TryonService {
       enterStageInfo: this.enterStageInfo,
       rtcConfig: {
         appId: RTC_CONFIG.APP_ID,
+        appKey: RTC_CONFIG.APP_KEY,
         roomId: this.roomId,
         userId: this.config.userId,
         token: this.generateRTCToken() // 动态生成token
@@ -430,6 +431,14 @@ export class TryonService {
       // 初始化RTC服务
       await this.rtcVideoService.initialize(this.config.rtcConfig);
       
+      // 生成RTC Token
+      const rtcToken = this.generateRTCToken();
+      console.log('🔑 生成RTC Token成功');
+      
+      // 加入RTC房间
+      console.log('🚪 开始加入RTC房间...');
+      await this.rtcVideoService.joinRoom(rtcToken);
+      
       console.log('✅ RTC视频服务接入成功！');
       
     } catch (error) {
@@ -446,18 +455,26 @@ export class TryonService {
     }
 
     try {
-      const domId = `remote-video-${userId}`;
+      const domId = `remoteStream_${userId}`;
       
-      // 设置远程视频播放器
-      await this.rtcVideoService.setRemoteVideoPlayer(userId, domId);
-      
-      console.log('🎬 远程视频播放器设置成功:', userId, domId);
-      
-      // 这里可以触发UI更新，显示视频播放器
+      // 触发UI更新，让首页先创建DOM元素
       this.triggerVideoPlayerUpdate(userId, domId);
       
+      // 等待一段时间让DOM元素创建完成，然后再设置播放器
+      setTimeout(async () => {
+        try {
+          // 设置远程视频播放器
+          if (this.rtcVideoService) {
+            await this.rtcVideoService.setRemoteVideoPlayer(userId, domId);
+            console.log('🎬 远程视频播放器设置成功:', userId, domId);
+          }
+        } catch (error) {
+          console.error('❌ 设置远程视频播放器失败:', error);
+        }
+      }, 1000); // 等待1秒让DOM元素创建
+      
     } catch (error) {
-      console.error('❌ 设置远程视频播放器失败:', error);
+      console.error('❌ 处理远程视频流失败:', error);
     }
   }
 
@@ -486,7 +503,7 @@ export class TryonService {
     });
     
     window.dispatchEvent(event);
-    console.log('📡 发送服饰列表更新事件:', this.clothesList);
+    console.log('📡 发送服饰列表更新事件，服饰分类数量:', this.clothesList.length);
   }
 
   // 获取房间名称

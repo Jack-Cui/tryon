@@ -7,7 +7,8 @@ const RTCVideoExample: React.FC = () => {
     appId: '',
     appKey: '',
     roomId: '',
-    userId: ''
+    userId: '',
+    token: ''
   });
   
   const [isConnected, setIsConnected] = useState(false);
@@ -78,17 +79,6 @@ const RTCVideoExample: React.FC = () => {
             </div>
             
             <div>
-              <label>App Key:</label>
-              <input
-                type="text"
-                value={rtcConfig.appKey}
-                onChange={(e) => handleConfigChange('appKey', e.target.value)}
-                placeholder="请输入火山引擎App Key"
-                style={{ width: '100%', padding: '8px', marginTop: '4px' }}
-              />
-            </div>
-            
-            <div>
               <label>房间ID:</label>
               <input
                 type="text"
@@ -106,6 +96,17 @@ const RTCVideoExample: React.FC = () => {
                 value={rtcConfig.userId}
                 onChange={(e) => handleConfigChange('userId', e.target.value)}
                 placeholder="请输入用户ID"
+                style={{ width: '100%', padding: '8px', marginTop: '4px' }}
+              />
+            </div>
+            
+            <div>
+              <label>Token (可选):</label>
+              <input
+                type="text"
+                value={rtcConfig.token}
+                onChange={(e) => handleConfigChange('token', e.target.value)}
+                placeholder="请输入RTC Token (可选)"
                 style={{ width: '100%', padding: '8px', marginTop: '4px' }}
               />
             </div>
@@ -160,17 +161,20 @@ const RTCVideoExample: React.FC = () => {
         </div>
       )}
       
-      <div style={{ marginTop: '20px', padding: '10px', backgroundColor: '#f5f5f5', borderRadius: '4px' }}>
-        <h4>使用说明:</h4>
-        <ul style={{ margin: '0', paddingLeft: '20px' }}>
-          <li>填写火山引擎的App ID、App Key、房间ID和用户ID</li>
-          <li>点击"连接RTC房间"按钮开始连接</li>
-          <li>连接成功后会自动订阅房间内的视频流</li>
-          <li>当其他用户发布视频流时，会自动显示在界面上</li>
-          <li>本组件只用于观看视频，不会发布本地音视频流</li>
-          <li>注意：用户已在API中加入房间，RTC服务会自动跳过加入房间步骤</li>
-        </ul>
-      </div>
+      {remoteStreams.length > 0 && (
+        <div style={{ marginTop: '20px' }}>
+          <h4>远程流信息</h4>
+          <div style={{ fontSize: '12px', color: '#666' }}>
+            {remoteStreams.map((stream, index) => (
+              <div key={stream.userId} style={{ marginBottom: '5px' }}>
+                {index + 1}. 用户: {stream.userId} 
+                {stream.hasVideo && ' 📹'} 
+                {stream.hasAudio && ' 🎤'}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
