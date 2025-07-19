@@ -68,7 +68,7 @@ const Home = () => {
   const [selectedRealSceneIndex, setSelectedRealSceneIndex] = useState(0); // 当前选中的实景索引
 
   // 新增状态：视频播放界面的图标控制
-  const [showVideoIcons, setShowVideoIcons] = useState(true); // 视频播放时是否显示左右侧图标
+  const [showVideoIcons, setShowVideoIcons] = useState(true); // 视频播放时是否显示左右侧图标 - 常驻显示
   const [iconHideTimer, setIconHideTimer] = useState<NodeJS.Timeout | null>(null); // 图标自动隐藏定时器
 
   // 新增状态：微信分享相关
@@ -269,17 +269,17 @@ const Home = () => {
     // 检查RTC连接状态
     if (!rtcVideoService.getConnectionStatus()) {
       console.log('⚠️ RTC未连接，跳过点击消息发送');
-      // 仍然切换图标显示状态
-      if (!showVideoIcons) {
-        setShowVideoIcons(true);
-        startIconHideTimer();
-      } else {
-        setShowVideoIcons(false);
-        if (iconHideTimer) {
-          clearTimeout(iconHideTimer);
-          setIconHideTimer(null);
-        }
-      }
+      // 移除图标显示状态切换，让icon常驻显示
+      // if (!showVideoIcons) {
+      //   setShowVideoIcons(true);
+      //   startIconHideTimer();
+      // } else {
+      //   setShowVideoIcons(false);
+      //   if (iconHideTimer) {
+      //     clearTimeout(iconHideTimer);
+      //     setIconHideTimer(null);
+      //   }
+      // }
       if (isWechatBrowser()) {
         setIsProcessingClick(false);
       }
@@ -301,17 +301,17 @@ const Home = () => {
       
       console.log('✅ 点击触摸消息发送成功');
       
-      // 切换图标显示状态
-      if (!showVideoIcons) {
-        setShowVideoIcons(true);
-        startIconHideTimer();
-      } else {
-        setShowVideoIcons(false);
-        if (iconHideTimer) {
-          clearTimeout(iconHideTimer);
-          setIconHideTimer(null);
-        }
-      }
+      // 移除图标显示状态切换，让icon常驻显示
+      // if (!showVideoIcons) {
+      //   setShowVideoIcons(true);
+      //   startIconHideTimer();
+      // } else {
+      //   setShowVideoIcons(false);
+      //   if (iconHideTimer) {
+      //     clearTimeout(iconHideTimer);
+      //     setIconHideTimer(null);
+      //   }
+      // }
       
       // 延迟切换暂停状态，确保微信浏览器中的视频状态同步
       const delay = isWechatBrowser() ? 300 : 300; // 微信浏览器使用450ms延迟
@@ -325,17 +325,17 @@ const Home = () => {
       
     } catch (error) {
       console.error('❌ 发送点击触摸消息失败:', error);
-      // 即使发送失败，也要切换图标显示状态
-      if (!showVideoIcons) {
-        setShowVideoIcons(true);
-        startIconHideTimer();
-      } else {
-        setShowVideoIcons(false);
-        if (iconHideTimer) {
-          clearTimeout(iconHideTimer);
-          setIconHideTimer(null);
-        }
-      }
+      // 移除图标显示状态切换，让icon常驻显示
+      // if (!showVideoIcons) {
+      //   setShowVideoIcons(true);
+      //   startIconHideTimer();
+      // } else {
+      //   setShowVideoIcons(false);
+      //   if (iconHideTimer) {
+      //     clearTimeout(iconHideTimer);
+      //     setIconHideTimer(null);
+      //   }
+      // }
       if (isWechatBrowser()) {
         setIsProcessingClick(false);
       }
@@ -356,8 +356,8 @@ const Home = () => {
       console.log('选中动作:', actionIcons[index].name);
     }
     
-    // 重新开始隐藏定时器
-    startIconHideTimer();
+    // 移除隐藏定时器，让icon常驻显示
+    // startIconHideTimer();
   };
 
   // 处理视频播放界面的实景点击
@@ -400,8 +400,8 @@ const Home = () => {
       }
     }
     
-    // 重新开始隐藏定时器
-    startIconHideTimer();
+    // 移除隐藏定时器，让icon常驻显示
+    // startIconHideTimer();
   };
 
   // 处理视频播放界面的服装分类点击
@@ -409,8 +409,8 @@ const Home = () => {
     setSelectedCategory(category);
     setIsBrowsingClothes(true);
     
-    // 重新开始隐藏定时器
-    startIconHideTimer();
+    // 移除隐藏定时器，让icon常驻显示
+    // startIconHideTimer();
     
     // 调试：打印分类下的服装数量
     const categoryClothes = getClothesForCategory(category);
@@ -424,8 +424,8 @@ const Home = () => {
     setSelectedCategory(null);
     setSelectedClothesIndex(0); // 重置到第一个服装
     
-    // 重新开始隐藏定时器
-    startIconHideTimer();
+    // 移除隐藏定时器，让icon常驻显示
+    // startIconHideTimer();
   };
 
   // 处理视频播放界面的服装点击
@@ -435,8 +435,8 @@ const Home = () => {
     console.log('选中服装:', clothesItem, '分类内索引:', index);
     console.log('选中服装图片URL:', clothesItem.clothesImageUrl);
     
-    // 重新开始隐藏定时器
-    startIconHideTimer();
+    // 移除隐藏定时器，让icon常驻显示
+    // startIconHideTimer();
   };
 
   // 处理触摸开始事件
@@ -724,11 +724,11 @@ const Home = () => {
     }
 
     // 如果路由state没有参数，尝试从缓存获取
-    console.log('🔍 路由state中没有登录参数，尝试从缓存获取');
+    // console.log('🔍 路由state中没有登录参数，尝试从缓存获取');
     const cachedLoginData = getLoginCache();
     
     if (cachedLoginData) {
-      console.log('✅ 从缓存获取登录参数成功');
+      // console.log('✅ 从缓存获取登录参数成功');
       setLoginParams({
         token: cachedLoginData.token,
         userId: cachedLoginData.userId,
@@ -739,13 +739,13 @@ const Home = () => {
       // 如果缓存中有房间名称，也设置到状态中
       if (cachedLoginData.roomName) {
         setRoomName(cachedLoginData.roomName);
-        console.log('✅ 从缓存获取到房间名称:', cachedLoginData.roomName);
+        // console.log('✅ 从缓存获取到房间名称:', cachedLoginData.roomName);
       }
       
       // 如果缓存中有服饰列表，也设置到状态中
       if (cachedLoginData.clothesList && cachedLoginData.clothesList.length > 0) {
         setClothesList(cachedLoginData.clothesList);
-        console.log('✅ 从缓存获取到服饰列表:', cachedLoginData.clothesList);
+        // console.log('✅ 从缓存获取到服饰列表:', cachedLoginData.clothesList);
       }
     } else {
       console.log('❌ 缓存中没有有效的登录参数，跳转到登录页面');
@@ -767,12 +767,12 @@ const Home = () => {
       const roomNameFromService = tryonService.getRoomName();
       if (roomNameFromService) {
         setRoomName(roomNameFromService);
-        console.log('✅ 从 tryonService 获取到房间名称:', roomNameFromService);
+        // console.log('✅ 从 tryonService 获取到房间名称:', roomNameFromService);
       } else {
         console.log('⚠️ tryonService 中没有房间名称，使用默认名称');
       }
     } else {
-      console.log('✅ 已从缓存获取到房间名称，跳过 tryonService 获取');
+      // console.log('✅ 已从缓存获取到房间名称，跳过 tryonService 获取');
     }
 
     // 获取服饰列表（只有当前状态为空时才尝试从服务获取）
@@ -780,17 +780,17 @@ const Home = () => {
       const clothesListFromService = tryonService.getClothesList();
       if (clothesListFromService && clothesListFromService.length > 0) {
         setClothesList(clothesListFromService);
-        console.log('✅ 从 tryonService 获取到服饰列表');
-        console.log('服饰分类数量:', clothesListFromService.length);
+        // console.log('✅ 从 tryonService 获取到服饰列表');
+        // console.log('服饰分类数量:', clothesListFromService.length);
       } else {
         console.log('⚠️ tryonService 中没有服饰列表，等待服务器数据');
         // 不清空列表，保持从缓存读取的数据
       }
     } else {
-      console.log('✅ 服饰列表已存在，跳过从 tryonService 获取');
-      console.log('服饰分类数量:', clothesList.length);
+      // console.log('✅ 服饰列表已存在，跳过从 tryonService 获取');
+      // console.log('服饰分类数量:', clothesList.length);
     }
-  }, [loginParams, roomName, clothesList.length]); // 添加依赖项，但使用ref防止重复执行
+  }, [loginParams]); // 只依赖loginParams，避免重复执行
 
   // 检查视频是否真正开始播放的函数
   const checkVideoPlayingStatus = (userId: string, domId: string) => {
@@ -1968,23 +1968,21 @@ const Home = () => {
           </div>
         )}
         
-        {/* 左侧图标区域 */}
-        {showVideoIcons && (
-          <div style={{
-            position: 'fixed',
-            left: '10px', // 更靠近左边缘
-            top: '50%',
-            transform: 'translateY(-20px)', // 向下移动，与选择界面保持一致
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center', // 居中对齐
-            alignItems: 'flex-start',
-            gap: '40px', // 与选择界面保持一致的间距
-            height: '200px', // 固定高度，确保对齐
-            zIndex: 200, // 提高z-index确保显示在视频上方
-            transition: 'opacity 0.3s ease',
-            opacity: showVideoIcons ? 1 : 0
-          }}>
+        {/* 左侧图标区域 - 常驻显示 */}
+        <div style={{
+          position: 'fixed',
+          left: '10px', // 更靠近左边缘
+          top: '50%',
+          transform: 'translateY(-20px)', // 向下移动，与选择界面保持一致
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center', // 居中对齐
+          alignItems: 'flex-start',
+          gap: '40px', // 与选择界面保持一致的间距
+          height: '200px', // 固定高度，确保对齐
+          zIndex: 200, // 提高z-index确保显示在视频上方
+          pointerEvents: 'auto' // 确保点击事件正常工作
+        }}>
             {/* 动作区域 */}
             <div style={{
               display: 'flex',
@@ -2001,6 +1999,7 @@ const Home = () => {
                 transition: 'transform 0.2s ease'
               }}
                 onClick={(e) => {
+                  e.preventDefault();
                   e.stopPropagation();
                   handleVideoActionClick();
                 }}
@@ -2056,6 +2055,7 @@ const Home = () => {
                         border: selectedActionIndex === index ? '2px solid #1890ff' : '2px solid transparent'
                       }}
                         onClick={(e) => {
+                          e.preventDefault();
                           e.stopPropagation();
                           handleVideoActionClick(index);
                         }}
@@ -2098,6 +2098,7 @@ const Home = () => {
                 transition: 'transform 0.2s ease'
               }}
                 onClick={(e) => {
+                  e.preventDefault();
                   e.stopPropagation();
                   handleVideoRealSceneClick();
                 }}
@@ -2163,6 +2164,7 @@ const Home = () => {
                       transition: 'all 0.2s ease'
                     }}
                       onClick={(e) => {
+                        e.preventDefault();
                         e.stopPropagation();
                         handleVideoRealSceneClick(index);
                       }}
@@ -2211,7 +2213,7 @@ const Home = () => {
               )}
             </div>
           </div>
-        )}
+        
 
         {/* 视频播放区域 - 全屏显示 */}
         {videoStreams.length === 0 ? (
@@ -2321,24 +2323,22 @@ const Home = () => {
           ))
         )}
 
-        {/* 右侧服装图标区域 */}
-        {showVideoIcons && (
-          <div style={{
-            position: 'fixed',
-            right: '10px', // 更靠近右边缘
-            top: '50%',
-            transform: 'translateY(-50%)',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center', // 与左侧对齐方式一致
-            alignItems: 'center',
-            gap: '20px', // 减少间距，给服装列表更多空间
-            height: '400px', // 增加高度，与首页保持一致
-            overflow: 'hidden',
-            zIndex: 200, // 提高z-index确保显示在视频上方
-            transition: 'opacity 0.3s ease',
-            opacity: showVideoIcons ? 1 : 0
-          }}>
+        {/* 右侧服装图标区域 - 常驻显示 */}
+        <div style={{
+          position: 'fixed',
+          right: '10px', // 更靠近右边缘
+          top: '50%',
+          transform: 'translateY(-50%)',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center', // 与左侧对齐方式一致
+          alignItems: 'center',
+          gap: '20px', // 减少间距，给服装列表更多空间
+          height: '400px', // 增加高度，与首页保持一致
+          overflow: 'hidden',
+          zIndex: 200, // 提高z-index确保显示在视频上方
+          pointerEvents: 'auto' // 确保点击事件正常工作
+        }}>
             {/* 顶部：当前选中服装的缩略图 */}
             {getCurrentDisplayClothes() && (
               <div style={{
@@ -2396,6 +2396,7 @@ const Home = () => {
                       transition: 'transform 0.2s ease'
                     }}
                       onClick={(e) => {
+                        e.preventDefault();
                         e.stopPropagation();
                         handleVideoCategoryClick(category);
                       }}
@@ -2469,6 +2470,7 @@ const Home = () => {
                           flexShrink: 0
                         }}
                         onClick={(e) => {
+                          e.preventDefault();
                           e.stopPropagation();
                           handleVideoClothesClick(clothes, index);
                         }}
@@ -2499,6 +2501,7 @@ const Home = () => {
                   {/* 返回按钮 */}
                   <button
                     onClick={(e) => {
+                      e.preventDefault();
                       e.stopPropagation();
                       handleVideoBackToCategories();
                     }}
@@ -2539,6 +2542,7 @@ const Home = () => {
                 transition: 'transform 0.2s ease'
               }}
                 onClick={(e) => {
+                  e.preventDefault();
                   e.stopPropagation();
                   handleWechatShare();
                 }}
@@ -2573,7 +2577,6 @@ const Home = () => {
               </div>
             </div>
           </div>
-        )}
       </div>
 
       {/* 底部控制区域 - 离开舞台按钮 */}
@@ -2620,7 +2623,7 @@ const Home = () => {
             setShowSelectionScreen(true);
             hasStartedTryon.current = false;
             setIsVideoPaused(false);
-            setShowVideoIcons(false);
+            // setShowVideoIcons(false); // 移除，让icon常驻显示
             
             // 清理定时器
             if (iconHideTimer) {

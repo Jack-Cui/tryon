@@ -65,7 +65,7 @@ export const getLoginCache = (): LoginCacheData | null => {
     const remainingHours = Math.floor(remainingTime / (60 * 60 * 1000));
     const remainingMinutes = Math.floor((remainingTime % (60 * 60 * 1000)) / (60 * 1000));
     
-    console.log(`✅ 读取登录缓存成功，剩余有效时间: ${remainingHours}小时${remainingMinutes}分钟`);
+    // console.log(`✅ 读取登录缓存成功，剩余有效时间: ${remainingHours}小时${remainingMinutes}分钟`);
     return loginData;
   } catch (error) {
     console.error('❌ 读取登录缓存失败:', error);
