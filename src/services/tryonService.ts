@@ -1,7 +1,7 @@
 import { authAPI, roomAPI } from './api';
 import { scheduleService } from './scheduleService';
 import { webSocketService, WebSocketConfig } from './websocketService';
-import { RTCVideoService, RTCVideoConfig } from './rtcVideoService';
+import { RTCVideoService, RTCVideoConfig, rtcVideoService } from './rtcVideoService';
 import { RTC_CONFIG } from '../config/config';
 import { AccessToken, Privilege } from '../token/AccessToken';
 import { updateRoomNameInCache, updateClothesListInCache } from '../utils/loginCache';
@@ -403,11 +403,11 @@ export class TryonService {
       console.log('  - roomId:', this.config.rtcConfig.roomId);
       console.log('  - userId:', this.config.rtcConfig.userId);
       
-      // 创建RTC视频服务实例
-      this.rtcVideoService = new RTCVideoService();
+      // 使用全局RTC视频服务实例
+      this.rtcVideoService = rtcVideoService;
       
       // 设置事件处理器
-      this.rtcVideoService.setEventHandlers({
+      this.rtcVideoService!.setEventHandlers({
         onUserJoin: (userId: string) => {
           console.log('👤 RTC用户加入:', userId);
         },
@@ -429,7 +429,7 @@ export class TryonService {
       console.log('🔧 开始初始化RTC服务...');
       
       // 初始化RTC服务
-      await this.rtcVideoService.initialize(this.config.rtcConfig);
+      await this.rtcVideoService!.initialize(this.config.rtcConfig);
       
       // 生成RTC Token
       const rtcToken = this.generateRTCToken();
@@ -437,7 +437,7 @@ export class TryonService {
       
       // 加入RTC房间
       console.log('🚪 开始加入RTC房间...');
-      await this.rtcVideoService.joinRoom(rtcToken);
+      await this.rtcVideoService!.joinRoom(rtcToken);
       
       console.log('✅ RTC视频服务接入成功！');
       

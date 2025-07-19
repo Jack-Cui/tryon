@@ -120,9 +120,16 @@ const Home = () => {
       const selectedScene = realSceneIcons[index];
       console.log('选中实景:', selectedScene.name, '地图名称:', selectedScene.mapName);
       
-      // 检查WebSocket连接状态
-      if (!webSocketService.getConnectionStatus()) {
-        console.error('❌ WebSocket未连接，无法切换地图');
+      // 检查RTC连接状态
+      if (!rtcVideoService.getConnectionStatus()) {
+        console.error('❌ RTC未连接，无法切换地图');
+        console.log('🔍 RTC连接状态检查失败，可能需要等待RTC初始化完成');
+        console.log('💡 提示：请确保已完成登台流程，RTC服务已启动');
+        console.log('🔧 调试信息：');
+        console.log('  - showSelectionScreen:', showSelectionScreen);
+        console.log('  - hasStartedTryon.current:', hasStartedTryon.current);
+        console.log('  - RTC SDK版本:', rtcVideoService.getSDKVersion());
+        console.log('  - RTC连接状态:', rtcVideoService.getConnectionStatus());
         return;
       }
       
@@ -132,13 +139,13 @@ const Home = () => {
         return;
       }
       
-      // 发送切换地图的websocket请求
+      // 发送切换地图的RTC消息
       try {
-        console.log('🚀 开始发送切换地图请求...');
-        await webSocketService.sendChangeMapRequest(selectedScene.mapName);
-        console.log('✅ 切换地图请求已发送:', selectedScene.mapName);
+        console.log('🚀 开始发送切换地图RTC消息...');
+        rtcVideoService.sendChangeMap(selectedScene.mapName);
+        console.log('✅ 切换地图RTC消息已发送:', selectedScene.mapName);
       } catch (error) {
-        console.error('❌ 发送切换地图请求失败:', error);
+        console.error('❌ 发送切换地图RTC消息失败:', error);
         // 显示错误提示
         alert(`切换地图失败: ${error instanceof Error ? error.message : String(error)}`);
       }
@@ -278,19 +285,26 @@ const Home = () => {
       const selectedScene = realSceneIcons[index];
       console.log('选中实景:', selectedScene.name, '地图名称:', selectedScene.mapName);
       
-      // 检查WebSocket连接状态
-      if (!webSocketService.getConnectionStatus()) {
-        console.error('❌ WebSocket未连接，无法切换地图');
+      // 检查RTC连接状态
+      if (!rtcVideoService.getConnectionStatus()) {
+        console.error('❌ RTC未连接，无法切换地图');
+        console.log('🔍 RTC连接状态检查失败，可能需要等待RTC初始化完成');
+        console.log('💡 提示：请确保已完成登台流程，RTC服务已启动');
+        console.log('🔧 调试信息：');
+        console.log('  - showSelectionScreen:', showSelectionScreen);
+        console.log('  - hasStartedTryon.current:', hasStartedTryon.current);
+        console.log('  - RTC SDK版本:', rtcVideoService.getSDKVersion());
+        console.log('  - RTC连接状态:', rtcVideoService.getConnectionStatus());
         return;
       }
       
-      // 发送切换地图的websocket请求
+      // 发送切换地图的RTC消息
       try {
-        console.log('🚀 开始发送切换地图请求...');
-        await webSocketService.sendChangeMapRequest(selectedScene.mapName);
-        console.log('✅ 切换地图请求已发送:', selectedScene.mapName);
+        console.log('🚀 开始发送切换地图RTC消息...');
+        rtcVideoService.sendChangeMap(selectedScene.mapName);
+        console.log('✅ 切换地图RTC消息已发送:', selectedScene.mapName);
       } catch (error) {
-        console.error('❌ 发送切换地图请求失败:', error);
+        console.error('❌ 发送切换地图RTC消息失败:', error);
         // 显示错误提示
         alert(`切换地图失败: ${error instanceof Error ? error.message : String(error)}`);
       }
@@ -838,10 +852,30 @@ const Home = () => {
       }
     };
 
+    // 监听WebSocket的地图切换结果
     window.addEventListener('mapChangeResult', handleMapChangeResult as EventListener);
+    
+    // 监听RTC的地图切换结果
+    const handleRTCMapChangeResult = (event: CustomEvent) => {
+      const { message, timestamp } = event.detail;
+      
+      console.log('🗺️ RTC地图切换结果事件:', {
+        message,
+        timestamp
+      });
+      
+      // 解析消息内容
+      if (message.includes('change_map')) {
+        console.log('✅ RTC地图切换消息已收到:', message);
+        // 这里可以添加更多处理逻辑
+      }
+    };
+
+    window.addEventListener('rtcMapChangeResult', handleRTCMapChangeResult as EventListener);
 
     return () => {
       window.removeEventListener('mapChangeResult', handleMapChangeResult as EventListener);
+      window.removeEventListener('rtcMapChangeResult', handleRTCMapChangeResult as EventListener);
     };
   }, []);
 

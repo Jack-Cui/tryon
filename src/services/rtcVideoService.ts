@@ -1,5 +1,6 @@
 import VERTC, { MediaType, StreamIndex } from '@volcengine/rtc';
 import { rtcMessageHandler } from './rtcMessageHandler';
+import * as proto from '../proto/xproto';
 
 export interface RTCVideoConfig {
   appId: string;
@@ -53,11 +54,20 @@ export class RTCVideoService {
     console.log('  - roomId:', config.roomId);
     console.log('  - userId:', config.userId);
     
+    // 如果引擎已经存在，先销毁
+    if (this.engine) {
+      console.log('⚠️ 检测到已存在的RTC引擎，先销毁');
+      this.destroy();
+    }
+    
     this.config = config;
     
     try {
       // 创建RTC引擎
       this.engine = VERTC.createEngine(config.appId);
+      
+      // 设置引擎到消息处理器
+      rtcMessageHandler.setEngine(this.engine);
       
       // 绑定事件监听器
       this.bindEngineEvents();
@@ -108,6 +118,38 @@ export class RTCVideoService {
       
       this.removeRemoteStream(userId);
       this.eventHandlers.onUserUnpublishStream?.(userId);
+    });
+
+    // 用户消息接收
+    this.engine.on(VERTC.events.onUserMessageReceived, (event: any) => {
+      const { roomId, userId, message } = event;
+      console.log('📨 收到用户消息:', { roomId, userId, message });
+      console.log('📨 消息详情:', {
+        roomId: roomId,
+        userId: userId,
+        messageLength: message ? message.length : 0,
+        messageType: typeof message,
+        messageContent: message
+      });
+      
+      // 处理消息
+      this.handleUserMessage(message);
+    });
+
+    // 房间消息接收
+    this.engine.on(VERTC.events.onRoomMessageReceived, (event: any) => {
+      const { roomId, userId, message } = event;
+      console.log('📨 收到房间消息:', { roomId, userId, message });
+      console.log('📨 房间消息详情:', {
+        roomId: roomId,
+        userId: userId,
+        messageLength: message ? message.length : 0,
+        messageType: typeof message,
+        messageContent: message
+      });
+      
+      // 处理房间消息
+      this.handleUserMessage(message);
     });
 
     // 自动播放失败
@@ -289,6 +331,144 @@ export class RTCVideoService {
   // 获取心跳延迟
   getHeartbeatDelay(): number {
     return rtcMessageHandler.getLastHeartbeatDelay();
+  }
+
+  // 处理用户消息
+  private handleUserMessage(message: string): void {
+    console.log('📨 处理用户消息:', message);
+    
+    // 检查是否是心跳响应
+    if (message.includes('stay_room_ack')) {
+      console.log('💓 收到心跳响应:', message);
+      // 这里可以解析心跳延迟等信息
+      return;
+    }
+    
+    // 检查是否是proto消息
+    if (message.includes('cmd=proto')) {
+      console.log('📦 收到proto消息:', message);
+      
+      try {
+        // 解析proto消息格式: cmd=proto&id={messageId}&hex={hexData}
+        const parts = message.split('&');
+        if (parts.length >= 3) {
+          const idMatch = parts[1].match(/id=(\d+)/);
+          const hexMatch = parts[2].match(/hex=([0-9a-fA-F]+)/);
+          
+          if (idMatch && hexMatch) {
+            const messageId = parseInt(idMatch[1]);
+            const hexData = hexMatch[1];
+            
+            console.log('📦 解析proto消息:', {
+              messageId: messageId,
+              hexData: hexData,
+              hexLength: hexData.length
+            });
+            
+            // 转换十六进制为字节数组
+            const bytes = new Uint8Array(hexData.length / 2);
+            for (let i = 0; i < hexData.length; i += 2) {
+              bytes[i / 2] = parseInt(hexData.substr(i, 2), 16);
+            }
+            
+            // 根据消息ID处理不同类型的消息
+            if (messageId === proto.eServerPID.ChangeMapPush) {
+              // 处理ChangeMapPush消息
+              const pushMessage = proto.oChangeMapPush.decode(bytes);
+              console.log('🗺️ 解析到ChangeMapPush消息:', {
+                code: pushMessage.code,
+                mapName: pushMessage.mapName,
+                success: pushMessage.code === proto.eError.SUCCESS
+              });
+              
+              // 发送自定义事件通知UI
+              const customEvent = new CustomEvent('rtcMapChangeResult', {
+                detail: {
+                  success: pushMessage.code === proto.eError.SUCCESS,
+                  code: pushMessage.code,
+                  mapName: pushMessage.mapName,
+                  message: message,
+                  timestamp: Date.now()
+                }
+              });
+              window.dispatchEvent(customEvent);
+            } else {
+              console.log('📦 未知的proto消息ID:', messageId);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('❌ 解析proto消息失败:', error);
+      }
+      return;
+    }
+    
+    // 检查是否是地图切换响应 (简单格式)
+    if (message.includes('change_map')) {
+      console.log('🗺️ 收到地图切换响应:', message);
+      
+      // 发送简单事件
+      const customEvent = new CustomEvent('rtcMapChangeResult', {
+        detail: {
+          message: message,
+          timestamp: Date.now()
+        }
+      });
+      window.dispatchEvent(customEvent);
+      return;
+    }
+    
+    // 检查是否是其他类型的响应
+    if (message.includes('cmd=')) {
+      console.log('📋 收到命令响应:', message);
+      // 可以在这里添加更多命令处理逻辑
+      return;
+    }
+    
+    // 默认处理
+    console.log('📨 未识别的消息类型:', message);
+  }
+
+  // 发送切换地图消息
+  sendChangeMap(mapName: string): void {
+    console.log('🗺️ 发送切换地图消息:', mapName);
+    rtcMessageHandler.sendChangeMap(mapName);
+  }
+
+  // 发送进入房间消息
+  sendEnterRoom(): void {
+    console.log('🚪 发送进入房间消息');
+    rtcMessageHandler.sendEnterRoom();
+  }
+
+  // 发送离开房间消息
+  sendLeaveRoom(): void {
+    console.log('🚪 发送离开房间消息');
+    rtcMessageHandler.sendLeaveRoom();
+  }
+
+  // 发送进入舞台消息
+  sendEnterStage(stageIndex: number): void {
+    console.log('🎭 发送进入舞台消息:', stageIndex);
+    rtcMessageHandler.sendEnterStage(stageIndex);
+  }
+
+  // 发送离开舞台消息
+  sendLeaveStage(stageIndex: number): void {
+    console.log('🎭 发送离开舞台消息:', stageIndex);
+    rtcMessageHandler.sendLeaveStage(stageIndex);
+  }
+
+  // 发送用户消息
+  sendUserMessage(message: string): void {
+    console.log('📤 发送用户消息:', message);
+    rtcMessageHandler.sendUserMessage(message);
+  }
+
+  // 发送房间消息
+  sendRoomMessage(message: string): void {
+    console.log('📤 发送房间消息:', message);
+    rtcMessageHandler.sendRoomMessage(message);
   }
 }
 

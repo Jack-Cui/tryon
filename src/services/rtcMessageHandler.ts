@@ -1,4 +1,6 @@
 // RTC消息处理服务，参考C#代码实现
+import * as proto from '../proto/xproto';
+
 export interface RTCMessage {
   type: string;
   data: any;
@@ -16,12 +18,19 @@ export class RTCMessageHandler {
   private messageCallbacks: Map<string, (data: any) => void> = new Map();
   private heartbeatInterval: NodeJS.Timeout | null = null;
   private lastHeartbeatDelay: number = 0;
+  private engine: any = null;
 
   constructor() {}
 
   // 初始化消息处理器
   initialize(): void {
     console.log('📨 初始化RTC消息处理器');
+  }
+
+  // 设置RTC引擎
+  setEngine(engine: any): void {
+    this.engine = engine;
+    console.log('📨 设置RTC引擎到消息处理器');
   }
 
   // 注册消息回调
@@ -39,8 +48,181 @@ export class RTCMessageHandler {
     }
   }
 
+  // 发送用户消息（参考C#代码）
+  sendUserMessage(message: string): void {
+    if (!this.engine) {
+      console.error('❌ [RTCMessageHandler:sendUserMessage] engine is null');
+      return;
+    }
+
+    console.log('📤 发送用户消息:', message);
+    this.engine.sendUserMessage("8888", message);
+  }
+
+  // 发送房间消息
+  sendRoomMessage(message: string): void {
+    if (!this.engine) {
+      console.error('❌ [RTCMessageHandler:sendRoomMessage] engine is null');
+      return;
+    }
+
+    console.log('📤 发送房间消息:', message);
+    this.engine.sendRoomMessage(message);
+  }
+
   // 发送心跳消息
-  sendHeartbeat(): HeartBeatMessage {
+  sendHeartbeat(stageIndex: number = 0, isAudioOn: boolean = false, videoFrameSize?: { x: number, y: number }): void {
+    if (!this.engine) {
+      console.error('❌ [RTCMessageHandler:sendHeartbeat] engine is null');
+      return;
+    }
+
+    let heartBeatCmd = `cmd=stay_room&msec=${Date.now()}&delay=${this.lastHeartbeatDelay}&spos=${stageIndex}&ad=${isAudioOn}`;
+    
+    if (videoFrameSize) {
+      heartBeatCmd += `&w=${videoFrameSize.x}&h=${videoFrameSize.y}`;
+    }
+
+    console.log('💓 发送心跳消息:', heartBeatCmd);
+    this.engine.sendUserMessage("8888", heartBeatCmd);
+  }
+
+  // 发送进入房间消息
+  sendEnterRoom(): void {
+    if (!this.engine) {
+      console.error('❌ [RTCMessageHandler:sendEnterRoom] engine is null');
+      return;
+    }
+
+    const message = `cmd=enter_room&msec=${Date.now()}`;
+    console.log('🚪 发送进入房间消息:', message);
+    this.engine.sendUserMessage("8888", message);
+  }
+
+  // 发送离开房间消息
+  sendLeaveRoom(): void {
+    if (!this.engine) {
+      console.error('❌ [RTCMessageHandler:sendLeaveRoom] engine is null');
+      return;
+    }
+
+    const message = `cmd=leave_room&msec=${Date.now()}`;
+    console.log('🚪 发送离开房间消息:', message);
+    this.engine.sendUserMessage("8888", message);
+  }
+
+  // 发送进入舞台消息
+  sendEnterStage(stageIndex: number): void {
+    if (!this.engine) {
+      console.error('❌ [RTCMessageHandler:sendEnterStage] engine is null');
+      return;
+    }
+
+    const message = `cmd=enter_stage&msec=${Date.now()}&pos=${stageIndex}`;
+    console.log('🎭 发送进入舞台消息:', message);
+    this.engine.sendUserMessage("8888", message);
+  }
+
+  // 发送离开舞台消息
+  sendLeaveStage(stageIndex: number): void {
+    if (!this.engine) {
+      console.error('❌ [RTCMessageHandler:sendLeaveStage] engine is null');
+      return;
+    }
+
+    const message = `cmd=leave_stage&msec=${Date.now()}&pos=${stageIndex}`;
+    console.log('🎭 发送离开舞台消息:', message);
+    this.engine.sendUserMessage("8888", message);
+  }
+
+  // 发送消息 (参考C#代码的SendMessage方法)
+  sendMessage<PB>(id: proto.eClientPID, body: PB, callback?: (message: any) => void): void {
+    if (!this.engine) {
+      console.error('❌ [RTCMessageHandler:sendMessage] engine is null');
+      return;
+    }
+
+    try {
+      // 编码消息体 - 使用正确的proto编码方式
+      let payload: Uint8Array;
+      if ((body as any).toByteArray) {
+        // 如果对象有toByteArray方法
+        payload = (body as any).toByteArray();
+      } else if ((body as any).encode) {
+        // 如果对象有encode方法
+        payload = (body as any).encode().finish();
+      } else {
+        // 使用proto编码器
+        payload = proto.oChangeMapReq.encode(body as any).finish();
+      }
+      
+      // 转换为十六进制字符串
+      const hexString = Array.from(payload).map((b: unknown) => (b as number).toString(16).padStart(2, '0')).join('');
+      
+      console.log('📤 发送proto消息:', {
+        id: id,
+        idHashCode: id,
+        payloadSize: payload.length,
+        hexString: hexString
+      });
+      
+      // 使用正确的proto消息格式 (参考C#代码)
+      const messageStr = `cmd=proto&id=${id}&hex=${hexString}`;
+      this.engine.sendUserMessage("8888", messageStr);
+      
+      console.log('✅ proto消息发送成功:', id);
+      console.log('📤 发送的消息内容:', messageStr);
+      
+    } catch (error) {
+      console.error('❌ 发送proto消息失败:', error);
+    }
+  }
+
+  // 发送切换地图消息
+  sendChangeMap(mapName: string): void {
+    if (!this.engine) {
+      console.error('❌ [RTCMessageHandler:sendChangeMap] engine is null');
+      return;
+    }
+
+    try {
+      console.log('🗺️ 准备发送切换地图消息:', {
+        mapName: mapName,
+        messageType: 'oChangeMapReq'
+      });
+      
+      // 直接编码proto消息
+      const message = proto.oChangeMapReq.create({
+        mapName: mapName
+      });
+      
+      const payload = proto.oChangeMapReq.encode(message).finish();
+      const hexString = Array.from(payload).map((b: number) => b.toString(16).padStart(2, '0')).join('');
+      
+      console.log('📤 发送proto消息:', {
+        id: proto.eClientPID.ChangeMapReq,
+        payloadSize: payload.length,
+        hexString: hexString
+      });
+      
+      // 使用正确的proto消息格式 (参考C#代码)
+      const messageStr = `cmd=proto&id=${proto.eClientPID.ChangeMapReq}&hex=${hexString}`;
+      this.engine.sendUserMessage("8888", messageStr);
+      
+      console.log('✅ proto消息发送成功:', proto.eClientPID.ChangeMapReq);
+      console.log('📤 发送的消息内容:', messageStr);
+      
+    } catch (error) {
+      console.error('❌ 发送切换地图RTC消息失败:', error);
+      // 如果proto编码失败，回退到简单字符串格式
+      const fallbackMessage = `cmd=change_map&msec=${Date.now()}&map=${mapName}`;
+      console.log('🔄 回退到简单字符串格式:', fallbackMessage);
+      this.engine.sendUserMessage("8888", fallbackMessage);
+    }
+  }
+
+  // 发送心跳消息
+  sendHeartbeatMessage(): HeartBeatMessage {
     const message: HeartBeatMessage = {
       timestamp: Date.now()
     };
@@ -63,8 +245,7 @@ export class RTCMessageHandler {
     }
     
     this.heartbeatInterval = setInterval(() => {
-      const heartbeat = this.sendHeartbeat();
-      // 这里可以发送到WebSocket或其他通信方式
+      this.sendHeartbeat();
     }, interval);
     
     console.log('💓 开始心跳，间隔:', interval, 'ms');
@@ -88,6 +269,7 @@ export class RTCMessageHandler {
   destroy(): void {
     this.stopHeartbeat();
     this.messageCallbacks.clear();
+    this.engine = null;
     console.log('🗑️ RTC消息处理器已销毁');
   }
 }

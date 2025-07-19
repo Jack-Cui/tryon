@@ -343,6 +343,8 @@ export class WebSocketService {
     this.messageHandlers.set(1111, this.handleHeartBeatResponse.bind(this));
     // 切换地图响应
     this.messageHandlers.set(11008, this.handleChangeMapPush.bind(this));
+    // 场景变更推送
+    this.messageHandlers.set(1109, this.handleSceneChangePush.bind(this));
   }
 
   // 启动心跳
@@ -1232,6 +1234,39 @@ export class WebSocketService {
       
     } catch (error) {
       console.error('❌ 处理切换地图响应失败:', error);
+      console.error('原始数据:', Array.from(data)); // 打印完整数据用于调试
+    }
+  }
+
+  // 处理场景变更推送
+  private handleSceneChangePush(data: Uint8Array): void {
+    try {
+      console.log('🎭 收到场景变更推送, 数据长度:', data.length);
+      console.log('🎭 原始响应数据:', Array.from(data));
+      
+      // 解码消息
+      const message = proto.oSceneChangePush.decode(data);
+      
+      console.log('📦 场景变更推送解码成功:', {
+        scene: message.scene
+      });
+      
+      console.log('✅ 场景变更成功!');
+      console.log('  - 新场景名称:', message.scene);
+      
+      // 触发自定义事件，通知UI组件
+      const event = new CustomEvent('sceneChangeResult', {
+        detail: {
+          success: true,
+          scene: message.scene,
+          timestamp: Date.now()
+        }
+      });
+      
+      window.dispatchEvent(event);
+      
+    } catch (error) {
+      console.error('❌ 处理场景变更推送失败:', error);
       console.error('原始数据:', Array.from(data)); // 打印完整数据用于调试
     }
   }
