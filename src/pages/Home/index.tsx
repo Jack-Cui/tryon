@@ -37,6 +37,10 @@ const Home = () => {
   // 触摸事件相关状态
   const [isDragging, setIsDragging] = useState(false);
   const [lastTouchPos, setLastTouchPos] = useState<{ x: number, y: number } | null>(null);
+  
+  // 缩放事件相关状态
+  const [initialDistance, setInitialDistance] = useState<number | null>(null);
+  const [lastScaleDistance, setLastScaleDistance] = useState<number | null>(null);
   const [clothesList, setClothesList] = useState<ClothesItem[]>([]); // 添加服饰列表状态
   const [loginParams, setLoginParams] = useState<{
     token: string;
@@ -359,11 +363,74 @@ const Home = () => {
     const pos = getEventPosition(event);
     setLastTouchPos(pos);
     setIsDragging(false);
+    
+    // 检测多点触摸（缩放手势）
+    if ('touches' in event && event.touches.length === 2) {
+      const positions = getTouchPositions(event as React.TouchEvent);
+      const distance = getDistance(positions[0], positions[1]);
+      setInitialDistance(distance);
+      setLastScaleDistance(distance);
+      console.log('🔍 缩放开始:', { 
+        distance: distance.toFixed(2), 
+        positions: positions.map(p => ({ x: p.x.toFixed(0), y: p.y.toFixed(0) })),
+        touchCount: event.touches.length
+      });
+    } else {
+      setInitialDistance(null);
+      setLastScaleDistance(null);
+      console.log('👆 单点触摸开始，触摸点数量:', 'touches' in event ? event.touches.length : 0);
+    }
+    
     console.log('👆 触摸开始:', pos);
   };
 
   // 处理触摸移动事件
   const handleTouchMove = (event: React.TouchEvent | React.MouseEvent) => {
+    // 检测缩放手势
+    if ('touches' in event && event.touches.length === 2 && initialDistance !== null) {
+      const positions = getTouchPositions(event as React.TouchEvent);
+      const currentDistance = getDistance(positions[0], positions[1]);
+      const scaleDelta = currentDistance - (lastScaleDistance || initialDistance);
+      
+      // 如果缩放距离超过阈值，发送缩放消息
+      if (Math.abs(scaleDelta) > 5) {
+        // 检查RTC连接状态
+        if (!rtcVideoService.getConnectionStatus()) {
+          console.log('⚠️ RTC未连接，跳过缩放消息发送');
+          return;
+        }
+        
+        try {
+          console.log('🔍 发送缩放触摸消息:', {
+            currentDistance: currentDistance,
+            initialDistance: initialDistance,
+            scaleDelta: scaleDelta,
+            positions: positions
+          });
+          
+          // 发送触摸屏幕消息，touchType=scale
+          rtcVideoService.sendTouchScreen(
+            proto.eTouchType.scale, // scale类型
+            {
+              x: scaleDelta,
+              y: 0,
+              z: 0
+            },
+            Date.now()
+          );
+          
+          console.log('✅ 缩放触摸消息发送成功');
+          
+        } catch (error) {
+          console.error('❌ 发送缩放触摸消息失败:', error);
+        }
+        
+        setLastScaleDistance(currentDistance);
+      }
+      return;
+    }
+    
+    // 单点触摸处理（旋转）
     if (!lastTouchPos) return;
     
     const currentPos = getEventPosition(event);
@@ -414,8 +481,16 @@ const Home = () => {
     if (isDragging) {
       console.log('👆 触摸结束，旋转操作完成');
     }
+    
+    // 清理缩放状态
+    if (initialDistance !== null) {
+      console.log('🔍 缩放操作结束');
+    }
+    
     setIsDragging(false);
     setLastTouchPos(null);
+    setInitialDistance(null);
+    setLastScaleDistance(null);
   };
 
   // 获取事件位置
@@ -434,6 +509,25 @@ const Home = () => {
       };
     }
     return { x: 0, y: 0 };
+  };
+
+  // 计算两点之间的距离
+  const getDistance = (pos1: { x: number, y: number }, pos2: { x: number, y: number }): number => {
+    const deltaX = pos1.x - pos2.x;
+    const deltaY = pos1.y - pos2.y;
+    return Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+  };
+
+  // 获取多点触摸的位置
+  const getTouchPositions = (event: React.TouchEvent): { x: number, y: number }[] => {
+    const positions: { x: number, y: number }[] = [];
+    for (let i = 0; i < event.touches.length; i++) {
+      positions.push({
+        x: event.touches[i].clientX,
+        y: event.touches[i].clientY
+      });
+    }
+    return positions;
   };
 
   // 处理微信分享点击
@@ -1701,7 +1795,8 @@ const Home = () => {
         alignItems: 'center',
         justifyContent: 'center',
         padding: '0', // 移除padding让视频铺满
-        zIndex: 1
+        zIndex: 1,
+        touchAction: 'none' // 屏蔽浏览器默认的触摸行为
       }} 
         onClick={handleVideoAreaClick}
         onTouchStart={handleTouchStart}
