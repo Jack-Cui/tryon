@@ -10,6 +10,7 @@ import { getLoginCache, clearLoginCache } from '../../utils/loginCache';
 import { ClothesItem } from '../../types/api';
 import { WECHAT_CONFIG } from '../../config/config';
 import * as proto from '../../proto/xproto';
+import { rtcMessageHandler } from '../../services/rtcMessageHandler';
 // 导入图片
 import actionIcon from '../../assets/动作.png';
 import balletIcon from '../../assets/芭蕾.png';
@@ -536,11 +537,13 @@ const Home = () => {
         });
         
         // 发送触摸屏幕消息，touchType=rotate
+        // 调整旋转速度，使用较小的值
+        const rotationScale = 0.3; // 旋转缩放因子
         rtcVideoService.sendTouchScreen(
           proto.eTouchType.rotate, // rotate类型
           {
-            x: deltaX,
-            y: deltaY,
+            x: deltaX * rotationScale,
+            y: deltaY * rotationScale,
             z: 0
           },
           Date.now()
@@ -567,8 +570,18 @@ const Home = () => {
     
     // 如果没有拖动，则认为是点击事件
     if (!isDragging && lastTouchPos) {
-      console.log('👆 检测到点击事件，触发视频区域点击');
-      handleVideoAreaClick();
+      // 检查滑动距离，如果很小才认为是点击
+      const currentPos = getEventPosition(event);
+      const deltaX = currentPos.x - lastTouchPos.x;
+      const deltaY = currentPos.y - lastTouchPos.y;
+      const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+      
+      if (distance < 5) { // 只有滑动距离小于5像素才认为是点击
+        console.log('👆 检测到点击事件，触发视频区域点击');
+        handleVideoAreaClick();
+      } else {
+        console.log('👆 滑动距离过大，不触发点击事件:', distance.toFixed(2));
+      }
     }
     
     setIsDragging(false);
@@ -2519,13 +2532,45 @@ const Home = () => {
         {/* 离开舞台按钮 */}
         <button
           onClick={() => {
+            console.log('🚪 用户点击离开舞台');
+            
+            // 断开WebSocket连接
+            try {
+              webSocketService.disconnect();
+              console.log('✅ WebSocket连接已断开');
+            } catch (error) {
+              console.error('❌ 断开WebSocket连接失败:', error);
+            }
+            
+            // 调用RTC消息处理器destroy
+            try {
+              rtcMessageHandler.destroy();
+              console.log('✅ RTC消息处理器已销毁');
+            } catch (error) {
+              console.error('❌ 销毁RTC消息处理器失败:', error);
+            }
+            
+            // 离开RTC房间
+            try {
+              rtcVideoService.leaveRoom();
+              console.log('✅ 已离开RTC房间');
+            } catch (error) {
+              console.error('❌ 离开RTC房间失败:', error);
+            }
+            
+            // 重置UI状态
             setShowSelectionScreen(true);
             hasStartedTryon.current = false;
+            setIsVideoPaused(false);
+            setShowVideoIcons(false);
+            
             // 清理定时器
             if (iconHideTimer) {
               clearTimeout(iconHideTimer);
               setIconHideTimer(null);
             }
+            
+            console.log('✅ 离开舞台完成，已返回选择界面');
           }}
           style={{
             backgroundColor: 'rgba(255, 255, 255, 0.2)',

@@ -49,6 +49,9 @@ export class WebSocketService {
   private lastHeartbeatTime: number = 0;
   private heartbeatTimeoutTimer: NodeJS.Timeout | null = null; // 心跳超时检查
   private heartbeatTimeout: number = 15000; // 15秒心跳超时
+  
+  // 手动断开标志
+  private isManualDisconnect: boolean = false;
 
   // RTC相关属性
   private rtcEngine: any = null;
@@ -521,8 +524,11 @@ export class WebSocketService {
           // 停止心跳机制
           this.stopHeartbeat();
           
-          // 如果不是正常关闭，尝试重连
-          if (event.code !== 1000) {
+          // 检查是否是手动断开
+          if (this.isManualDisconnect) {
+            console.log('✅ 手动断开连接，不进行重连');
+            this.isManualDisconnect = false; // 重置标志
+          } else if (event.code !== 1000) {
             console.log('🔄 检测到异常关闭，启动重连机制...');
             this.handleReconnect();
           } else {
@@ -578,6 +584,12 @@ export class WebSocketService {
   }
 
   private handleMessage(data: any): void {
+    // 如果连接已断开，不再处理消息
+    if (!this.isConnected) {
+      console.log('⚠️ 连接已断开，忽略消息');
+      return;
+    }
+    
     try {
       let arrayBuffer: ArrayBuffer;
       
@@ -1121,8 +1133,17 @@ export class WebSocketService {
   async disconnect(): Promise<void> {
     console.log('🔌 开始断开连接...');
     
+    // 设置手动断开标志
+    this.isManualDisconnect = true;
+    
+    // 立即设置连接状态为false，防止新的消息处理
+    this.isConnected = false;
+    
     // 停止心跳机制
     this.stopHeartbeat();
+    
+    // 停止重连机制
+    this.reconnectAttempts = this.maxReconnectAttempts + 1;
     
     // 先断开RTC连接
     if (this.isRTCConnected) {
@@ -1139,11 +1160,24 @@ export class WebSocketService {
     
     // 断开WebSocket连接
     if (this.websocket) {
-      this.websocket.close();
+      // 移除所有事件监听器
+      this.websocket.onopen = null;
+      this.websocket.onmessage = null;
+      this.websocket.onclose = null;
+      this.websocket.onerror = null;
+      
+      // 关闭连接
+      this.websocket.close(1000, '用户主动断开');
       this.websocket = null;
     }
-    this.isConnected = false;
-    console.log('✅ WebSocket连接已断开');
+    
+    // 清理配置
+    this.config = null;
+    
+    // 清理消息处理器
+    this.messageHandlers.clear();
+    
+    console.log('✅ WebSocket连接已完全断开');
   }
 
   // 发送切换地图请求
