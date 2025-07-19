@@ -24,6 +24,8 @@ import socksIcon from '../../assets/袜子.png';
 import pantsIcon from '../../assets/下装.png';
 import shoesIcon from '../../assets/鞋子.png';
 import shareIcon from '../../assets/分享.png';
+import realSceneIcon from '../../assets/实景.png';
+import realSceneActionIcon from '../../assets/实景动作.png';
 
 const Home = () => {
   const location = useLocation();
@@ -97,11 +99,11 @@ const Home = () => {
 
   // 实景图标数组，对应不同的地图
   const realSceneIcons = [
-    { icon: hatIcon, name: '博物馆', mapName: 'Maps_Museum' },
-    { icon: coatIcon, name: '教堂', mapName: 'Maps_jiaotang' },
-    { icon: topIcon, name: '广场', mapName: 'Maps_guangchang' },
-    { icon: pantsIcon, name: '沙滩', mapName: 'Maps_shatan' },
-    { icon: shoesIcon, name: '商店', mapName: 'Maps_udraper' }
+    { icon: realSceneActionIcon, name: '教堂', mapName: 'Maps_jiaotang' },
+    { icon: realSceneActionIcon, name: '广场', mapName: 'Maps_guangchang' },
+    { icon: realSceneActionIcon, name: '室内', mapName: 'Maps_indoor' },
+    { icon: realSceneActionIcon, name: '室内2', mapName: 'Maps_indoor2' },
+    { icon: realSceneActionIcon, name: '大厅', mapName: 'Maps_hall' }
   ];
 
   // 处理动作图标点击
@@ -1374,14 +1376,24 @@ const Home = () => {
                     border: isRealSceneExpanded ? '2px solid #52c41a' : '2px solid transparent'
                   }}>
                     <img 
-                      src={realSceneIcons[selectedRealSceneIndex].icon} 
-                      alt={realSceneIcons[selectedRealSceneIndex].name} 
+                      src={realSceneIcon} 
+                      alt="实景" 
                       style={{
                         width: '30px',
                         height: '30px',
                         objectFit: 'contain'
                       }}
                     />
+                  </div>
+                  <div style={{
+                    fontSize: '12px',
+                    color: '#333',
+                    fontWeight: 'normal',
+                    textAlign: 'center',
+                    lineHeight: '1',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    实景
                   </div>
                 </div>
 
@@ -1399,16 +1411,11 @@ const Home = () => {
                     {realSceneIcons.map((scene, index) => (
                       <div key={index} style={{
                         display: 'flex',
+                        flexDirection: 'column',
                         alignItems: 'center',
-                        justifyContent: 'center',
-                        width: '42px', // 适度缩小展开icon
-                        height: '42px',
-                        borderRadius: '10px', // 相应缩小圆角
-                        backgroundColor: selectedRealSceneIndex === index ? 'rgba(82,196,26,0.2)' : 'rgba(255,255,255,0.8)',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                        gap: '4px',
                         cursor: 'pointer',
-                        transition: 'all 0.2s ease',
-                        border: selectedRealSceneIndex === index ? '2px solid #52c41a' : '2px solid transparent'
+                        transition: 'all 0.2s ease'
                       }}
                         onClick={() => handleRealSceneClick(index)}
                         onMouseEnter={(e) => {
@@ -1418,15 +1425,37 @@ const Home = () => {
                           e.currentTarget.style.transform = 'scale(1)';
                         }}
                       >
-                        <img 
-                          src={scene.icon} 
-                          alt={scene.name} 
-                          style={{
-                            width: '26px', // 相应缩小图片
-                            height: '26px',
-                            objectFit: 'contain'
-                          }}
-                        />
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: '42px', // 适度缩小展开icon
+                          height: '42px',
+                          borderRadius: '10px', // 相应缩小圆角
+                          backgroundColor: selectedRealSceneIndex === index ? 'rgba(82,196,26,0.2)' : 'rgba(255,255,255,0.8)',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                          border: selectedRealSceneIndex === index ? '2px solid #52c41a' : '2px solid transparent'
+                        }}>
+                          <img 
+                            src={scene.icon} 
+                            alt={scene.name} 
+                            style={{
+                              width: '26px', // 相应缩小图片
+                              height: '26px',
+                              objectFit: 'contain'
+                            }}
+                          />
+                        </div>
+                        <div style={{
+                          fontSize: '10px',
+                          color: selectedRealSceneIndex === index ? '#52c41a' : '#333',
+                          fontWeight: selectedRealSceneIndex === index ? 'bold' : 'normal',
+                          textAlign: 'center',
+                          lineHeight: '1',
+                          whiteSpace: 'nowrap'
+                        }}>
+                          {scene.name}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -2091,14 +2120,25 @@ const Home = () => {
                   border: isRealSceneExpanded ? '2px solid #52c41a' : '2px solid transparent'
                 }}>
                   <img 
-                    src={realSceneIcons[selectedRealSceneIndex].icon} 
-                    alt={realSceneIcons[selectedRealSceneIndex].name} 
+                    src={realSceneIcon} 
+                    alt="实景" 
                     style={{
                       width: '30px',
                       height: '30px',
                       objectFit: 'contain'
                     }}
                   />
+                </div>
+                <div style={{
+                  fontSize: '12px',
+                  color: '#fff',
+                  fontWeight: 'normal',
+                  textAlign: 'center',
+                  lineHeight: '1',
+                  whiteSpace: 'nowrap',
+                  textShadow: '0 1px 2px rgba(0,0,0,0.8)'
+                }}>
+                  实景
                 </div>
               </div>
 
@@ -2116,16 +2156,11 @@ const Home = () => {
                   {realSceneIcons.map((scene, index) => (
                     <div key={index} style={{
                       display: 'flex',
+                      flexDirection: 'column',
                       alignItems: 'center',
-                      justifyContent: 'center',
-                      width: '42px', // 适度缩小展开icon
-                      height: '42px',
-                      borderRadius: '10px', // 相应缩小圆角
-                      backgroundColor: selectedRealSceneIndex === index ? 'rgba(82,196,26,0.2)' : 'rgba(255,255,255,0.8)',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                      gap: '4px',
                       cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      border: selectedRealSceneIndex === index ? '2px solid #52c41a' : '2px solid transparent'
+                      transition: 'all 0.2s ease'
                     }}
                       onClick={(e) => {
                         e.stopPropagation();
@@ -2138,15 +2173,38 @@ const Home = () => {
                         e.currentTarget.style.transform = 'scale(1)';
                       }}
                     >
-                      <img 
-                        src={scene.icon} 
-                        alt={scene.name} 
-                        style={{
-                          width: '26px', // 相应缩小图片
-                          height: '26px',
-                          objectFit: 'contain'
-                        }}
-                      />
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '42px', // 适度缩小展开icon
+                        height: '42px',
+                        borderRadius: '10px', // 相应缩小圆角
+                        backgroundColor: selectedRealSceneIndex === index ? 'rgba(82,196,26,0.2)' : 'rgba(255,255,255,0.8)',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                        border: selectedRealSceneIndex === index ? '2px solid #52c41a' : '2px solid transparent'
+                      }}>
+                        <img 
+                          src={scene.icon} 
+                          alt={scene.name} 
+                          style={{
+                            width: '26px', // 相应缩小图片
+                            height: '26px',
+                            objectFit: 'contain'
+                          }}
+                        />
+                      </div>
+                      <div style={{
+                        fontSize: '10px',
+                        color: selectedRealSceneIndex === index ? '#52c41a' : '#fff',
+                        fontWeight: selectedRealSceneIndex === index ? 'bold' : 'normal',
+                        textAlign: 'center',
+                        lineHeight: '1',
+                        whiteSpace: 'nowrap',
+                        textShadow: '0 1px 2px rgba(0,0,0,0.8)'
+                      }}>
+                        {scene.name}
+                      </div>
                     </div>
                   ))}
                 </div>
