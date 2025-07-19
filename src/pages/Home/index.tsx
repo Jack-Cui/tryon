@@ -9,6 +9,7 @@ import { wechatShareService } from '../../services/wechatShareService';
 import { getLoginCache, clearLoginCache } from '../../utils/loginCache';
 import { ClothesItem } from '../../types/api';
 import { WECHAT_CONFIG } from '../../config/config';
+import * as proto from '../../proto/xproto';
 // 导入图片
 import actionIcon from '../../assets/动作.png';
 import balletIcon from '../../assets/芭蕾.png';
@@ -32,6 +33,10 @@ const Home = () => {
   const [videoPlayingStatus, setVideoPlayingStatus] = useState<{[key: string]: boolean}>({});
   const [showSelectionScreen, setShowSelectionScreen] = useState(true); // 新增状态控制显示选择界面
   const [roomName, setRoomName] = useState<string>('PADA2024秀款礼服系列'); // 添加房间名称状态，默认值为原来的文本
+  
+  // 触摸事件相关状态
+  const [isDragging, setIsDragging] = useState(false);
+  const [lastTouchPos, setLastTouchPos] = useState<{ x: number, y: number } | null>(null);
   const [clothesList, setClothesList] = useState<ClothesItem[]>([]); // 添加服饰列表状态
   const [loginParams, setLoginParams] = useState<{
     token: string;
@@ -347,6 +352,88 @@ const Home = () => {
     
     // 重新开始隐藏定时器
     startIconHideTimer();
+  };
+
+  // 处理触摸开始事件
+  const handleTouchStart = (event: React.TouchEvent | React.MouseEvent) => {
+    const pos = getEventPosition(event);
+    setLastTouchPos(pos);
+    setIsDragging(false);
+    console.log('👆 触摸开始:', pos);
+  };
+
+  // 处理触摸移动事件
+  const handleTouchMove = (event: React.TouchEvent | React.MouseEvent) => {
+    if (!lastTouchPos) return;
+    
+    const currentPos = getEventPosition(event);
+    const deltaX = currentPos.x - lastTouchPos.x;
+    const deltaY = currentPos.y - lastTouchPos.y;
+    
+    // 计算滑动距离
+    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+    
+    // 如果滑动距离超过阈值，发送旋转消息
+    if (distance > 10) {
+      setIsDragging(true);
+      
+      // 检查RTC连接状态
+      if (!rtcVideoService.getConnectionStatus()) {
+        console.log('⚠️ RTC未连接，跳过触摸消息发送');
+        return;
+      }
+      
+      try {
+        console.log('🔄 发送旋转触摸消息:', {
+          deltaX: deltaX,
+          deltaY: deltaY,
+          distance: distance
+        });
+        
+        // 发送触摸屏幕消息，touchType=rotate
+        rtcVideoService.sendTouchScreen(
+          proto.eTouchType.rotate, // rotate类型
+          {
+            x: deltaX,
+            y: deltaY,
+            z: 0
+          },
+          Date.now()
+        );
+        
+        console.log('✅ 旋转触摸消息发送成功');
+        
+      } catch (error) {
+        console.error('❌ 发送旋转触摸消息失败:', error);
+      }
+    }
+  };
+
+  // 处理触摸结束事件
+  const handleTouchEnd = (event: React.TouchEvent | React.MouseEvent) => {
+    if (isDragging) {
+      console.log('👆 触摸结束，旋转操作完成');
+    }
+    setIsDragging(false);
+    setLastTouchPos(null);
+  };
+
+  // 获取事件位置
+  const getEventPosition = (event: React.TouchEvent | React.MouseEvent): { x: number, y: number } => {
+    if ('touches' in event && event.touches.length > 0) {
+      // 触摸事件
+      return {
+        x: event.touches[0].clientX,
+        y: event.touches[0].clientY
+      };
+    } else if ('clientX' in event) {
+      // 鼠标事件
+      return {
+        x: event.clientX,
+        y: event.clientY
+      };
+    }
+    return { x: 0, y: 0 };
   };
 
   // 处理微信分享点击
@@ -1615,7 +1702,16 @@ const Home = () => {
         justifyContent: 'center',
         padding: '0', // 移除padding让视频铺满
         zIndex: 1
-      }} onClick={handleVideoAreaClick}>
+      }} 
+        onClick={handleVideoAreaClick}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onMouseDown={handleTouchStart}
+        onMouseMove={handleTouchMove}
+        onMouseUp={handleTouchEnd}
+        onMouseLeave={handleTouchEnd}
+      >
         
         {/* 左侧图标区域 */}
         {showVideoIcons && (

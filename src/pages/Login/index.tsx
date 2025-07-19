@@ -6,6 +6,7 @@ import { authAPI } from '../../services/api';
 import { saveTokens } from '../../utils/auth';
 import { saveLoginCache } from '../../utils/loginCache';
 import { tryonService } from '../../services/tryonService';
+import { DEFAULT_TEST_DATA } from '../../config/config';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -20,6 +21,14 @@ const Login = () => {
   const [errorMessage, setErrorMessage] = useState('');
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+
+  // 在开发环境中预填充测试数据
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      setPhoneNumber(DEFAULT_TEST_DATA.DEFAULT_PHONE);
+      console.log('🧪 开发环境：已预填充测试手机号:', DEFAULT_TEST_DATA.DEFAULT_PHONE);
+    }
+  }, []);
 
   // 获取重定向URL
   const getRedirectUrl = (): string => {

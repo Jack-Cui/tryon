@@ -435,6 +435,12 @@ export class RTCVideoService {
     rtcMessageHandler.sendChangeMap(mapName);
   }
 
+  // 发送触摸屏幕消息
+  sendTouchScreen(touchType: proto.eTouchType, pos: { x: number, y: number, z: number }, timestamp: number): void {
+    console.log('👆 发送触摸屏幕消息:', { touchType, pos, timestamp });
+    rtcMessageHandler.sendTouchScreen(touchType, pos, timestamp);
+  }
+
   // 发送进入房间消息
   sendEnterRoom(): void {
     console.log('🚪 发送进入房间消息');

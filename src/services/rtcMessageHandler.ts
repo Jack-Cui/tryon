@@ -221,6 +221,53 @@ export class RTCMessageHandler {
     }
   }
 
+  // 发送触摸屏幕消息
+  sendTouchScreen(touchType: proto.eTouchType, pos: { x: number, y: number, z: number }, timestamp: number): void {
+    if (!this.engine) {
+      console.error('❌ [RTCMessageHandler:sendTouchScreen] engine is null');
+      return;
+    }
+
+    try {
+      console.log('👆 准备发送触摸屏幕消息:', {
+        touchType: touchType,
+        pos: pos,
+        timestamp: timestamp,
+        messageType: 'oTouchScreenReq'
+      });
+      
+      // 创建 oTouchScreenReq 消息
+      const message = proto.oTouchScreenReq.create({
+        touchType: touchType,
+        pos: {
+          x: pos.x,
+          y: pos.y,
+          z: pos.z
+        },
+        timestamp: timestamp
+      });
+      
+      const payload = proto.oTouchScreenReq.encode(message).finish();
+      const hexString = Array.from(payload).map((b: number) => b.toString(16).padStart(2, '0')).join('');
+      
+      console.log('📤 发送触摸屏幕proto消息:', {
+        id: proto.eClientPID.TouchScreenReq,
+        payloadSize: payload.length,
+        hexString: hexString
+      });
+      
+      // 使用正确的proto消息格式 (参考C#代码)
+      const messageStr = `cmd=proto&id=${proto.eClientPID.TouchScreenReq}&hex=${hexString}`;
+      this.engine.sendUserMessage("8888", messageStr);
+      
+      console.log('✅ 触摸屏幕proto消息发送成功:', proto.eClientPID.TouchScreenReq);
+      console.log('📤 发送的消息内容:', messageStr);
+      
+    } catch (error) {
+      console.error('❌ 发送触摸屏幕RTC消息失败:', error);
+    }
+  }
+
   // 发送心跳消息
   sendHeartbeatMessage(): HeartBeatMessage {
     const message: HeartBeatMessage = {

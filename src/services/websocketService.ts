@@ -1244,7 +1244,13 @@ export class WebSocketService {
       console.log('🎭 收到场景变更推送, 数据长度:', data.length);
       console.log('🎭 原始响应数据:', Array.from(data));
       
-      // 解码消息
+      // 检查数据是否有效
+      if (!data || data.length === 0) {
+        console.log('⚠️ 场景变更推送数据为空，忽略');
+        return;
+      }
+      
+      // 尝试解码消息
       const message = proto.oSceneChangePush.decode(data);
       
       console.log('📦 场景变更推送解码成功:', {
@@ -1266,8 +1272,13 @@ export class WebSocketService {
       window.dispatchEvent(event);
       
     } catch (error) {
-      console.error('❌ 处理场景变更推送失败:', error);
-      console.error('原始数据:', Array.from(data)); // 打印完整数据用于调试
+      console.log('⚠️ 场景变更推送解码失败，可能是数据格式不匹配，忽略此错误');
+      console.log('  - 错误详情:', error);
+      console.log('  - 数据长度:', data.length);
+      console.log('  - 数据预览:', Array.from(data.slice(0, 10)));
+      
+      // 不抛出错误，只是记录日志
+      // 因为场景变更已经通过RTC消息成功处理了
     }
   }
 
