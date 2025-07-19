@@ -101,9 +101,9 @@ const Home = () => {
   const realSceneIcons = [
     { icon: realSceneActionIcon, name: '教堂', mapName: 'Maps_jiaotang' },
     { icon: realSceneActionIcon, name: '广场', mapName: 'Maps_guangchang' },
-    { icon: realSceneActionIcon, name: '室内', mapName: 'Maps_indoor' },
-    { icon: realSceneActionIcon, name: '室内2', mapName: 'Maps_indoor2' },
-    { icon: realSceneActionIcon, name: '大厅', mapName: 'Maps_hall' }
+    { icon: realSceneActionIcon, name: '博物馆', mapName: 'Maps_Museum' },
+    { icon: realSceneActionIcon, name: '沙滩', mapName: 'Maps_shatan' },
+    { icon: realSceneActionIcon, name: '其他', mapName: 'Maps_udraper' }
   ];
 
   // 处理动作图标点击
@@ -579,8 +579,28 @@ const Home = () => {
       const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
       
       if (distance < 5) { // 只有滑动距离小于5像素才认为是点击
-        console.log('👆 检测到点击事件，触发视频区域点击');
-        handleVideoAreaClick();
+        // 检查点击位置是否在icon区域内，如果是则不触发视频区域点击
+        const clickX = currentPos.x;
+        const clickY = currentPos.y;
+        
+        // 检查是否点击在左侧icon区域（左侧10px到右侧120px，垂直居中区域，考虑展开选项）
+        const isLeftIconArea = clickX >= 10 && clickX <= 120 && 
+                              clickY >= window.innerHeight * 0.3 && clickY <= window.innerHeight * 0.7;
+        
+        // 检查是否点击在右侧icon区域（右侧10px到左侧120px，垂直居中区域，考虑展开选项）
+        const isRightIconArea = clickX >= window.innerWidth - 120 && clickX <= window.innerWidth - 10 && 
+                               clickY >= window.innerHeight * 0.3 && clickY <= window.innerHeight * 0.7;
+        
+        if (isLeftIconArea || isRightIconArea) {
+          console.log('👆 点击在icon区域内，跳过视频区域点击', {
+            clickX, clickY, isLeftIconArea, isRightIconArea,
+            leftArea: { x1: 10, x2: 120, y1: window.innerHeight * 0.3, y2: window.innerHeight * 0.7 },
+            rightArea: { x1: window.innerWidth - 120, x2: window.innerWidth - 10, y1: window.innerHeight * 0.3, y2: window.innerHeight * 0.7 }
+          });
+        } else {
+          console.log('👆 检测到点击事件，触发视频区域点击', { clickX, clickY });
+          handleVideoAreaClick();
+        }
       } else {
         console.log('👆 滑动距离过大，不触发点击事件:', distance.toFixed(2));
       }
