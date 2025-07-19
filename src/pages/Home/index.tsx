@@ -41,6 +41,10 @@ const Home = () => {
   // 缩放事件相关状态
   const [initialDistance, setInitialDistance] = useState<number | null>(null);
   const [lastScaleDistance, setLastScaleDistance] = useState<number | null>(null);
+  
+  // 视频暂停状态
+  const [isVideoPaused, setIsVideoPaused] = useState(false);
+  const [isProcessingClick, setIsProcessingClick] = useState(false);
   const [clothesList, setClothesList] = useState<ClothesItem[]>([]); // 添加服饰列表状态
   const [loginParams, setLoginParams] = useState<{
     token: string;
@@ -245,18 +249,92 @@ const Home = () => {
     setIconHideTimer(timer);
   };
 
-  // 处理视频区域点击（切换图标显示/隐藏）
+  // 处理视频区域点击（切换图标显示/隐藏 + 暂停/播放）
   const handleVideoAreaClick = () => {
-    if (!showVideoIcons) {
-      setShowVideoIcons(true);
-      startIconHideTimer(); // 重新开始隐藏定时器
-    } else {
-      // 如果图标正在显示，则隐藏图标
-      setShowVideoIcons(false);
-      // 清除定时器
-      if (iconHideTimer) {
-        clearTimeout(iconHideTimer);
-        setIconHideTimer(null);
+    console.log('🎬 视频区域被点击');
+    
+    // 防止快速连续点击（只在微信浏览器中启用）
+    if (isWechatBrowser() && isProcessingClick) {
+      console.log('⚠️ 微信浏览器中正在处理点击事件，跳过');
+      return;
+    }
+    
+    if (isWechatBrowser()) {
+      setIsProcessingClick(true);
+    }
+    
+    // 检查RTC连接状态
+    if (!rtcVideoService.getConnectionStatus()) {
+      console.log('⚠️ RTC未连接，跳过点击消息发送');
+      // 仍然切换图标显示状态
+      if (!showVideoIcons) {
+        setShowVideoIcons(true);
+        startIconHideTimer();
+      } else {
+        setShowVideoIcons(false);
+        if (iconHideTimer) {
+          clearTimeout(iconHideTimer);
+          setIconHideTimer(null);
+        }
+      }
+      if (isWechatBrowser()) {
+        setIsProcessingClick(false);
+      }
+      return;
+    }
+    
+    try {
+      // 发送点击触摸消息
+      console.log('👆 发送点击触摸消息');
+      rtcVideoService.sendTouchScreen(
+        proto.eTouchType.click, // click类型
+        {
+          x: 0,
+          y: 0,
+          z: 0
+        },
+        Date.now()
+      );
+      
+      console.log('✅ 点击触摸消息发送成功');
+      
+      // 切换图标显示状态
+      if (!showVideoIcons) {
+        setShowVideoIcons(true);
+        startIconHideTimer();
+      } else {
+        setShowVideoIcons(false);
+        if (iconHideTimer) {
+          clearTimeout(iconHideTimer);
+          setIconHideTimer(null);
+        }
+      }
+      
+      // 延迟切换暂停状态，确保微信浏览器中的视频状态同步
+      const delay = isWechatBrowser() ? 300 : 300; // 微信浏览器使用450ms延迟
+      setTimeout(() => {
+        setIsVideoPaused(!isVideoPaused);
+        console.log('⏸️ 切换视频暂停状态:', !isVideoPaused, '延迟:', delay + 'ms');
+        if (isWechatBrowser()) {
+          setIsProcessingClick(false);
+        }
+      }, delay);
+      
+    } catch (error) {
+      console.error('❌ 发送点击触摸消息失败:', error);
+      // 即使发送失败，也要切换图标显示状态
+      if (!showVideoIcons) {
+        setShowVideoIcons(true);
+        startIconHideTimer();
+      } else {
+        setShowVideoIcons(false);
+        if (iconHideTimer) {
+          clearTimeout(iconHideTimer);
+          setIconHideTimer(null);
+        }
+      }
+      if (isWechatBrowser()) {
+        setIsProcessingClick(false);
       }
     }
   };
@@ -487,6 +565,12 @@ const Home = () => {
       console.log('🔍 缩放操作结束');
     }
     
+    // 如果没有拖动，则认为是点击事件
+    if (!isDragging && lastTouchPos) {
+      console.log('👆 检测到点击事件，触发视频区域点击');
+      handleVideoAreaClick();
+    }
+    
     setIsDragging(false);
     setLastTouchPos(null);
     setInitialDistance(null);
@@ -528,6 +612,12 @@ const Home = () => {
       });
     }
     return positions;
+  };
+
+  // 检测是否在微信浏览器中
+  const isWechatBrowser = (): boolean => {
+    const ua = navigator.userAgent.toLowerCase();
+    return ua.includes('micromessenger');
   };
 
   // 处理微信分享点击
@@ -1798,7 +1888,6 @@ const Home = () => {
         zIndex: 1,
         touchAction: 'none' // 屏蔽浏览器默认的触摸行为
       }} 
-        onClick={handleVideoAreaClick}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -1807,6 +1896,35 @@ const Home = () => {
         onMouseUp={handleTouchEnd}
         onMouseLeave={handleTouchEnd}
       >
+        
+        {/* 暂停图标 - 显示在视频正中央 */}
+        {isVideoPaused && (
+          <div style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            zIndex: 150,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '80px',
+            height: '80px',
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            borderRadius: '50%',
+            border: '2px solid rgba(255, 255, 255, 0.8)',
+            animation: 'pulse 2s infinite'
+          }}>
+            <div style={{
+              width: 0,
+              height: 0,
+              borderTop: '18px solid transparent',
+              borderBottom: '18px solid transparent',
+              borderLeft: '28px solid white',
+              marginLeft: '6px'
+            }} />
+          </div>
+        )}
         
         {/* 左侧图标区域 */}
         {showVideoIcons && (
