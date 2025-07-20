@@ -42,6 +42,7 @@ const Home = () => {
   // 触摸事件相关状态
   const [isDragging, setIsDragging] = useState(false);
   const [lastTouchPos, setLastTouchPos] = useState<{ x: number, y: number } | null>(null);
+  const [touchStartTime, setTouchStartTime] = useState<number>(0); // 触摸开始时间
   
   // 缩放事件相关状态
   const [initialDistance, setInitialDistance] = useState<number | null>(null);
@@ -745,6 +746,7 @@ const Home = () => {
   // 处理视频区域点击（切换图标显示/隐藏 + 暂停/播放）
   const handleVideoAreaClick = () => {
     console.log('🎬 视频区域被点击');
+    console.log('🎬 当前视频暂停状态:', isVideoPaused);
     
     // 防止快速连续点击（只在微信浏览器中启用）
     if (isWechatBrowser() && isProcessingClick) {
@@ -820,10 +822,11 @@ const Home = () => {
       // }
       
       // 延迟切换暂停状态，确保微信浏览器中的视频状态同步
-      const delay = isWechatBrowser() ? 300 : 300; // 微信浏览器使用450ms延迟
+      const delay = isWechatBrowser() ? 300 : 300; // 微信浏览器使用300ms延迟
       setTimeout(() => {
-        setIsVideoPaused(!isVideoPaused);
-        console.log('⏸️ 切换视频暂停状态:', !isVideoPaused, '延迟:', delay + 'ms');
+        const newPausedState = !isVideoPaused;
+        setIsVideoPaused(newPausedState);
+        console.log('⏸️ 切换视频暂停状态:', newPausedState, '延迟:', delay + 'ms');
         if (isWechatBrowser()) {
           setIsProcessingClick(false);
         }
@@ -965,9 +968,11 @@ const Home = () => {
 
   // 处理触摸开始事件
   const handleTouchStart = (event: React.TouchEvent | React.MouseEvent) => {
+    console.log('👆 handleTouchStart 被调用');
     const pos = getEventPosition(event);
     setLastTouchPos(pos);
     setIsDragging(false);
+    setTouchStartTime(Date.now()); // 记录触摸开始时间
     
     // 检测多点触摸（缩放手势）
     if ('touches' in event && event.touches.length === 2) {
@@ -991,6 +996,7 @@ const Home = () => {
 
   // 处理触摸移动事件
   const handleTouchMove = (event: React.TouchEvent | React.MouseEvent) => {
+    console.log('👆 handleTouchMove 被调用');
     // 检测缩放手势
     if ('touches' in event && event.touches.length === 2 && initialDistance !== null) {
       const positions = getTouchPositions(event as React.TouchEvent);
@@ -1045,8 +1051,9 @@ const Home = () => {
     // 计算滑动距离
     const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
     
-    // 如果滑动距离超过阈值，发送旋转消息
-    if (distance > 10) {
+    // 降低滑动阈值，更早地设置拖动状态，防止误触发点击事件
+    if (distance > 5) { // 降低阈值到5像素，更早地识别为滑动
+      console.log('👆 设置拖动状态为true，距离:', distance.toFixed(2));
       setIsDragging(true);
       
       // 检查RTC连接状态
@@ -1077,6 +1084,12 @@ const Home = () => {
         
         console.log('✅ 旋转触摸消息发送成功');
         
+        // 发送旋转消息后，自动暂停视频
+        if (!isVideoPaused) {
+          console.log('⏸️ 旋转操作后自动暂停视频');
+          setIsVideoPaused(true);
+        }
+        
       } catch (error) {
         console.error('❌ 发送旋转触摸消息失败:', error);
       }
@@ -1085,6 +1098,10 @@ const Home = () => {
 
   // 处理触摸结束事件
   const handleTouchEnd = (event: React.TouchEvent | React.MouseEvent) => {
+    console.log('👆 handleTouchEnd 被调用');
+    console.log('👆 isDragging:', isDragging);
+    console.log('👆 lastTouchPos:', lastTouchPos);
+    
     if (isDragging) {
       console.log('👆 触摸结束，旋转操作完成');
     }
@@ -1094,15 +1111,20 @@ const Home = () => {
       console.log('🔍 缩放操作结束');
     }
     
+    // 检查滑动距离，如果很小才认为是点击
+    const currentPos = getEventPosition(event);
+    const deltaX = currentPos.x - (lastTouchPos?.x || 0);
+    const deltaY = currentPos.y - (lastTouchPos?.y || 0);
+    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+    console.log('👆 触摸结束距离:', distance);
+    // 计算触摸持续时间
+    const touchDuration = Date.now() - touchStartTime;
+    
     // 如果没有拖动，则认为是点击事件
     if (!isDragging && lastTouchPos) {
-      // 检查滑动距离，如果很小才认为是点击
-      const currentPos = getEventPosition(event);
-      const deltaX = currentPos.x - lastTouchPos.x;
-      const deltaY = currentPos.y - lastTouchPos.y;
-      const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
       
-      if (distance < 5) { // 只有滑动距离小于5像素才认为是点击
+      // 增加更严格的点击判断条件：距离小于3像素且时间间隔合理（100-500ms）
+      if (distance < 3 && touchDuration <= 100) {
         // 检查点击位置是否在icon区域内，如果是则不触发视频区域点击
         const clickX = currentPos.x;
         const clickY = currentPos.y;
@@ -1122,11 +1144,20 @@ const Home = () => {
             rightArea: { x1: window.innerWidth - 120, x2: window.innerWidth - 10, y1: window.innerHeight * 0.3, y2: window.innerHeight * 0.7 }
           });
         } else {
-          console.log('👆 检测到点击事件，触发视频区域点击', { clickX, clickY });
+          console.log('👆 检测到点击事件，触发视频区域点击', { 
+            clickX, clickY, 
+            touchDuration: touchDuration + 'ms',
+            distance: distance.toFixed(2) + 'px'
+          });
           handleVideoAreaClick();
         }
       } else {
-        console.log('👆 滑动距离过大，不触发点击事件:', distance.toFixed(2));
+            console.log('👆 不满足点击条件，跳过点击事件:', {
+      distance: distance.toFixed(2) + 'px',
+      touchDuration: touchDuration + 'ms',
+      isDragging: isDragging,
+      lastTouchPos: lastTouchPos
+    });
       }
     }
     
