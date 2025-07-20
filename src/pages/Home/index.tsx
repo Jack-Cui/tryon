@@ -273,6 +273,9 @@ const Home = () => {
     { icon: balletIcon, name: '芭蕾' }
   ];
 
+  // 默认动作图标（未展开时显示）
+  const defaultActionIcon = { icon: actionIcon, name: '动作' };
+
   // 实景图标数组，对应不同的地图
   const realSceneIcons = [
     { icon: realSceneActionIcon, name: '教堂', mapName: 'Maps_jiaotang' },
@@ -1514,32 +1517,32 @@ const Home = () => {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    width: '50px',
-                    height: '50px',
+                    width: '40px',
+                    height: '40px',
                     borderRadius: '12px',
                     backgroundColor: isActionExpanded ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.6)',
                     boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
                     border: isActionExpanded ? '2px solid #1890ff' : '2px solid transparent'
                   }}>
                     <img 
-                      src={actionIcons[selectedActionIndex].icon} 
-                      alt={actionIcons[selectedActionIndex].name} 
+                      src={isActionExpanded ? actionIcons[selectedActionIndex].icon : defaultActionIcon.icon} 
+                      alt={isActionExpanded ? actionIcons[selectedActionIndex].name : defaultActionIcon.name} 
                       style={{
-                        width: '30px',
-                        height: '30px',
+                        width: '24px',
+                        height: '24px',
                         objectFit: 'contain'
                       }}
                     />
                   </div>
                   <div style={{
-                    fontSize: '12px',
+                    fontSize: '10px',
                     color: '#333',
                     fontWeight: 'normal',
                     textAlign: 'center',
                     lineHeight: '1',
                     whiteSpace: 'nowrap'
                   }}>
-                    {actionIcons[selectedActionIndex].name}
+                    {isActionExpanded ? actionIcons[selectedActionIndex].name : defaultActionIcon.name}
                   </div>
                 </div>
 
@@ -1571,9 +1574,9 @@ const Home = () => {
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          width: '50px', // 与主图标保持一致
-                          height: '50px',
-                          borderRadius: '12px', // 与主图标保持一致
+                          width: '40px', // 缩小尺寸
+                          height: '40px',
+                          borderRadius: '10px', // 与主图标保持一致
                           backgroundColor: selectedActionIndex === index ? 'rgba(24,144,255,0.2)' : 'rgba(255,255,255,0.8)',
                           boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
                           border: selectedActionIndex === index ? '2px solid #1890ff' : '2px solid transparent'
@@ -1582,14 +1585,14 @@ const Home = () => {
                             src={action.icon} 
                             alt={action.name} 
                             style={{
-                              width: '30px', // 与主图标保持一致
-                              height: '30px',
+                              width: '20px', // 缩小图标尺寸
+                              height: '20px',
                               objectFit: 'contain'
                             }}
                           />
                         </div>
                         <div style={{
-                          fontSize: '12px',
+                          fontSize: '9px', // 缩小字体
                           color: selectedActionIndex === index ? '#1890ff' : '#333',
                           fontWeight: selectedActionIndex === index ? 'bold' : 'normal',
                           textAlign: 'center',
@@ -1632,9 +1635,9 @@ const Home = () => {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    width: '50px',
-                    height: '50px',
-                    borderRadius: '12px',
+                    width: '40px', // 缩小尺寸
+                    height: '40px',
+                    borderRadius: '10px',
                     backgroundColor: isRealSceneExpanded ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.6)',
                     boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
                     border: isRealSceneExpanded ? '2px solid #52c41a' : '2px solid transparent'
@@ -1643,14 +1646,14 @@ const Home = () => {
                       src={realSceneIcons[selectedRealSceneIndex].icon} 
                       alt={realSceneIcons[selectedRealSceneIndex].name} 
                       style={{
-                        width: '30px',
-                        height: '30px',
+                        width: '24px', // 缩小图标尺寸
+                        height: '24px',
                         objectFit: 'contain'
                       }}
                     />
                   </div>
                   <div style={{
-                    fontSize: '12px',
+                    fontSize: '10px', // 缩小字体
                     color: '#333',
                     fontWeight: 'normal',
                     textAlign: 'center',
@@ -1693,9 +1696,9 @@ const Home = () => {
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          width: '50px', // 与主图标保持一致
-                          height: '50px',
-                          borderRadius: '12px', // 与主图标保持一致
+                          width: '40px', // 缩小尺寸
+                          height: '40px',
+                          borderRadius: '10px', // 与主图标保持一致
                           backgroundColor: selectedRealSceneIndex === index ? 'rgba(82,196,26,0.2)' : 'rgba(255,255,255,0.8)',
                           boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
                           border: selectedRealSceneIndex === index ? '2px solid #52c41a' : '2px solid transparent'
@@ -1704,14 +1707,14 @@ const Home = () => {
                             src={scene.icon} 
                             alt={scene.name} 
                             style={{
-                              width: '30px', // 与主图标保持一致
-                              height: '30px',
+                              width: '20px', // 缩小图标尺寸
+                              height: '20px',
                               objectFit: 'contain'
                             }}
                           />
                         </div>
                         <div style={{
-                          fontSize: '12px', // 与主图标保持一致
+                          fontSize: '9px', // 缩小字体
                           color: selectedRealSceneIndex === index ? '#52c41a' : '#333',
                           fontWeight: selectedRealSceneIndex === index ? 'bold' : 'normal',
                           textAlign: 'center',
@@ -1812,9 +1815,9 @@ const Home = () => {
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          width: '50px',
-                          height: '50px',
-                          borderRadius: '12px',
+                          width: '40px', // 缩小尺寸
+                          height: '40px',
+                          borderRadius: '10px',
                           backgroundColor: 'rgba(255,255,255,0.8)',
                           boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
                         }}>
@@ -1822,8 +1825,8 @@ const Home = () => {
                             src={getCategoryIcon(category)} 
                             alt={category} 
                             style={{
-                              width: '30px',
-                              height: '30px',
+                              width: '24px', // 缩小图标尺寸
+                              height: '24px',
                               objectFit: 'contain'
                             }}
                             onError={(e) => {
@@ -1866,8 +1869,8 @@ const Home = () => {
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            width: '50px',
-                            height: '50px',
+                            width: '40px', // 缩小尺寸
+                            height: '40px',
                             borderRadius: '8px',
                             overflow: 'hidden',
                             backgroundColor: '#fff',
@@ -1986,9 +1989,9 @@ const Home = () => {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    width: '50px',
-                    height: '50px',
-                    borderRadius: '12px',
+                    width: '40px', // 缩小尺寸
+                    height: '40px',
+                    borderRadius: '10px',
                     backgroundColor: 'rgba(255,255,255,0.8)',
                     boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
                     border: '2px solid #07c160'
@@ -1997,8 +2000,8 @@ const Home = () => {
                       src={shareIcon} 
                       alt="微信分享" 
                       style={{
-                        width: '30px',
-                        height: '30px',
+                        width: '24px', // 缩小图标尺寸
+                        height: '24px',
                         objectFit: 'contain'
                       }}
                     />
@@ -2279,25 +2282,25 @@ const Home = () => {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  width: '50px',
-                  height: '50px',
-                  borderRadius: '12px',
+                  width: '40px', // 缩小尺寸
+                  height: '40px',
+                  borderRadius: '10px',
                   backgroundColor: isActionExpanded ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.6)',
                   boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
                   border: isActionExpanded ? '2px solid #1890ff' : '2px solid transparent'
                 }}>
                   <img 
-                    src={actionIcons[selectedActionIndex].icon} 
-                    alt={actionIcons[selectedActionIndex].name} 
+                    src={isActionExpanded ? actionIcons[selectedActionIndex].icon : defaultActionIcon.icon} 
+                    alt={isActionExpanded ? actionIcons[selectedActionIndex].name : defaultActionIcon.name} 
                     style={{
-                      width: '30px',
-                      height: '30px',
+                      width: '24px', // 缩小图标尺寸
+                      height: '24px',
                       objectFit: 'contain'
                     }}
                   />
                 </div>
                 <div style={{
-                  fontSize: '12px',
+                  fontSize: '10px', // 缩小字体
                   color: '#fff',
                   fontWeight: 'normal',
                   textAlign: 'center',
@@ -2305,7 +2308,7 @@ const Home = () => {
                   whiteSpace: 'nowrap',
                   textShadow: '0 1px 2px rgba(0,0,0,0.8)'
                 }}>
-                  {actionIcons[selectedActionIndex].name}
+                  {isActionExpanded ? actionIcons[selectedActionIndex].name : defaultActionIcon.name}
                 </div>
               </div>
 
@@ -2341,9 +2344,9 @@ const Home = () => {
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          width: '50px', // 与主图标保持一致
-                          height: '50px',
-                          borderRadius: '12px', // 与主图标保持一致
+                          width: '40px', // 缩小尺寸
+                          height: '40px',
+                          borderRadius: '10px', // 与主图标保持一致
                           backgroundColor: selectedActionIndex === index ? 'rgba(24,144,255,0.2)' : 'rgba(255,255,255,0.8)',
                           boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
                           border: selectedActionIndex === index ? '2px solid #1890ff' : '2px solid transparent'
@@ -2352,14 +2355,14 @@ const Home = () => {
                             src={action.icon} 
                             alt={action.name} 
                             style={{
-                              width: '30px', // 与主图标保持一致
-                              height: '30px',
+                              width: '20px', // 缩小图标尺寸
+                              height: '20px',
                               objectFit: 'contain'
                             }}
                           />
                         </div>
                         <div style={{
-                          fontSize: '12px',
+                          fontSize: '9px', // 缩小字体
                           color: selectedActionIndex === index ? '#1890ff' : '#fff',
                           fontWeight: selectedActionIndex === index ? 'bold' : 'normal',
                           textAlign: 'center',
@@ -2407,9 +2410,9 @@ const Home = () => {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  width: '50px',
-                  height: '50px',
-                  borderRadius: '12px',
+                  width: '40px', // 缩小尺寸
+                  height: '40px',
+                  borderRadius: '10px',
                   backgroundColor: isRealSceneExpanded ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.6)',
                   boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
                   border: isRealSceneExpanded ? '2px solid #52c41a' : '2px solid transparent'
@@ -2418,14 +2421,14 @@ const Home = () => {
                     src={realSceneIcons[selectedRealSceneIndex].icon} 
                     alt={realSceneIcons[selectedRealSceneIndex].name} 
                     style={{
-                      width: '30px',
-                      height: '30px',
+                      width: '24px', // 缩小图标尺寸
+                      height: '24px',
                       objectFit: 'contain'
                     }}
                   />
                 </div>
                 <div style={{
-                  fontSize: '12px',
+                  fontSize: '10px', // 缩小字体
                   color: '#fff',
                   fontWeight: 'normal',
                   textAlign: 'center',
@@ -2473,9 +2476,9 @@ const Home = () => {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        width: '50px', // 与主图标保持一致
-                        height: '50px',
-                        borderRadius: '12px', // 与主图标保持一致
+                        width: '40px', // 缩小尺寸
+                        height: '40px',
+                        borderRadius: '10px', // 与主图标保持一致
                         backgroundColor: selectedRealSceneIndex === index ? 'rgba(82,196,26,0.2)' : 'rgba(255,255,255,0.8)',
                         boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
                         border: selectedRealSceneIndex === index ? '2px solid #52c41a' : '2px solid transparent'
@@ -2484,14 +2487,14 @@ const Home = () => {
                           src={scene.icon} 
                           alt={scene.name} 
                           style={{
-                            width: '30px', // 与主图标保持一致
-                            height: '30px',
+                            width: '20px', // 缩小图标尺寸
+                            height: '20px',
                             objectFit: 'contain'
                           }}
                         />
                       </div>
                       <div style={{
-                        fontSize: '12px', // 与主图标保持一致
+                        fontSize: '9px', // 缩小字体
                         color: selectedRealSceneIndex === index ? '#52c41a' : '#fff',
                         fontWeight: selectedRealSceneIndex === index ? 'bold' : 'normal',
                         textAlign: 'center',
