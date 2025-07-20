@@ -128,8 +128,8 @@ const Home = () => {
       const garment2Id = clothesItemInfoList.length >= 2 ? clothesItemInfoList[1].clothesId : 0;
       const garment3Id = clothesItemInfoList.length >= 3 ? clothesItemInfoList[2].clothesId : 0;
       const garment1Size = 4; // 默认尺寸，实际应该从服务器获取
-      const garment2Size = 1; // 默认尺寸，实际应该从服务器获取
-      const garment3Size = 1; // 默认尺寸，实际应该从服务器获取
+      const garment2Size = garment2Id > 0 ? 4 : 1; // 默认尺寸，实际应该从服务器获取
+      const garment3Size = garment3Id > 0 ? 4 : 1; // 默认尺寸，实际应该从服务器获取
 
       console.log('👕 构建的服装参数:', {
         garment1Id, garment2Id, garment3Id,
