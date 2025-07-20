@@ -435,6 +435,12 @@ export class RTCVideoService {
     rtcMessageHandler.sendChangeMap(mapName);
   }
 
+  // 发送更换服装消息
+  sendChangeGarment(garment1Id: number, garment2Id: number, garment3Id: number, garment1Size: number, garment2Size: number, garment3Size: number): void {
+    console.log('👕 发送更换服装消息:', { garment1Id, garment2Id, garment3Id, garment1Size, garment2Size, garment3Size });
+    rtcMessageHandler.sendChangeGarment(garment1Id, garment2Id, garment3Id, garment1Size, garment2Size, garment3Size);
+  }
+
   // 发送触摸屏幕消息
   sendTouchScreen(touchType: proto.eTouchType, pos: { x: number, y: number, z: number }, timestamp: number): void {
     console.log('👆 发送触摸屏幕消息:', { touchType, pos, timestamp });

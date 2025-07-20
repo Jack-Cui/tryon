@@ -221,6 +221,55 @@ export class RTCMessageHandler {
     }
   }
 
+  // 发送更换服装消息
+  sendChangeGarment(garment1Id: number, garment2Id: number, garment3Id: number, garment1Size: number, garment2Size: number, garment3Size: number): void {
+    if (!this.engine) {
+      console.error('❌ [RTCMessageHandler:sendChangeGarment] engine is null');
+      return;
+    }
+
+    try {
+      console.log('👕 准备发送更换服装消息:', {
+        garment1Id: garment1Id,
+        garment2Id: garment2Id,
+        garment3Id: garment3Id,
+        garment1Size: garment1Size,
+        garment2Size: garment2Size,
+        garment3Size: garment3Size,
+        messageType: 'oChangeGarmentReq'
+      });
+      
+      // 直接编码proto消息
+      const message = proto.oChangeGarmentReq.create({
+        garment1Id: garment1Id,
+        garment2Id: garment2Id,
+        garment3Id: garment3Id,
+        garment1Size: garment1Size,
+        garment2Size: garment2Size,
+        garment3Size: garment3Size
+      });
+      
+      const payload = proto.oChangeGarmentReq.encode(message).finish();
+      const hexString = Array.from(payload).map((b: number) => b.toString(16).padStart(2, '0')).join('');
+      
+      console.log('📤 发送更换服装proto消息:', {
+        id: proto.eClientPID.ChangeGarmentReq,
+        payloadSize: payload.length,
+        hexString: hexString
+      });
+      
+      // 使用正确的proto消息格式 (参考C#代码)
+      const messageStr = `cmd=proto&id=${proto.eClientPID.ChangeGarmentReq}&hex=${hexString}`;
+      this.engine.sendUserMessage("8888", messageStr);
+      
+      console.log('✅ 更换服装proto消息发送成功:', proto.eClientPID.ChangeGarmentReq);
+      console.log('📤 发送的消息内容:', messageStr);
+      
+    } catch (error) {
+      console.error('❌ 发送更换服装RTC消息失败:', error);
+    }
+  }
+
   // 发送触摸屏幕消息
   sendTouchScreen(touchType: proto.eTouchType, pos: { x: number, y: number, z: number }, timestamp: number): void {
     if (!this.engine) {

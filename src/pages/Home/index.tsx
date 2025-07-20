@@ -27,6 +27,8 @@ import shareIcon from '../../assets/分享.png';
 import realSceneIcon from '../../assets/实景.png';
 import realSceneActionIcon from '../../assets/实景动作.png';
 
+const Long = require('long');
+
 const Home = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -91,6 +93,180 @@ const Home = () => {
     return iconMap[classifyName] || topIcon; // 默认使用上衣图标
   };
 
+  // 获取分类ID
+  const getClassifyId = (classifyName: string): number => {
+    const classifyIdMap: {[key: string]: number} = {
+      '上衣': 1,
+      '下装': 2,
+      '外套': 3,
+      '套装': 4,
+      '帽子': 5,
+      '鞋子': 6,
+      '裙子': 7,
+      '袜子': 8,
+      '连衣裙': 9,
+    };
+    return classifyIdMap[classifyName] || 1; // 默认返回上衣ID
+  };
+
+  // 发送更换服装RTC请求
+  const sendChangeGarmentRequest = async (clothesItemInfoList: any[], isClothesSuit: boolean) => {
+    try {
+      console.log('👕 准备发送更换服装RTC请求:', {
+        clothesItemInfoList: clothesItemInfoList,
+        isClothesSuit: isClothesSuit
+      });
+
+      // 检查RTC连接状态
+      if (!rtcVideoService.getConnectionStatus()) {
+        console.error('❌ RTC未连接，无法发送更换服装请求');
+        return;
+      }
+
+      // 构建服装参数
+      const garment1Id = clothesItemInfoList.length >= 1 ? clothesItemInfoList[0].clothesId : 0;
+      const garment2Id = clothesItemInfoList.length >= 2 ? clothesItemInfoList[1].clothesId : 0;
+      const garment3Id = clothesItemInfoList.length >= 3 ? clothesItemInfoList[2].clothesId : 0;
+      const garment1Size = 4; // 默认尺寸，实际应该从服务器获取
+      const garment2Size = 1; // 默认尺寸，实际应该从服务器获取
+      const garment3Size = 1; // 默认尺寸，实际应该从服务器获取
+
+      console.log('👕 构建的服装参数:', {
+        garment1Id, garment2Id, garment3Id,
+        garment1Size, garment2Size, garment3Size
+      });
+
+      // 发送更换服装消息
+      rtcVideoService.sendChangeGarment(garment1Id, garment2Id, garment3Id, garment1Size, garment2Size, garment3Size);
+      
+      console.log('✅ 更换服装RTC消息发送成功');
+      
+    } catch (error) {
+      console.error('❌ 发送更换服装RTC消息失败:', error);
+    }
+  };
+
+  // 处理衣服管理逻辑
+  const handleClothesManagement = async (clothesItem: any) => {
+    const classifyId = selectedClassifyId || getClassifyId(clothesItem.classifyName);
+    const clothesId = clothesItem.clothesId;
+    
+    console.log('👕 开始处理衣服管理逻辑:', {
+      classifyId: classifyId,
+      clothesId: clothesId,
+      classifyName: clothesItem.classifyName,
+      suitIds: clothesItem.suitIds
+    });
+
+    let newClothesItemInfoList: any[] = [];
+    let newMClothesSuit = false;
+
+    if (classifyId === 4) {
+      // 套装
+      newMClothesSuit = true;
+      
+      // 处理套装逻辑
+      const suitIds = clothesItem.suitIds || '';
+      const arr = suitIds.split(',');
+      
+      if (suitIds === '' || arr.length === 0) {
+        const item = {
+          classifyId: classifyId,
+          clothesId: clothesId
+        };
+        newClothesItemInfoList.push(item);
+      } else {
+        for (let i = 0; i < arr.length; ++i) {
+          const longValue = Long.fromString(arr[i]);
+          const item = {
+            classifyId: classifyId,
+            clothesId: longValue
+          };
+          newClothesItemInfoList.push(item);
+        }
+      }
+      
+      console.log('👕 套装处理完成:', newClothesItemInfoList);
+      
+    } else {
+      // 非套装
+      if (mClothesSuit) {
+        // 之前是套装
+        newMClothesSuit = false;
+        
+        const item = {
+          classifyId: classifyId,
+          clothesId: clothesId
+        };
+        newClothesItemInfoList.push(item);
+        
+        console.log('👕 从套装切换到非套装:', newClothesItemInfoList);
+        
+      } else {
+        // 之前不是套装
+        newClothesItemInfoList = [...mClothesItemInfoList];
+        
+        // 1. 删除存储的同类型衣服
+        for (let i = newClothesItemInfoList.length - 1; i >= 0; --i) {
+          const item = newClothesItemInfoList[i];
+          if (item.classifyId === classifyId) {
+            newClothesItemInfoList.splice(i, 1);
+          }
+        }
+
+        // 2. 特殊处理
+        // 穿裙子 脱下上下衣
+        if (classifyId === 7) {
+          for (let i = newClothesItemInfoList.length - 1; i >= 0; --i) {
+            const item = newClothesItemInfoList[i];
+            if (item.classifyId === 1 || item.classifyId === 2) {
+              newClothesItemInfoList.splice(i, 1);
+            }
+          }
+        }
+
+        // 穿上下衣 脱下裙子
+        if (classifyId === 1 || classifyId === 2) {
+          for (let i = newClothesItemInfoList.length - 1; i >= 0; --i) {
+            const item = newClothesItemInfoList[i];
+            if (item.classifyId === 7) {
+              newClothesItemInfoList.splice(i, 1);
+            }
+          }
+        }
+
+        let index = -1;
+        for (let i = 0; i < newClothesItemInfoList.length; ++i) {
+          const item = newClothesItemInfoList[i];
+          if (classifyId === item.classifyId) {
+            item.clothesId = clothesId;
+            newClothesItemInfoList[i] = item;
+            index = i;
+          }
+        }
+
+        if (newClothesItemInfoList.length >= 3) {
+          newClothesItemInfoList.splice(0, 1);
+        }
+
+        const cii = {
+          classifyId: classifyId,
+          clothesId: clothesId
+        };
+        newClothesItemInfoList.push(cii);
+        
+        console.log('👕 非套装处理完成:', newClothesItemInfoList);
+      }
+    }
+    
+    // 更新状态
+    setMClothesSuit(newMClothesSuit);
+    setMClothesItemInfoList(newClothesItemInfoList);
+    
+    // 发送RTC请求，直接传递最新的数据
+    await sendChangeGarmentRequest(newClothesItemInfoList, newMClothesSuit);
+  };
+
   // 动作图标数组
   const actionIcons = [
     { icon: actionIcon, name: '动作' },
@@ -105,6 +281,11 @@ const Home = () => {
     { icon: realSceneActionIcon, name: '沙滩', mapName: 'Maps_shatan' },
     { icon: realSceneActionIcon, name: '其他', mapName: 'Maps_udraper' }
   ];
+
+  // 衣服管理相关状态
+  const [mClothesItemInfoList, setMClothesItemInfoList] = useState<any[]>([]);
+  const [mClothesSuit, setMClothesSuit] = useState<boolean>(false);
+  const [selectedClassifyId, setSelectedClassifyId] = useState<number | null>(null);
 
   // 处理动作图标点击
   const handleActionClick = (index?: number) => {
@@ -215,6 +396,10 @@ const Home = () => {
     setSelectedCategory(category);
     setIsBrowsingClothes(true);
     
+    // 设置当前选中的分类ID
+    const classifyId = getClassifyId(category);
+    setSelectedClassifyId(classifyId);
+    
     // 调试：打印分类下的服装数量
     const categoryClothes = getClothesForCategory(category);
     console.log(`分类 "${category}" 下的服装数量:`, categoryClothes.length);
@@ -229,11 +414,25 @@ const Home = () => {
   };
 
   // 处理服装点击
-  const handleClothesClick = (clothesItem: any, index: number) => {
+  const handleClothesClick = async (clothesItem: any, index: number) => {
     // 更新顶部显示的服装 - 使用在当前分类下的相对索引
     setSelectedClothesIndex(index);
+    
+    // 打印详细的衣服信息日志
+    console.log('👕 选中服装详细信息:', {
+      服装名称: clothesItem.clothesName || '未知',
+      服装分类: clothesItem.classifyName || '未知',
+      服装ID: clothesItem.clothesId || '未知',
+      图片URL: clothesItem.clothesImageUrl || '未知',
+      分类内索引: index,
+      完整对象: clothesItem
+    });
+    
     console.log('选中服装:', clothesItem, '分类内索引:', index);
     console.log('选中服装图片URL:', clothesItem.clothesImageUrl);
+    
+    // 处理衣服管理逻辑
+    await handleClothesManagement(clothesItem);
   };
 
   // 开始图标自动隐藏定时器（视频播放界面用）
@@ -409,6 +608,10 @@ const Home = () => {
     setSelectedCategory(category);
     setIsBrowsingClothes(true);
     
+    // 设置当前选中的分类ID
+    const classifyId = getClassifyId(category);
+    setSelectedClassifyId(classifyId);
+    
     // 移除隐藏定时器，让icon常驻显示
     // startIconHideTimer();
     
@@ -429,11 +632,25 @@ const Home = () => {
   };
 
   // 处理视频播放界面的服装点击
-  const handleVideoClothesClick = (clothesItem: any, index: number) => {
+  const handleVideoClothesClick = async (clothesItem: any, index: number) => {
     // 更新顶部显示的服装 - 使用在当前分类下的相对索引
     setSelectedClothesIndex(index);
+    
+    // 打印详细的衣服信息日志
+    console.log('🎬 视频界面选中服装详细信息:', {
+      服装名称: clothesItem.clothesName || '未知',
+      服装分类: clothesItem.classifyName || '未知',
+      服装ID: clothesItem.clothesId || '未知',
+      图片URL: clothesItem.clothesImageUrl || '未知',
+      分类内索引: index,
+      完整对象: clothesItem
+    });
+    
     console.log('选中服装:', clothesItem, '分类内索引:', index);
     console.log('选中服装图片URL:', clothesItem.clothesImageUrl);
+    
+    // 处理衣服管理逻辑
+    await handleClothesManagement(clothesItem);
     
     // 移除隐藏定时器，让icon常驻显示
     // startIconHideTimer();
