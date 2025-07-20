@@ -758,18 +758,34 @@ const Home = () => {
     
     // 检查RTC连接状态
     if (!rtcVideoService.getConnectionStatus()) {
-      console.log('⚠️ RTC未连接，跳过点击消息发送');
-      // 移除图标显示状态切换，让icon常驻显示
-      // if (!showVideoIcons) {
-      //   setShowVideoIcons(true);
-      //   startIconHideTimer();
-      // } else {
-      //   setShowVideoIcons(false);
-      //   if (iconHideTimer) {
-      //     clearTimeout(iconHideTimer);
-      //     setIconHideTimer(null);
-      //   }
-      // }
+      console.log('⚠️ RTC未连接，尝试重新初始化RTC连接');
+      
+      // 尝试重新初始化RTC连接
+      if (loginParams) {
+        console.log('🔄 重新初始化RTC连接...');
+        const rtcConfig: RTCVideoConfig = {
+          appId: '643e46acb15c24012c963951',
+          appKey: 'b329b39ca8df4b5185078f29d8d8025f',
+          roomId: '1939613403762253825',
+          userId: loginParams.userId
+        };
+        
+        const config = {
+          phone: loginParams.phone,
+          coCreationId: loginParams.coCreationId,
+          userId: loginParams.userId,
+          accessToken: loginParams.token,
+          rtcConfig,
+        };
+        
+        // 异步重新初始化RTC
+        tryonService.startTryonFlow(config).then(() => {
+          console.log('✅ RTC重新连接成功');
+        }).catch((error) => {
+          console.error('❌ RTC重新连接失败:', error);
+        });
+      }
+      
       if (isWechatBrowser()) {
         setIsProcessingClick(false);
       }
@@ -1328,6 +1344,12 @@ const Home = () => {
           await handleStartTryon();
         } else {
           console.log('⚠️ 用户已离开过舞台，跳过自动登台');
+          
+          // 即使离开过舞台，也要检查RTC连接状态
+          if (!rtcVideoService.getConnectionStatus()) {
+            console.log('🔄 检测到RTC未连接，尝试重新连接...');
+            await handleStartTryon();
+          }
         }
       }, 1000);
     };
@@ -1443,6 +1465,13 @@ const Home = () => {
   const handleStartTryon = async () => {
     if (!loginParams) {
       console.warn('缺少登录参数，无法开始试穿');
+      return;
+    }
+
+    // 检查RTC连接状态，如果已连接则跳过
+    if (rtcVideoService.getConnectionStatus()) {
+      console.log('RTC已连接，跳过重复初始化');
+      setShowSelectionScreen(false); // 确保显示视频播放界面
       return;
     }
 
@@ -1653,12 +1682,24 @@ const Home = () => {
       }
     };
 
+    // 监听RTC连接状态变化
+    const handleRTCConnectionStatus = () => {
+      if (rtcVideoService.getConnectionStatus()) {
+        console.log('✅ RTC连接成功，重置试穿流程标志');
+        hasStartedTryon.current = false; // 重置标志，允许重新连接
+      }
+    };
+
+    // 定期检查RTC连接状态
+    const rtcStatusCheckInterval = setInterval(handleRTCConnectionStatus, 5000); // 每5秒检查一次
+
     window.addEventListener('rtcVideoStreamUpdate', handleVideoStreamUpdate as EventListener);
     window.addEventListener('rtcPlayerEvent', handlePlayerEvent as EventListener);
 
     return () => {
       window.removeEventListener('rtcVideoStreamUpdate', handleVideoStreamUpdate as EventListener);
       window.removeEventListener('rtcPlayerEvent', handlePlayerEvent as EventListener);
+      clearInterval(rtcStatusCheckInterval);
     };
   }, []);
 
