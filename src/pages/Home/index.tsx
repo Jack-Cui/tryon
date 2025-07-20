@@ -2063,7 +2063,7 @@ const Home = () => {
         </div> */}
 
         {/* 自动登台提示 */}
-        {showSelectionScreen && !hasLeftStage && (
+        {/* {showSelectionScreen && !hasLeftStage && (
           <div style={{
             position: 'fixed',
             bottom: '20px',
@@ -2090,7 +2090,7 @@ const Home = () => {
             }}></div>
             正在自动登台...
           </div>
-        )}
+        )} */}
 
 
 
@@ -2576,7 +2576,7 @@ const Home = () => {
             backgroundColor: '#000',
             zIndex: 10
           }}>
-            <div style={{
+            {/* <div style={{
               textAlign: 'center',
               color: '#fff',
               padding: '40px 20px'
@@ -2619,7 +2619,7 @@ const Home = () => {
               >
                 调试DOM结构
               </button>
-            </div>
+            </div> */}
           </div>
         ) : (
           // 视频流全屏显示
