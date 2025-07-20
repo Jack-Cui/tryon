@@ -132,48 +132,67 @@ const Home = () => {
     try {
       console.log('📹 开始录制流程...');
       
-      const videoTag = getCurrentVideoElement();
-      if (!videoTag) {
-        console.error('❌ 未找到视频元素');
-        alert('未找到视频流，无法录制');
-        return;
-      }
-      
-      console.log('📹 找到视频元素:', videoTag.tagName);
-      
+      // 直接尝试屏幕录制，这是最可靠的方法
       let stream: MediaStream | null = null;
       
-      if (videoTag instanceof HTMLVideoElement) {
-        if (videoTag.srcObject instanceof MediaStream) {
-          stream = videoTag.srcObject as MediaStream;
-          console.log('📹 从video元素获取MediaStream');
-        } else {
-          console.log('📹 video元素没有MediaStream，尝试其他方法');
-          // 尝试从video元素直接获取流
-          try {
-            // @ts-ignore
-            stream = videoTag.captureStream ? videoTag.captureStream() : null;
-          } catch (e) {
-            console.warn('⚠️ 无法从video元素获取流:', e);
-          }
-        }
-      } else if (videoTag instanceof HTMLCanvasElement) {
-        console.log('📹 从canvas元素获取流');
+      try {
+        console.log('📹 尝试屏幕录制');
+        stream = await navigator.mediaDevices.getDisplayMedia({
+          video: true
+        });
+        console.log('📹 屏幕录制成功');
+      } catch (e) {
+        console.error('❌ 屏幕录制失败:', e);
+        
+        // 备用方案：尝试简单的屏幕录制
         try {
-          // @ts-ignore
-          stream = (videoTag as any).captureStream ? (videoTag as any).captureStream() : null;
-        } catch (e) {
-          console.warn('⚠️ 无法从canvas元素获取流:', e);
+          console.log('📹 尝试简单屏幕录制');
+          stream = await navigator.mediaDevices.getDisplayMedia({
+            video: true
+          });
+          console.log('📹 简单屏幕录制成功');
+        } catch (e2) {
+          console.error('❌ 简单屏幕录制也失败:', e2);
         }
       }
       
       if (!stream) {
-        console.error('❌ 无法获取视频流');
-        alert('无法获取视频流，请确保视频正在播放');
+        console.error('❌ 所有录制方法都失败');
+        alert('无法获取屏幕录制权限，请允许屏幕共享');
         return;
       }
       
+      // 验证流是否有效
+      if (stream.getTracks().length === 0) {
+        console.error('❌ MediaStream没有轨道');
+        alert('视频流无效，无法录制');
+        return;
+      }
+      
+      // 检查是否有视频轨道
+      const videoTracks = stream.getVideoTracks();
+      if (videoTracks.length === 0) {
+        console.error('❌ MediaStream没有视频轨道');
+        alert('没有视频轨道，无法录制');
+        return;
+      }
+      
+      console.log('📹 视频轨道信息:', videoTracks.map(track => ({
+        id: track.id,
+        label: track.label,
+        enabled: track.enabled,
+        readyState: track.readyState,
+        muted: track.muted
+      })));
+      
       console.log('📹 获取到MediaStream，轨道数量:', stream.getTracks().length);
+      stream.getTracks().forEach((track, index) => {
+        console.log(`📹 轨道[${index}]:`, {
+          kind: track.kind,
+          enabled: track.enabled,
+          readyState: track.readyState
+        });
+      });
       
       // 检查浏览器支持的MIME类型
       let mimeType = 'video/webm';
@@ -205,9 +224,19 @@ const Home = () => {
       }
       
       recorder.ondataavailable = (e: BlobEvent) => {
+        console.log('📹 ondataavailable事件触发');
+        console.log('📹 数据块详情:', {
+          data: e.data,
+          size: e.data?.size,
+          type: e.data?.type,
+          timestamp: e.timeStamp
+        });
+        
         if (e.data && e.data.size > 0) {
           console.log('📹 录制数据块大小:', e.data.size, 'bytes');
           setRecordedChunks(prev => [...prev, e.data]);
+        } else {
+          console.warn('⚠️ 录制数据块为空');
         }
       };
       
