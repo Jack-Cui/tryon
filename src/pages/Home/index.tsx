@@ -77,6 +77,9 @@ const Home = () => {
   const [isWechatShareReady, setIsWechatShareReady] = useState(false); // 微信分享是否已准备好
   const [showShareTip, setShowShareTip] = useState(false); // 是否显示分享提示
 
+  // 新增状态：用户是否已离开过舞台
+  const [hasLeftStage, setHasLeftStage] = useState(false);
+
   // 服饰分类名称映射到图标
   const getClothesIcon = (classifyName: string) => {
     const iconMap: {[key: string]: string} = {
@@ -1030,6 +1033,21 @@ const Home = () => {
       // console.log('✅ 服饰列表已存在，跳过从 tryonService 获取');
       // console.log('服饰分类数量:', clothesList.length);
     }
+
+    // 自动执行登台流程（只有在用户没有离开过舞台时才执行）
+    const autoStartTryon = async () => {
+      // 延迟一点时间确保页面完全加载
+      setTimeout(async () => {
+        if (!hasLeftStage) {
+          console.log('🚀 自动开始登台流程...');
+          await handleStartTryon();
+        } else {
+          console.log('⚠️ 用户已离开过舞台，跳过自动登台');
+        }
+      }, 1000);
+    };
+
+    autoStartTryon();
   }, [loginParams]); // 只依赖loginParams，避免重复执行
 
   // 检查视频是否真正开始播放的函数
@@ -2012,8 +2030,8 @@ const Home = () => {
           </div>
         </div>
 
-        {/* 底部登台按钮 - 与视频播放界面底部对齐 */}
-        <div style={{
+        {/* 底部登台按钮 - 已隐藏，改为自动执行 */}
+        {/* <div style={{
           position: 'fixed',
           bottom: '0',
           left: '0',
@@ -2042,10 +2060,42 @@ const Home = () => {
           >
             登台
           </button>
-        </div>
+        </div> */}
+
+        {/* 自动登台提示 */}
+        {showSelectionScreen && !hasLeftStage && (
+          <div style={{
+            position: 'fixed',
+            bottom: '20px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 10,
+            backgroundColor: 'rgba(0,0,0,0.8)',
+            color: 'white',
+            padding: '12px 24px',
+            borderRadius: '20px',
+            fontSize: '14px',
+            fontWeight: 'bold',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <div style={{
+              width: '16px',
+              height: '16px',
+              border: '2px solid #fff',
+              borderTop: '2px solid transparent',
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite'
+            }}></div>
+            正在自动登台...
+          </div>
+        )}
+
+
 
         {/* 右上角重新登录按钮 */}
-        <button
+        {/* <button
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -2100,7 +2150,7 @@ const Home = () => {
           }}
         >
           🔄 重新登录
-        </button>
+        </button> */}
 
         {/* 开发环境测试微信分享按钮 */}
         {process.env.NODE_ENV === 'development' && (
@@ -2892,6 +2942,9 @@ const Home = () => {
         <button
           onClick={() => {
             console.log('🚪 用户点击离开舞台');
+            
+            // 设置用户已离开过舞台的状态
+            setHasLeftStage(true);
             
             // 断开WebSocket连接
             try {
