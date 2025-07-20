@@ -4,11 +4,13 @@ import {
   LoginResponse, 
   VerifyCodeResponse, 
   RoomInfoResponse, 
-  ClotheSizeResponse, 
+  ClotheDetailResponse,
   CreateRoomResponse, 
   JoinRoomResponse, 
   EnterStageInfo 
 } from '../types/api';
+
+const Long = require('long');
 
 // 通用HTTP请求方法
 class ApiService {
@@ -191,6 +193,16 @@ export const roomAPI = {
     return await apiService.get(endpoint, headers);
   },
 
+  // 获取衣服详情
+  async getClotheDetail(clothe_id: string, access_token: string): Promise<ApiResponse> {
+    console.log('开始获取衣服详情，衣服ID:', clothe_id);
+    const endpoint = API_ENDPOINTS.GET_CLOTHE_DETAIL(clothe_id);
+    const headers = {
+      'Authorization': `Bearer ${access_token}`
+    };
+    return await apiService.get(endpoint, headers);
+  },
+
   // 创建房间
   async createRoom(room_id: string, co_creation_id: number, access_token: string): Promise<ApiResponse> {
     console.log('开始创建房间，房间ID:', room_id, '共创ID:', co_creation_id);
@@ -229,37 +241,184 @@ export const roomAPI = {
     const clothe_ids = room_info_data.clothId.split(';');
     const garments: any = {};
     
+    // 用于存储处理后的服装信息
+    let clothesItemInfoList: any[] = [];
+    let isClothesSuit = false;
+    
     for (let i = 0; i < clothe_ids.length; i++) {
       const clothe_id = clothe_ids[i];
-      console.log(`获取衣服尺寸: ${clothe_id}`);
+      console.log(`处理衣服ID: ${clothe_id}`);
+      
+      if (!clothe_id || clothe_id === '' || clothe_id === '0') {
+        console.log(`跳过无效的衣服ID: ${clothe_id}`);
+        continue;
+      }
+      
+      // 判断 clothe_id 是否大于0
+      const clotheIdNum = Long.fromString(clothe_id);
+      if (clotheIdNum.toNumber() <= 0) {
+        console.log(`跳过无效的衣服ID: ${clothe_id}`);
+        continue;
+      }
       
       try {
-        const clothe_size_response = await this.getClotheSize(clothe_id, access_token);
-        if (clothe_size_response.ok) {
-          const clothe_size_data = JSON.parse(clothe_size_response.data) as ClotheSizeResponse;
-          const clothe_size = clothe_size_data.data;
-          console.log(`衣服ID: ${clothe_id}, 尺寸: ${clothe_size}`);
+        // 获取衣服详情
+        console.log(`获取衣服详情: ${clothe_id}`);
+        const clothe_detail_response = await this.getClotheDetail(clothe_id, access_token);
+        
+        if (clothe_detail_response.ok) {
+          const clothe_detail_data = JSON.parse(clothe_detail_response.data) as ClotheDetailResponse;
+          const clothe_detail = clothe_detail_data.data;
+          
+          console.log(`衣服详情获取成功:`, {
+            id: clothe_detail.id,
+            name: clothe_detail.name,
+            classifyId: clothe_detail.classifyId,
+            suitIds: clothe_detail.suitIds
+          });
+          
+          // 参考 handleClothesManagement 的逻辑处理服装
+          const classifyId = clothe_detail.classifyId;
+          const clothesId = clothe_detail.id;
+          const suitIds = clothe_detail.suitIds || '';
+          
+          console.log('👕 处理衣服管理逻辑:', {
+            classifyId: classifyId,
+            clothesId: clothesId,
+            suitIds: suitIds
+          });
+          
+          if (classifyId === 4) {
+            // 套装
+            isClothesSuit = true;
+            
+            // 处理套装逻辑
+            const arr = suitIds.split(',');
+            
+            if (suitIds === '' || arr.length === 0) {
+              const item = {
+                classifyId: classifyId,
+                clothesId: Long.fromString(clothesId)
+              };
+              clothesItemInfoList.push(item);
+            } else {
+              for (let j = 0; j < arr.length; ++j) {
+                const longValue = Long.fromString(arr[j]);
+                const item = {
+                  classifyId: classifyId,
+                  clothesId: longValue
+                };
+                clothesItemInfoList.push(item);
+              }
+            }
+            
+            console.log('👕 套装处理完成:', clothesItemInfoList);
+            
+          } else {
+            // 非套装
+            if (isClothesSuit) {
+              // 之前是套装，现在切换到非套装
+              isClothesSuit = false;
+              
+              const item = {
+                classifyId: classifyId,
+                clothesId: Long.fromString(clothesId)
+              };
+              clothesItemInfoList.push(item);
+              
+              console.log('👕 从套装切换到非套装:', clothesItemInfoList);
+              
+            } else {
+              // 之前不是套装
+              // 1. 删除存储的同类型衣服
+              for (let j = clothesItemInfoList.length - 1; j >= 0; --j) {
+                const item = clothesItemInfoList[j];
+                if (item.classifyId === classifyId) {
+                  clothesItemInfoList.splice(j, 1);
+                }
+              }
+
+              // 2. 特殊处理
+              // 穿裙子 脱下上下衣
+              if (classifyId === 7) {
+                for (let j = clothesItemInfoList.length - 1; j >= 0; --j) {
+                  const item = clothesItemInfoList[j];
+                  if (item.classifyId === 1 || item.classifyId === 2) {
+                    clothesItemInfoList.splice(j, 1);
+                  }
+                }
+              }
+
+              // 穿上下衣 脱下裙子
+              if (classifyId === 1 || classifyId === 2) {
+                for (let j = clothesItemInfoList.length - 1; j >= 0; --j) {
+                  const item = clothesItemInfoList[j];
+                  if (item.classifyId === 7) {
+                    clothesItemInfoList.splice(j, 1);
+                  }
+                }
+              }
+
+              let index = -1;
+              for (let j = 0; j < clothesItemInfoList.length; ++j) {
+                const item = clothesItemInfoList[j];
+                if (classifyId === item.classifyId) {
+                  item.clothesId = Long.fromString(clothesId);
+                  clothesItemInfoList[j] = item;
+                  index = j;
+                }
+              }
+
+              if (clothesItemInfoList.length >= 3) {
+                clothesItemInfoList.splice(0, 1);
+              }
+
+              const cii = {
+                classifyId: classifyId,
+                clothesId: Long.fromString(clothesId)
+              };
+              clothesItemInfoList.push(cii);
+              
+              console.log('👕 非套装处理完成:', clothesItemInfoList);
+            }
+          }
+          
+        } else {
+          console.error(`获取衣服详情失败: ${clothe_id}`, clothe_detail_response);
         }
       } catch (error) {
-        console.error(`获取衣服尺寸失败: ${clothe_id}`, error);
-      }
-      let clothe_size = 0;
-      if (clothe_id == '0') {
-        clothe_size = 0
-      } else {
-        clothe_size = 4
-      }
-      if (i === 0) {
-        garments.garment1Id = clothe_id;
-        garments.garment1Size = clothe_size;
-      } else if (i === 1) {
-        garments.garment2Id = clothe_id;
-        garments.garment2Size = clothe_size;
-      } else if (i === 2) {
-        garments.garment3Id = clothe_id;
-        garments.garment3Size = clothe_size;
+        console.error(`获取衣服详情失败: ${clothe_id}`, error);
       }
     }
+    
+    // 参考 sendChangeGarmentRequest 的构建逻辑
+    console.log('👕 准备构建服装参数:', {
+      clothesItemInfoList: clothesItemInfoList,
+      isClothesSuit: isClothesSuit
+    });
+    
+    // 构建服装参数
+    const garment1Id = clothesItemInfoList.length >= 1 ? clothesItemInfoList[0].clothesId : Long.ZERO;
+    const garment2Id = clothesItemInfoList.length >= 2 ? clothesItemInfoList[1].clothesId : Long.ZERO;
+    const garment3Id = clothesItemInfoList.length >= 3 ? clothesItemInfoList[2].clothesId : Long.ZERO;
+    const garment1Size = 4; // 默认尺寸，实际应该从服务器获取
+    const garment2Size = garment2Id.gt(Long.ZERO) ? 4 : 1; // 默认尺寸，实际应该从服务器获取
+    const garment3Size = garment3Id.gt(Long.ZERO) ? 4 : 1; // 默认尺寸，实际应该从服务器获取
+
+    console.log('👕 构建的服装参数:', {
+      garment1Id: garment1Id.toString(), 
+      garment2Id: garment2Id.toString(), 
+      garment3Id: garment3Id.toString(),
+      garment1Size, garment2Size, garment3Size
+    });
+    
+    // 构建 garments 对象
+    garments.Garment1Id = garment1Id.toString();
+    garments.Garment1Size = garment1Size;
+    garments.Garment2Id = garment2Id.toString();
+    garments.Garment2Size = garment2Size;
+    garments.Garment3Id = garment3Id.toString();
+    garments.Garment3Size = garment3Size;
 
     const enter_stage_info: EnterStageInfo = {
       AvatarId: 0,

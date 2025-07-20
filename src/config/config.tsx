@@ -73,6 +73,9 @@ export const API_ENDPOINTS = {
   // 获取衣服尺寸
   GET_CLOTHE_SIZE: (clothe_id: string) => `/admin/sysclotheextra/getSize/${clothe_id}`,
   
+  // 获取衣服详情
+  GET_CLOTHE_DETAIL: (clothe_id: string) => `/admin/clothe/detail?clotheId=${clothe_id}`,
+  
   // 调度服务
   SCHEDULE: () => '/alloc/room_inst'
 };

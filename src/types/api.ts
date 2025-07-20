@@ -42,8 +42,22 @@ export interface RoomInfoResponse {
 
 // 衣服尺寸响应类型
 export interface ClotheSizeResponse {
-  data: string;
-  [key: string]: any;
+  code: number;
+  data: number;
+  message: string;
+}
+
+// 衣服详情响应类型
+export interface ClotheDetailResponse {
+  code: number;
+  data: {
+    id: string;
+    name: string;
+    classifyId: number;
+    suitIds: string;
+    [key: string]: any;
+  };
+  message: string;
 }
 
 // 服饰分类类型
