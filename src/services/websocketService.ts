@@ -348,6 +348,21 @@ export class WebSocketService {
     this.messageHandlers.set(11008, this.handleChangeMapPush.bind(this));
     // 场景变更推送
     this.messageHandlers.set(1109, this.handleSceneChangePush.bind(this));
+    
+    console.log('✅ 消息处理器设置完成，已注册以下消息类型:');
+    console.log('  - 登录响应: 1101');
+    console.log('  - 顶号通知: 1105');
+    console.log('  - 进入房间响应: 1201');
+    console.log('  - 进入房间广播: 1202');
+    console.log('  - 登台响应: 1501');
+    console.log('  - 登台广播: 1502');
+    console.log('  - 舞台状态变更: 1522');
+    console.log('  - 队列信息推送: 1505');
+    console.log('  - 离开房间响应: 1203');
+    console.log('  - 离开房间广播: 1204');
+    console.log('  - 心跳响应: 1111');
+    console.log('  - 切换地图响应: 11008');
+    console.log('  - 场景变更推送: 1109');
   }
 
   // 启动心跳
@@ -626,6 +641,11 @@ export class WebSocketService {
       const totalLength = dataView.getUint32(0, true); // 小端序
       const messageId = dataView.getUint16(4, true);   // 小端序
       
+      // 调试：打印原始字节数据
+      const headerBytes = new Uint8Array(arrayBuffer.slice(0, 6));
+      console.log(`🔍 消息头原始字节: [${Array.from(headerBytes).join(', ')}]`);
+      console.log(`🔍 解析结果: totalLength=${totalLength}, messageId=${messageId}`);
+      
       // 验证消息长度
       if (totalLength !== arrayBuffer.byteLength) {
         console.error(`消息长度不匹配: 期望 ${totalLength}, 实际 ${arrayBuffer.byteLength}`);
@@ -637,12 +657,17 @@ export class WebSocketService {
       
       console.log(`收到消息 ID: ${messageId}, 长度: ${totalLength}`);
       
+      // 调试：打印所有已注册的消息处理器
+      console.log('🔍 已注册的消息处理器:', Array.from(this.messageHandlers.keys()));
+      
       // 根据消息ID处理消息
       const handler = this.messageHandlers.get(messageId);
       if (handler) {
+        console.log(`✅ 找到消息处理器: ${messageId}`);
         handler(payload);
       } else {
-        console.warn(`未知消息类型: ${messageId}`);
+        console.warn(`❌ 未知消息类型: ${messageId}`);
+        console.log(`🔍 当前已注册的消息类型: ${Array.from(this.messageHandlers.keys()).join(', ')}`);
       }
     } catch (error) {
       console.error('解析消息失败:', error);

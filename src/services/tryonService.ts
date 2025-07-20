@@ -149,6 +149,10 @@ export class TryonService {
       
     } catch (error) {
       console.error('❌ 简化试穿流程失败:', error);
+      
+      // 检查是否是API响应错误，并处理登录过期
+      this.handleApiError(error);
+      
       throw error;
     }
   }
@@ -186,6 +190,10 @@ export class TryonService {
       
     } catch (error) {
       console.error('试穿流程失败:', error);
+      
+      // 检查是否是API响应错误，并处理登录过期
+      this.handleApiError(error);
+      
       throw error;
     }
   }
@@ -201,6 +209,18 @@ export class TryonService {
     console.log('房间信息响应数据:', response.data);
     
     if (!response.ok) {
+      // 检查响应数据中是否包含code 424
+      try {
+        const responseData = JSON.parse(response.data);
+        if (responseData.code === 424) {
+          console.log('🚨 获取房间信息时检测到登录过期 (code: 424)');
+          this.handleLoginExpired();
+          throw new Error('登录已过期');
+        }
+      } catch (parseError) {
+        console.log('解析响应数据失败:', parseError);
+      }
+      
       throw new Error(`获取房间信息失败: HTTP ${response.status}`);
     }
     
@@ -247,6 +267,18 @@ export class TryonService {
     console.log('创建房间响应数据:', response.data);
     
     if (!response.ok) {
+      // 检查响应数据中是否包含code 424
+      try {
+        const responseData = JSON.parse(response.data);
+        if (responseData.code === 424) {
+          console.log('🚨 创建房间时检测到登录过期 (code: 424)');
+          this.handleLoginExpired();
+          throw new Error('登录已过期');
+        }
+      } catch (parseError) {
+        console.log('解析响应数据失败:', parseError);
+      }
+      
       throw new Error(`创建房间失败: HTTP ${response.status}`);
     }
     
@@ -320,6 +352,18 @@ export class TryonService {
     console.log('加入房间响应数据:', response.data);
     
     if (!response.ok) {
+      // 检查响应数据中是否包含code 424
+      try {
+        const responseData = JSON.parse(response.data);
+        if (responseData.code === 424) {
+          console.log('🚨 加入房间时检测到登录过期 (code: 424)');
+          this.handleLoginExpired();
+          throw new Error('登录已过期');
+        }
+      } catch (parseError) {
+        console.log('解析响应数据失败:', parseError);
+      }
+      
       throw new Error(`加入房间失败: HTTP ${response.status}`);
     }
     
@@ -542,6 +586,80 @@ export class TryonService {
   // 获取连接状态
   getConnectionStatus(): boolean {
     return webSocketService.getConnectionStatus();
+  }
+
+  // 处理API错误，特别是登录过期的情况
+  private handleApiError(error: any): void {
+    console.log('🔍 检查API错误类型:', error);
+    
+    // 检查错误是否包含响应数据
+    if (error && typeof error === 'object') {
+      // 检查是否有响应数据
+      let responseData: any = null;
+      
+      // 尝试从错误对象中提取响应数据
+      if (error.response) {
+        responseData = error.response;
+      } else if (error.data) {
+        responseData = error.data;
+      } else if (error.message && error.message.includes('HTTP')) {
+        // 如果是HTTP错误，尝试解析响应
+        console.log('检测到HTTP错误，尝试解析响应数据');
+        return;
+      }
+      
+      // 如果找到了响应数据，检查code字段
+      if (responseData) {
+        try {
+          // 如果responseData是字符串，尝试解析为JSON
+          let parsedData: any;
+          if (typeof responseData === 'string') {
+            parsedData = JSON.parse(responseData);
+          } else {
+            parsedData = responseData;
+          }
+          
+          console.log('🔍 解析的响应数据:', parsedData);
+          
+          // 检查code字段
+          if (parsedData && typeof parsedData.code === 'number') {
+            console.log(`🔍 检测到响应code: ${parsedData.code}`);
+            
+            if (parsedData.code === 424) {
+              console.log('🚨 检测到登录过期 (code: 424)');
+              this.handleLoginExpired();
+              return;
+            }
+          }
+        } catch (parseError) {
+          console.log('解析响应数据失败:', parseError);
+        }
+      }
+    }
+    
+    // 检查错误消息中是否包含相关信息
+    if (error && error.message) {
+      const errorMessage = error.message.toLowerCase();
+      if (errorMessage.includes('424') || errorMessage.includes('登录过期') || errorMessage.includes('token expired')) {
+        console.log('🚨 从错误消息中检测到登录过期');
+        this.handleLoginExpired();
+        return;
+      }
+    }
+  }
+
+  // 处理登录过期
+  private handleLoginExpired(): void {
+    console.log('🚨 处理登录过期...');
+    
+    // 显示登录过期提示
+    alert('登录已过期，请重新登录');
+    
+    // 清理当前状态
+    this.disconnect();
+    
+    // 跳转到登录页面
+    window.location.href = '/login';
   }
 }
 

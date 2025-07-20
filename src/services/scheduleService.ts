@@ -124,6 +124,20 @@ export class ScheduleService {
       if (!response.ok) {
         const errorText = await response.text();
         console.error('📥 错误响应内容:', errorText);
+        
+        // 检查响应数据中是否包含code 424
+        try {
+          const errorData = JSON.parse(errorText);
+          if (errorData.code === 424) {
+            console.log('🚨 调度请求时检测到登录过期 (code: 424)');
+            // 触发登录过期处理
+            this.handleLoginExpired();
+            throw new Error('登录已过期');
+          }
+        } catch (parseError) {
+          console.log('解析错误响应数据失败:', parseError);
+        }
+        
         throw new Error(`调度请求失败: ${response.status} ${response.statusText}`);
       }
       
@@ -141,6 +155,17 @@ export class ScheduleService {
       console.error('调度请求失败:', error);
       throw error;
     }
+  }
+
+  // 处理登录过期
+  private handleLoginExpired(): void {
+    console.log('🚨 处理登录过期...');
+    
+    // 显示登录过期提示
+    alert('登录已过期，请重新登录');
+    
+    // 跳转到登录页面
+    window.location.href = '/login';
   }
 }
 
