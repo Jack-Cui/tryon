@@ -1704,11 +1704,12 @@ const Home = () => {
             <div style={{
               display: 'flex',
               flexDirection: 'column',
-              gap: '40px', // 与左侧保持一致的间距
+              gap: '15px', // 进一步减少间距，给衣服列表更多空间
               alignItems: 'center',
               height: '100%',
-              justifyContent: 'center', // 与左侧对齐方式一致
-              overflow: 'hidden'
+              justifyContent: 'flex-start', // 改为顶部对齐，给衣服列表更多空间
+              overflow: 'hidden',
+              paddingTop: '20px' // 添加顶部间距
             }}>
                              {/* 1. 顶部：当前选中服装的缩略图 */}
                {getCurrentDisplayClothes() && (
@@ -1758,7 +1759,7 @@ const Home = () => {
                 alignItems: 'center',
                 flex: 1,
                 overflow: 'hidden',
-                maxHeight: '400px'
+                maxHeight: '280px' // 与视频页面保持一致
               }}>
                 {!isBrowsingClothes ? (
                   // 显示服装分类图标
@@ -1815,22 +1816,22 @@ const Home = () => {
                 ) : (
                   // 显示具体服装列表
                   <>
-                    {/* 可滚动的服装缩略图列表 */}
-                    <div 
-                      className="clothes-scroll-container"
-                      style={{
-                        position: 'relative', // 为伪元素定位
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '10px',
-                        alignItems: 'center',
-                        maxHeight: '280px', // 固定高度以确保返回按钮可见
-                        overflowY: 'auto', // 允许垂直滚动
-                        overflowX: 'hidden',
-                        paddingRight: '8px', // 为滚动条留出空间
-                        // 自定义滚动条样式（Webkit浏览器）
-                        WebkitOverflowScrolling: 'touch'
-                      }}>
+                                      {/* 可滚动的服装缩略图列表 */}
+                  <div 
+                    className="clothes-scroll-container"
+                    style={{
+                      position: 'relative', // 为伪元素定位
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '10px',
+                      alignItems: 'center',
+                      maxHeight: '320px', // 增加高度，显示更多衣服
+                      overflowY: 'auto', // 允许垂直滚动
+                      overflowX: 'hidden',
+                      paddingRight: '8px', // 为滚动条留出空间
+                      // 自定义滚动条样式（Webkit浏览器）
+                      WebkitOverflowScrolling: 'touch'
+                    }}>
                       {selectedCategory && getClothesForCategory(selectedCategory)
                         .map((clothes, index) => (
                         <div key={clothes.id || index} 
@@ -2568,13 +2569,14 @@ const Home = () => {
           transform: 'translateY(-50%)',
           display: 'flex',
           flexDirection: 'column',
-          justifyContent: 'center', // 与左侧对齐方式一致
+          justifyContent: 'flex-start', // 改为顶部对齐，与首页保持一致
           alignItems: 'center',
-          gap: '20px', // 减少间距，给服装列表更多空间
+          gap: '15px', // 与首页保持一致
           height: '400px', // 增加高度，与首页保持一致
           overflow: 'hidden',
           zIndex: 200, // 提高z-index确保显示在视频上方
-          pointerEvents: 'auto' // 确保点击事件正常工作
+          pointerEvents: 'auto', // 确保点击事件正常工作
+          paddingTop: '20px' // 添加顶部间距，与首页保持一致
         }}>
             {/* 顶部：当前选中服装的缩略图 */}
             {getCurrentDisplayClothes() && (
@@ -2618,7 +2620,7 @@ const Home = () => {
               alignItems: 'center',
               flex: 1,
               overflow: 'hidden',
-              maxHeight: '400px' // 与首页保持一致
+              maxHeight: '280px' // 与首页保持一致
             }}>
               {!isBrowsingClothes ? (
                 // 显示服装分类图标
@@ -2683,7 +2685,7 @@ const Home = () => {
                       flexDirection: 'column',
                       gap: '10px',
                       alignItems: 'center',
-                      maxHeight: '280px', // 与首页保持一致
+                      maxHeight: '320px', // 与首页保持一致
                       overflowY: 'auto',
                       overflowX: 'hidden',
                       paddingRight: '8px',
