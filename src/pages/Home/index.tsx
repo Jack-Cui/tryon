@@ -269,7 +269,7 @@ const Home = () => {
 
   // 动作图标数组
   const actionIcons = [
-    { icon: actionIcon, name: '动作' },
+    { icon: actionIcon, name: '情侣笔芯' },
     { icon: balletIcon, name: '芭蕾' }
   ];
 
@@ -1531,6 +1531,16 @@ const Home = () => {
                       }}
                     />
                   </div>
+                  <div style={{
+                    fontSize: '12px',
+                    color: '#333',
+                    fontWeight: 'normal',
+                    textAlign: 'center',
+                    lineHeight: '1',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    {actionIcons[selectedActionIndex].name}
+                  </div>
                 </div>
 
                 {/* 展开的动作选项 */}
@@ -1543,16 +1553,11 @@ const Home = () => {
                     {actionIcons.map((action, index) => (
                       <div key={index} style={{
                         display: 'flex',
+                        flexDirection: 'column',
                         alignItems: 'center',
-                        justifyContent: 'center',
-                        width: '42px', // 适度缩小展开icon
-                        height: '42px',
-                        borderRadius: '10px', // 相应缩小圆角
-                        backgroundColor: selectedActionIndex === index ? 'rgba(24,144,255,0.2)' : 'rgba(255,255,255,0.8)',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                        gap: '4px',
                         cursor: 'pointer',
-                        transition: 'all 0.2s ease',
-                        border: selectedActionIndex === index ? '2px solid #1890ff' : '2px solid transparent'
+                        transition: 'all 0.2s ease'
                       }}
                         onClick={() => handleActionClick(index)}
                         onMouseEnter={(e) => {
@@ -1562,15 +1567,37 @@ const Home = () => {
                           e.currentTarget.style.transform = 'scale(1)';
                         }}
                       >
-                        <img 
-                          src={action.icon} 
-                          alt={action.name} 
-                          style={{
-                            width: '26px', // 相应缩小图片
-                            height: '26px',
-                            objectFit: 'contain'
-                          }}
-                        />
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: '50px', // 与主图标保持一致
+                          height: '50px',
+                          borderRadius: '12px', // 与主图标保持一致
+                          backgroundColor: selectedActionIndex === index ? 'rgba(24,144,255,0.2)' : 'rgba(255,255,255,0.8)',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                          border: selectedActionIndex === index ? '2px solid #1890ff' : '2px solid transparent'
+                        }}>
+                          <img 
+                            src={action.icon} 
+                            alt={action.name} 
+                            style={{
+                              width: '30px', // 与主图标保持一致
+                              height: '30px',
+                              objectFit: 'contain'
+                            }}
+                          />
+                        </div>
+                        <div style={{
+                          fontSize: '12px',
+                          color: selectedActionIndex === index ? '#1890ff' : '#333',
+                          fontWeight: selectedActionIndex === index ? 'bold' : 'normal',
+                          textAlign: 'center',
+                          lineHeight: '1',
+                          whiteSpace: 'nowrap'
+                        }}>
+                          {action.name}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -1613,8 +1640,8 @@ const Home = () => {
                     border: isRealSceneExpanded ? '2px solid #52c41a' : '2px solid transparent'
                   }}>
                     <img 
-                      src={realSceneIcon} 
-                      alt="实景" 
+                      src={realSceneIcons[selectedRealSceneIndex].icon} 
+                      alt={realSceneIcons[selectedRealSceneIndex].name} 
                       style={{
                         width: '30px',
                         height: '30px',
@@ -1630,7 +1657,7 @@ const Home = () => {
                     lineHeight: '1',
                     whiteSpace: 'nowrap'
                   }}>
-                    实景
+                    {realSceneIcons[selectedRealSceneIndex].name}
                   </div>
                 </div>
 
@@ -1666,9 +1693,9 @@ const Home = () => {
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          width: '42px', // 适度缩小展开icon
-                          height: '42px',
-                          borderRadius: '10px', // 相应缩小圆角
+                          width: '50px', // 与主图标保持一致
+                          height: '50px',
+                          borderRadius: '12px', // 与主图标保持一致
                           backgroundColor: selectedRealSceneIndex === index ? 'rgba(82,196,26,0.2)' : 'rgba(255,255,255,0.8)',
                           boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
                           border: selectedRealSceneIndex === index ? '2px solid #52c41a' : '2px solid transparent'
@@ -1677,14 +1704,14 @@ const Home = () => {
                             src={scene.icon} 
                             alt={scene.name} 
                             style={{
-                              width: '26px', // 相应缩小图片
-                              height: '26px',
+                              width: '30px', // 与主图标保持一致
+                              height: '30px',
                               objectFit: 'contain'
                             }}
                           />
                         </div>
                         <div style={{
-                          fontSize: '10px',
+                          fontSize: '12px', // 与主图标保持一致
                           color: selectedRealSceneIndex === index ? '#52c41a' : '#333',
                           fontWeight: selectedRealSceneIndex === index ? 'bold' : 'normal',
                           textAlign: 'center',
@@ -2269,6 +2296,17 @@ const Home = () => {
                     }}
                   />
                 </div>
+                <div style={{
+                  fontSize: '12px',
+                  color: '#fff',
+                  fontWeight: 'normal',
+                  textAlign: 'center',
+                  lineHeight: '1',
+                  whiteSpace: 'nowrap',
+                  textShadow: '0 1px 2px rgba(0,0,0,0.8)'
+                }}>
+                  {actionIcons[selectedActionIndex].name}
+                </div>
               </div>
 
                               {/* 展开的动作选项 */}
@@ -2281,16 +2319,11 @@ const Home = () => {
                     {actionIcons.map((action, index) => (
                       <div key={index} style={{
                         display: 'flex',
+                        flexDirection: 'column',
                         alignItems: 'center',
-                        justifyContent: 'center',
-                        width: '42px', // 适度缩小展开icon
-                        height: '42px',
-                        borderRadius: '10px', // 相应缩小圆角
-                        backgroundColor: selectedActionIndex === index ? 'rgba(24,144,255,0.2)' : 'rgba(255,255,255,0.8)',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                        gap: '4px',
                         cursor: 'pointer',
-                        transition: 'all 0.2s ease',
-                        border: selectedActionIndex === index ? '2px solid #1890ff' : '2px solid transparent'
+                        transition: 'all 0.2s ease'
                       }}
                         onClick={(e) => {
                           e.preventDefault();
@@ -2304,15 +2337,38 @@ const Home = () => {
                           e.currentTarget.style.transform = 'scale(1)';
                         }}
                       >
-                        <img 
-                          src={action.icon} 
-                          alt={action.name} 
-                          style={{
-                            width: '26px', // 相应缩小图片
-                            height: '26px',
-                            objectFit: 'contain'
-                          }}
-                        />
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: '50px', // 与主图标保持一致
+                          height: '50px',
+                          borderRadius: '12px', // 与主图标保持一致
+                          backgroundColor: selectedActionIndex === index ? 'rgba(24,144,255,0.2)' : 'rgba(255,255,255,0.8)',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                          border: selectedActionIndex === index ? '2px solid #1890ff' : '2px solid transparent'
+                        }}>
+                          <img 
+                            src={action.icon} 
+                            alt={action.name} 
+                            style={{
+                              width: '30px', // 与主图标保持一致
+                              height: '30px',
+                              objectFit: 'contain'
+                            }}
+                          />
+                        </div>
+                        <div style={{
+                          fontSize: '12px',
+                          color: selectedActionIndex === index ? '#1890ff' : '#fff',
+                          fontWeight: selectedActionIndex === index ? 'bold' : 'normal',
+                          textAlign: 'center',
+                          lineHeight: '1',
+                          whiteSpace: 'nowrap',
+                          textShadow: '0 1px 2px rgba(0,0,0,0.8)'
+                        }}>
+                          {action.name}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -2359,8 +2415,8 @@ const Home = () => {
                   border: isRealSceneExpanded ? '2px solid #52c41a' : '2px solid transparent'
                 }}>
                   <img 
-                    src={realSceneIcon} 
-                    alt="实景" 
+                    src={realSceneIcons[selectedRealSceneIndex].icon} 
+                    alt={realSceneIcons[selectedRealSceneIndex].name} 
                     style={{
                       width: '30px',
                       height: '30px',
@@ -2377,7 +2433,7 @@ const Home = () => {
                   whiteSpace: 'nowrap',
                   textShadow: '0 1px 2px rgba(0,0,0,0.8)'
                 }}>
-                  实景
+                  {realSceneIcons[selectedRealSceneIndex].name}
                 </div>
               </div>
 
@@ -2417,9 +2473,9 @@ const Home = () => {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        width: '42px', // 适度缩小展开icon
-                        height: '42px',
-                        borderRadius: '10px', // 相应缩小圆角
+                        width: '50px', // 与主图标保持一致
+                        height: '50px',
+                        borderRadius: '12px', // 与主图标保持一致
                         backgroundColor: selectedRealSceneIndex === index ? 'rgba(82,196,26,0.2)' : 'rgba(255,255,255,0.8)',
                         boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
                         border: selectedRealSceneIndex === index ? '2px solid #52c41a' : '2px solid transparent'
@@ -2428,14 +2484,14 @@ const Home = () => {
                           src={scene.icon} 
                           alt={scene.name} 
                           style={{
-                            width: '26px', // 相应缩小图片
-                            height: '26px',
+                            width: '30px', // 与主图标保持一致
+                            height: '30px',
                             objectFit: 'contain'
                           }}
                         />
                       </div>
                       <div style={{
-                        fontSize: '10px',
+                        fontSize: '12px', // 与主图标保持一致
                         color: selectedRealSceneIndex === index ? '#52c41a' : '#fff',
                         fontWeight: selectedRealSceneIndex === index ? 'bold' : 'normal',
                         textAlign: 'center',
