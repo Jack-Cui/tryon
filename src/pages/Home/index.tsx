@@ -23,7 +23,7 @@ import topIcon from '../../assets/上衣.png';
 import socksIcon from '../../assets/袜子.png';
 import pantsIcon from '../../assets/下装.png';
 import shoesIcon from '../../assets/鞋子.png';
-import shareIcon from '../../assets/分享.png';
+import shareIcon from '../../assets/相机.png';
 import realSceneIcon from '../../assets/实景.png';
 import realSceneActionIcon from '../../assets/实景动作.png';
 
@@ -79,6 +79,262 @@ const Home = () => {
 
   // 新增状态：用户是否已离开过舞台
   const [hasLeftStage, setHasLeftStage] = useState(false);
+
+  // 录制相关状态
+  const [isRecording, setIsRecording] = useState(false); // 是否正在录制
+  const [isRecordPaused, setIsRecordPaused] = useState(false); // 是否暂停录制
+  const [recordedChunks, setRecordedChunks] = useState<any[]>([]); // 录制数据
+  const [showRecordUI, setShowRecordUI] = useState(false); // 是否显示录制UI
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null); // 录制完成的视频
+  const [recordTime, setRecordTime] = useState(0); // 录制时间（秒）
+  const recordTimerRef = useRef<NodeJS.Timeout | null>(null); // 录制计时器
+
+  // 获取当前视频流的video/canvas元素
+  const getCurrentVideoElement = (): HTMLVideoElement | HTMLCanvasElement | null => {
+    if (videoStreams.length > 0) {
+      const domId = videoStreams[0].domId;
+      const videoElement = document.getElementById(domId);
+      if (videoElement) {
+        // 优先video标签，其次canvas
+        const videoTag = videoElement.querySelector('video') as HTMLVideoElement | null;
+        if (videoTag) {
+          return videoTag;
+        }
+        const canvasTag = videoElement.querySelector('canvas') as HTMLCanvasElement | null;
+        if (canvasTag) {
+          return canvasTag;
+        }
+      }
+    }
+    
+    // 如果找不到视频流，尝试从所有video元素中获取
+    const allVideos = document.querySelectorAll('video');
+    for (const video of allVideos) {
+      if (video.srcObject instanceof MediaStream) {
+        return video;
+      }
+    }
+    
+    // 尝试从所有canvas元素中获取
+    const allCanvases = document.querySelectorAll('canvas');
+    for (const canvas of allCanvases) {
+      if (canvas.width > 0 && canvas.height > 0) {
+        return canvas;
+      }
+    }
+    
+    return null;
+  };
+
+  // 开始录制
+  const handleStartRecord = async () => {
+    try {
+      console.log('📹 开始录制流程...');
+      
+      const videoTag = getCurrentVideoElement();
+      if (!videoTag) {
+        console.error('❌ 未找到视频元素');
+        alert('未找到视频流，无法录制');
+        return;
+      }
+      
+      console.log('📹 找到视频元素:', videoTag.tagName);
+      
+      let stream: MediaStream | null = null;
+      
+      if (videoTag instanceof HTMLVideoElement) {
+        if (videoTag.srcObject instanceof MediaStream) {
+          stream = videoTag.srcObject as MediaStream;
+          console.log('📹 从video元素获取MediaStream');
+        } else {
+          console.log('📹 video元素没有MediaStream，尝试其他方法');
+          // 尝试从video元素直接获取流
+          try {
+            // @ts-ignore
+            stream = videoTag.captureStream ? videoTag.captureStream() : null;
+          } catch (e) {
+            console.warn('⚠️ 无法从video元素获取流:', e);
+          }
+        }
+      } else if (videoTag instanceof HTMLCanvasElement) {
+        console.log('📹 从canvas元素获取流');
+        try {
+          // @ts-ignore
+          stream = (videoTag as any).captureStream ? (videoTag as any).captureStream() : null;
+        } catch (e) {
+          console.warn('⚠️ 无法从canvas元素获取流:', e);
+        }
+      }
+      
+      if (!stream) {
+        console.error('❌ 无法获取视频流');
+        alert('无法获取视频流，请确保视频正在播放');
+        return;
+      }
+      
+      console.log('📹 获取到MediaStream，轨道数量:', stream.getTracks().length);
+      
+      // 检查浏览器支持的MIME类型
+      let mimeType = 'video/webm';
+      if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) {
+        mimeType = 'video/webm;codecs=vp9';
+      } else if (MediaRecorder.isTypeSupported('video/webm')) {
+        mimeType = 'video/webm';
+      } else if (MediaRecorder.isTypeSupported('video/mp4')) {
+        mimeType = 'video/mp4';
+      } else {
+        console.warn('⚠️ 浏览器不支持常见视频格式，使用默认格式');
+      }
+      
+      console.log('📹 使用MIME类型:', mimeType);
+      
+      const recorder = new MediaRecorder(stream, { 
+        mimeType,
+        videoBitsPerSecond: 1000000 // 降低到1Mbps，提高兼容性
+      });
+      
+      mediaRecorderRef.current = recorder;
+      setRecordedChunks([]);
+      setRecordedBlob(null);
+      setRecordTime(0);
+      
+      // 清理之前的计时器
+      if (recordTimerRef.current) {
+        clearInterval(recordTimerRef.current);
+      }
+      
+      recorder.ondataavailable = (e: BlobEvent) => {
+        if (e.data && e.data.size > 0) {
+          console.log('📹 录制数据块大小:', e.data.size, 'bytes');
+          setRecordedChunks(prev => [...prev, e.data]);
+        }
+      };
+      
+      recorder.onstop = () => {
+        console.log('📹 录制结束，处理录制数据');
+        const chunks = recordedChunks.concat();
+        console.log('📹 录制数据块数量:', chunks.length);
+        
+        if (chunks.length > 0) {
+          const blob = new Blob(chunks, { type: mimeType });
+          console.log('📹 创建blob，大小:', blob.size, 'bytes');
+          setRecordedBlob(blob);
+          setShowRecordUI(true); // 录制结束后显示结果浮层
+        } else {
+          console.warn('⚠️ 没有录制数据');
+          alert('录制失败，请重试');
+        }
+        
+        // 清理计时器
+        if (recordTimerRef.current) {
+          clearInterval(recordTimerRef.current);
+          recordTimerRef.current = null;
+        }
+      };
+      
+      recorder.onerror = (event) => {
+        console.error('❌ 录制错误:', event);
+        alert('录制过程中出现错误，请重试');
+      };
+      
+      recorder.start(1000); // 每秒生成一个数据块
+      setIsRecording(true);
+      setIsRecordPaused(false);
+      
+      // 开始计时
+      recordTimerRef.current = setInterval(() => {
+        setRecordTime(prev => prev + 1);
+      }, 1000);
+      
+      console.log('📹 录制开始成功');
+      
+    } catch (error) {
+      console.error('❌ 启动录制失败:', error);
+      alert('启动录制失败，请重试');
+    }
+  };
+
+  // 暂停/恢复录制
+  const handleTogglePauseRecord = () => {
+    const recorder = mediaRecorderRef.current;
+    if (!recorder) return;
+    if (recorder.state === 'recording') {
+      recorder.pause();
+      setIsRecordPaused(true);
+    } else if (recorder.state === 'paused') {
+      recorder.resume();
+      setIsRecordPaused(false);
+    }
+  };
+
+  // 停止录制
+  const handleStopRecord = () => {
+    const recorder = mediaRecorderRef.current;
+    if (recorder && (recorder.state === 'recording' || recorder.state === 'paused')) {
+      console.log('📹 停止录制');
+      recorder.stop();
+    }
+    setIsRecording(false);
+    setIsRecordPaused(false);
+    
+    // 清理计时器
+    if (recordTimerRef.current) {
+      clearInterval(recordTimerRef.current);
+      recordTimerRef.current = null;
+    }
+  };
+
+  // 退出录制界面，回到视频播放
+  const handleExitRecordUI = () => {
+    setShowRecordUI(false);
+    setIsRecording(false);
+    setIsRecordPaused(false);
+    setRecordedChunks([]);
+    setRecordedBlob(null);
+    setRecordTime(0);
+    
+    // 清理计时器
+    if (recordTimerRef.current) {
+      clearInterval(recordTimerRef.current);
+      recordTimerRef.current = null;
+    }
+    
+    if (mediaRecorderRef.current) {
+      if (mediaRecorderRef.current.state === 'recording' || mediaRecorderRef.current.state === 'paused') {
+        mediaRecorderRef.current.stop();
+      }
+      mediaRecorderRef.current = null;
+    }
+  };
+
+  // 存草稿（本地下载）
+  const handleSaveDraft = () => {
+    if (!recordedBlob) return;
+    const url = URL.createObjectURL(recordedBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `tryon_record_${Date.now()}.webm`;
+    a.click();
+    
+    // 延迟清理URL，确保下载完成
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+    }, 1000);
+  };
+
+  // 仅分享（微信分享）
+  const handleShareOnly = async () => {
+    if (!recordedBlob) return;
+    // 微信内直接调起分享
+    if (isWechatBrowser()) {
+      // 这里可以上传到服务器后返回可分享链接，或直接用微信JS-SDK分享
+      // 这里只弹提示
+      alert('请在微信中点击右上角菜单进行分享');
+    } else {
+      alert('请在微信内打开页面后分享');
+    }
+  };
 
   // 服饰分类名称映射到图标
   const getClothesIcon = (classifyName: string) => {
@@ -1423,6 +1679,21 @@ const Home = () => {
     };
   }, []);
 
+  // 清理录制相关资源
+  useEffect(() => {
+    return () => {
+      // 组件卸载时清理资源
+      if (recordTimerRef.current) {
+        clearInterval(recordTimerRef.current);
+      }
+      if (mediaRecorderRef.current) {
+        if (mediaRecorderRef.current.state === 'recording' || mediaRecorderRef.current.state === 'paused') {
+          mediaRecorderRef.current.stop();
+        }
+      }
+    };
+  }, []);
+
   // 如果缺少必要参数，显示加载页面
   if (!loginParams) {
     return (
@@ -2095,7 +2366,7 @@ const Home = () => {
 
 
         {/* 右上角重新登录按钮 */}
-        {/* <button
+        <button
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -2150,7 +2421,7 @@ const Home = () => {
           }}
         >
           🔄 重新登录
-        </button> */}
+        </button>
 
         {/* 开发环境测试微信分享按钮 */}
         {process.env.NODE_ENV === 'development' && (
@@ -2781,6 +3052,56 @@ const Home = () => {
                       </div>
                     </div>
                   ))}
+                  
+                  {/* 录制按钮 - 在右侧和衣服图标垂直排列 */}
+                  <div
+                    onClick={isRecording ? handleStopRecord : handleStartRecord}
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '8px',
+                      cursor: 'pointer',
+                      transition: 'transform 0.2s ease',
+                      marginTop: '8px'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'scale(1.1)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'scale(1)';
+                    }}
+                  >
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: '50px',
+                      height: '50px',
+                      borderRadius: '12px',
+                      backgroundColor: isRecording ? 'rgba(255, 119, 117, 0.8)' : 'rgba(255, 255, 255, 0.8)',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                      border: isRecording ? '2px solid #ff7875' : '2px solid #07c160'
+                    }}>
+                      <img 
+                        src={shareIcon} 
+                        alt={isRecording ? "结束录制" : "录制"} 
+                        style={{
+                          width: '30px',
+                          height: '30px',
+                          objectFit: 'contain'
+                        }}
+                      />
+                    </div>
+                    <div style={{
+                      color: '#fff',
+                      fontSize: '12px',
+                      fontWeight: 'bold',
+                      textShadow: '0 1px 2px rgba(0,0,0,0.8)'
+                    }}>
+                      {isRecording ? '结束录制' : '录制'}
+                    </div>
+                  </div>
                 </>
               ) : (
                 // 显示具体服装列表
@@ -2873,141 +3194,11 @@ const Home = () => {
               )}
             </div>
 
-            {/* 微信分享图标 */}
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: '8px',
-              marginTop: '20px'
-            }}>
-              <div style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: '8px',
-                cursor: 'pointer',
-                transition: 'transform 0.2s ease'
-              }}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handleWechatShare();
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'scale(1.1)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'scale(1)';
-                }}
-              >
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: '50px',
-                  height: '50px',
-                  borderRadius: '12px',
-                  backgroundColor: 'rgba(255,255,255,0.8)',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                  border: '2px solid #07c160'
-                }}>
-                  <img 
-                    src={shareIcon} 
-                    alt="微信分享" 
-                    style={{
-                      width: '30px',
-                      height: '30px',
-                      objectFit: 'contain'
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
+            {/* 微信分享图标 - 已移除，现在用作录制按钮 */}
           </div>
       </div>
 
-      {/* 底部控制区域 - 离开舞台按钮 */}
-      <div style={{
-        position: 'fixed',
-        bottom: '30px',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        zIndex: 200, // 提高z-index确保显示在视频上方
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center'
-      }}>
-        {/* 离开舞台按钮 */}
-        <button
-          onClick={() => {
-            console.log('🚪 用户点击离开舞台');
-            
-            // 设置用户已离开过舞台的状态
-            setHasLeftStage(true);
-            
-            // 断开WebSocket连接
-            try {
-              webSocketService.disconnect();
-              console.log('✅ WebSocket连接已断开');
-            } catch (error) {
-              console.error('❌ 断开WebSocket连接失败:', error);
-            }
-            
-            // 调用RTC消息处理器destroy
-            try {
-              rtcMessageHandler.destroy();
-              console.log('✅ RTC消息处理器已销毁');
-            } catch (error) {
-              console.error('❌ 销毁RTC消息处理器失败:', error);
-            }
-            
-            // 离开RTC房间
-            try {
-              rtcVideoService.leaveRoom();
-              console.log('✅ 已离开RTC房间');
-            } catch (error) {
-              console.error('❌ 离开RTC房间失败:', error);
-            }
-            
-            // 重置UI状态
-            setShowSelectionScreen(true);
-            hasStartedTryon.current = false;
-            setIsVideoPaused(false);
-            // setShowVideoIcons(false); // 移除，让icon常驻显示
-            
-            // 清理定时器
-            if (iconHideTimer) {
-              clearTimeout(iconHideTimer);
-              setIconHideTimer(null);
-            }
-            
-            console.log('✅ 离开舞台完成，已返回选择界面');
-          }}
-          style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.2)',
-            color: 'white',
-            border: '1px solid rgba(255, 255, 255, 0.3)',
-            padding: '10px 20px',
-            borderRadius: '20px',
-            fontSize: '14px',
-            cursor: 'pointer',
-            fontWeight: 'normal',
-            transition: 'all 0.3s ease',
-            backdropFilter: 'blur(10px)',
-            WebkitBackdropFilter: 'blur(10px)',
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
-          }}
-        >
-          离开舞台
-        </button>
-      </div>
+      {/* 底部控制区域 - 已移除，按钮现在在录制按钮旁边 */}
 
       {/* 微信分享提示 */}
       {showShareTip && (
@@ -3036,6 +3227,406 @@ const Home = () => {
           </div>
         </div>
       )}
+
+              {/* 录制时间显示 - 在离开舞台按钮上方居中 */}
+            {isRecording && (
+              <div style={{
+                position: 'fixed',
+                bottom: '90px', // 在离开舞台按钮上方30px
+                left: '50%',
+                transform: 'translateX(-50%)',
+                color: '#fff',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                textShadow: '0 2px 4px rgba(0,0,0,0.8)',
+                backgroundColor: 'rgba(0,0,0,0.6)',
+                padding: '8px 16px',
+                borderRadius: '20px',
+                backdropFilter: 'blur(10px)',
+                zIndex: 300
+              }}>
+                {Math.floor(recordTime / 60).toString().padStart(2, '0')}:{(recordTime % 60).toString().padStart(2, '0')}
+              </div>
+            )}
+            
+            {/* 离开舞台按钮 - 完全透明，在底部中间 */}
+            {!showSelectionScreen && !showRecordUI && (
+              <div style={{
+                position: 'fixed',
+                bottom: '30px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                zIndex: 300
+              }}>
+                <button
+                  onClick={async () => {
+                    try {
+                      console.log('🚪 用户点击离开舞台按钮');
+                      
+                      // 断开WebSocket连接
+                      if (webSocketService) {
+                        webSocketService.disconnect();
+                        console.log('✅ WebSocket连接已断开');
+                      }
+                      
+                      // 断开RTC连接
+                      if (rtcVideoService) {
+                        try {
+                          await rtcVideoService.leaveRoom();
+                          rtcVideoService.destroy();
+                          console.log('✅ RTC连接已断开');
+                        } catch (error) {
+                          console.warn('⚠️ RTC断开时出现警告:', error);
+                        }
+                      }
+                      
+                      // 断开试衣服务
+                      if (tryonService) {
+                        tryonService.disconnect();
+                        console.log('✅ 试衣服务已断开');
+                      }
+                      
+                      // 清理录制相关资源
+                      if (mediaRecorderRef.current) {
+                        if (mediaRecorderRef.current.state === 'recording' || mediaRecorderRef.current.state === 'paused') {
+                          mediaRecorderRef.current.stop();
+                        }
+                        mediaRecorderRef.current = null;
+                      }
+                      
+                      // 清理状态
+                      setIsRecording(false);
+                      setIsRecordPaused(false);
+                      setRecordedChunks([]);
+                      setRecordedBlob(null);
+                      setShowRecordUI(false);
+                      setShowSelectionScreen(true);
+                      setHasLeftStage(true);
+                      
+                      console.log('✅ 所有资源已清理，准备返回首页');
+                      
+                      // 返回首页
+                      navigate('/');
+                      
+                    } catch (error) {
+                      console.error('❌ 离开舞台时发生错误:', error);
+                      // 即使出错也返回首页
+                      navigate('/');
+                    }
+                  }}
+                  style={{
+                    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                    color: 'white',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    borderRadius: '25px',
+                    padding: '12px 30px',
+                    fontSize: '16px',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    backdropFilter: 'blur(5px)',
+                    transition: 'all 0.3s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+                    e.currentTarget.style.transform = 'scale(1.05)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.3)';
+                    e.currentTarget.style.transform = 'scale(1)';
+                  }}
+                >
+                  离开舞台
+                </button>
+              </div>
+            )}
+
+              {/* 录制结果浮层 - 只显示视频效果 */}
+        {showRecordUI && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100vh',
+            zIndex: 9999,
+            background: 'rgba(0,0,0,0.8)',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            pointerEvents: 'auto'
+          }}>
+            {/* 主要内容区域 - 视频预览 */}
+            <div style={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              alignItems: 'center',
+              padding: '20px'
+            }}>
+              {/* 视频预览区域 - 使用实际录制的视频帧 */}
+              <div style={{
+                width: '100%',
+                maxWidth: '400px',
+                height: '600px',
+                backgroundColor: '#007AFF',
+                borderRadius: '20px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                position: 'relative',
+                overflow: 'hidden',
+                marginBottom: '20px'
+              }}>
+                {/* 如果有录制的视频，显示视频预览 */}
+                {recordedBlob && (
+                  <video
+                    src={URL.createObjectURL(recordedBlob)}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      borderRadius: '20px'
+                    }}
+                    onLoadedData={(e) => {
+                      // 设置视频到某一帧（比如第1秒）
+                      const video = e.target as HTMLVideoElement;
+                      video.currentTime = 1;
+                    }}
+                    onError={(e) => {
+                      console.error('❌ 视频预览加载失败:', e);
+                    }}
+                    preload="metadata"
+                    muted
+                  />
+                )}
+                
+                {/* 播放按钮覆盖层 */}
+                <div style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  width: '80px',
+                  height: '80px',
+                  backgroundColor: 'rgba(255,255,255,0.9)',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '40px',
+                  color: '#007AFF',
+                  zIndex: 10
+                }}>
+                  ▶
+                </div>
+                
+                {/* 视频时长显示 */}
+                <div style={{
+                  position: 'absolute',
+                  bottom: '20px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  color: '#fff',
+                  fontSize: '16px',
+                  fontWeight: 'bold',
+                  backgroundColor: 'rgba(0,0,0,0.5)',
+                  padding: '8px 16px',
+                  borderRadius: '20px',
+                  zIndex: 10
+                }}>
+                  00:05/00:21
+                </div>
+              </div>
+
+              {/* 视频时间轴 */}
+              <div style={{
+                width: '100%',
+                maxWidth: '400px',
+                backgroundColor: 'rgba(255,255,255,0.1)',
+                borderRadius: '10px',
+                padding: '10px',
+                marginBottom: '20px'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  gap: '5px',
+                  overflowX: 'auto'
+                }}>
+                  {Array.from({ length: 10 }, (_, i) => (
+                    <div key={i} style={{
+                      width: '30px',
+                      height: '40px',
+                      backgroundColor: '#52c41a',
+                      borderRadius: '4px',
+                      flexShrink: 0
+                    }} />
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* 底部操作栏 */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '20px 30px 30px 30px',
+              backgroundColor: 'rgba(0,0,0,0.9)'
+            }}>
+              {/* 左上返回按钮 */}
+              <button
+                onClick={handleExitRecordUI}
+                style={{
+                  background: 'rgba(255,255,255,0.2)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '50%',
+                  width: 40,
+                  height: 40,
+                  fontSize: 18,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                ←
+              </button>
+
+              {/* 左下存草稿 */}
+              <button
+                onClick={handleSaveDraft}
+                style={{
+                  background: '#fff',
+                  color: '#333',
+                  border: 'none',
+                  borderRadius: '12px',
+                  padding: '12px 24px',
+                  fontSize: '16px',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+                disabled={!recordedBlob}
+              >
+                📄 存草稿
+              </button>
+
+              {/* 中间仅分享 */}
+              <button
+                onClick={handleShareOnly}
+                style={{
+                  background: '#07c160',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '12px',
+                  padding: '12px 24px',
+                  fontSize: '16px',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+                disabled={!recordedBlob}
+              >
+                📤 仅分享
+              </button>
+            </div>
+
+            {/* 离开舞台按钮 */}
+            <div style={{
+              position: 'fixed',
+              bottom: '20px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              zIndex: 10000
+            }}>
+              <button
+                onClick={async () => {
+                  try {
+                    console.log('🚪 用户点击离开舞台按钮');
+                    
+                    // 断开WebSocket连接
+                    if (webSocketService) {
+                      webSocketService.disconnect();
+                      console.log('✅ WebSocket连接已断开');
+                    }
+                    
+                    // 断开RTC连接
+                    if (rtcVideoService) {
+                      try {
+                        await rtcVideoService.leaveRoom();
+                        rtcVideoService.destroy();
+                        console.log('✅ RTC连接已断开');
+                      } catch (error) {
+                        console.warn('⚠️ RTC断开时出现警告:', error);
+                      }
+                    }
+                    
+                    // 断开试衣服务
+                    if (tryonService) {
+                      tryonService.disconnect();
+                      console.log('✅ 试衣服务已断开');
+                    }
+                    
+                    // 清理录制相关资源
+                    if (mediaRecorderRef.current) {
+                      if (mediaRecorderRef.current.state === 'recording' || mediaRecorderRef.current.state === 'paused') {
+                        mediaRecorderRef.current.stop();
+                      }
+                      mediaRecorderRef.current = null;
+                    }
+                    
+                    // 清理状态
+                    setIsRecording(false);
+                    setIsRecordPaused(false);
+                    setRecordedChunks([]);
+                    setRecordedBlob(null);
+                    setShowRecordUI(false);
+                    setShowSelectionScreen(true);
+                    setHasLeftStage(true);
+                    
+                    console.log('✅ 所有资源已清理，准备返回首页');
+                    
+                    // 返回首页
+                    navigate('/');
+                    
+                  } catch (error) {
+                    console.error('❌ 离开舞台时发生错误:', error);
+                    // 即使出错也返回首页
+                    navigate('/');
+                  }
+                }}
+                style={{
+                  backgroundColor: '#ff4d4f',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '25px',
+                  padding: '12px 30px',
+                  fontSize: '16px',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(255, 77, 79, 0.3)',
+                  transition: 'all 0.3s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#ff7875';
+                  e.currentTarget.style.transform = 'scale(1.05)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#ff4d4f';
+                  e.currentTarget.style.transform = 'scale(1)';
+                }}
+              >
+                🚪 离开舞台
+              </button>
+            </div>
+          </div>
+        )}
     </div>
   );
 };
