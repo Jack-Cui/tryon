@@ -278,9 +278,13 @@ export const roomAPI = {
           });
           
           // 参考 handleClothesManagement 的逻辑处理服装
-          const classifyId = clothe_detail.classifyId;
-          const clothesId = clothe_detail.id;
-          const suitIds = clothe_detail.suitIds || '';
+          // const classifyId = clothe_detail.classifyId;
+          // const clothesId = clothe_detail.id;
+          // const suitIds = clothe_detail.suitIds || '';
+
+          const classifyId = 4;
+          const clothesId = "1916394930865287170";
+          const suitIds = "1916394256718999553";
           
           console.log('👕 处理衣服管理逻辑:', {
             classifyId: classifyId,
@@ -295,7 +299,8 @@ export const roomAPI = {
             // 处理套装逻辑
             const arr = suitIds.split(',');
             
-            if (suitIds === '' || arr.length === 0) {
+            // if (suitIds === '' || arr.length === 0) {
+            if (arr.length === 0) {
               const item = {
                 classifyId: classifyId,
                 clothesId: Long.fromString(clothesId)
@@ -423,7 +428,8 @@ export const roomAPI = {
     const enter_stage_info: EnterStageInfo = {
       AvatarId: 0,
       UserId: room_info_data.userId,
-      MapName: room_info_data.scenarioId,
+      // MapName: room_info_data.scenarioId,
+      MapName: "Maps_jiaotang",
       Garments: garments,
       Animation: null,
       Camera: true,
