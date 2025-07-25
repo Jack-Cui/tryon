@@ -43,6 +43,7 @@ const Home = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [lastTouchPos, setLastTouchPos] = useState<{ x: number, y: number } | null>(null);
   const [touchStartTime, setTouchStartTime] = useState<number>(0); // 触摸开始时间
+  const [isProcessingClick, setIsProcessingClick] = useState(false); // 是否正在处理点击
   
   // 缩放事件相关状态
   const [initialDistance, setInitialDistance] = useState<number | null>(null);
@@ -50,7 +51,6 @@ const Home = () => {
   
   // 视频暂停状态
   const [isVideoPaused, setIsVideoPaused] = useState(false);
-  const [isProcessingClick, setIsProcessingClick] = useState(false);
   const [clothesList, setClothesList] = useState<ClothesItem[]>([]); // 添加服饰列表状态
   const [loginParams, setLoginParams] = useState<{
     token: string;
@@ -748,106 +748,43 @@ const Home = () => {
     console.log('🎬 视频区域被点击');
     console.log('🎬 当前视频暂停状态:', isVideoPaused);
     
-    // 防止快速连续点击（只在微信浏览器中启用）
-    if (isWechatBrowser() && isProcessingClick) {
-      console.log('⚠️ 微信浏览器中正在处理点击事件，跳过');
-      return;
-    }
+    // 直接切换暂停状态，不检查RTC连接
+    const newPausedState = !isVideoPaused;
+    setIsVideoPaused(newPausedState);
+    console.log('⏸️ 切换视频暂停状态:', newPausedState);
     
-    if (isWechatBrowser()) {
-      setIsProcessingClick(true);
-    }
-    
-    // 检查RTC连接状态
-    if (!rtcVideoService.getConnectionStatus()) {
-      console.log('⚠️ RTC未连接，尝试重新初始化RTC连接');
-      
-      // 尝试重新初始化RTC连接
-      if (loginParams) {
-        console.log('🔄 重新初始化RTC连接...');
-        const rtcConfig: RTCVideoConfig = {
-          appId: '643e46acb15c24012c963951',
-          appKey: 'b329b39ca8df4b5185078f29d8d8025f',
-          roomId: '1939613403762253825',
-          userId: loginParams.userId
-        };
-        
-        const config = {
-          phone: loginParams.phone,
-          coCreationId: loginParams.coCreationId,
-          userId: loginParams.userId,
-          accessToken: loginParams.token,
-          rtcConfig,
-        };
-        
-        // 异步重新初始化RTC
-        tryonService.startTryonFlow(config).then(() => {
-          console.log('✅ RTC重新连接成功');
-        }).catch((error) => {
-          console.error('❌ RTC重新连接失败:', error);
+    // 直接控制视频元素暂停/播放
+    const videoElement = getCurrentVideoElement();
+    if (videoElement && videoElement.tagName === 'VIDEO') {
+      const video = videoElement as HTMLVideoElement;
+      if (newPausedState) {
+        video.pause();
+        console.log('⏸️ 视频元素已暂停');
+      } else {
+        video.play().catch(error => {
+          console.error('❌ 播放视频失败:', error);
         });
+        console.log('▶️ 视频元素已播放');
       }
-      
-      if (isWechatBrowser()) {
-        setIsProcessingClick(false);
-      }
-      return;
+    } else {
+      console.log('⚠️ 未找到可控制的视频元素，元素类型:', videoElement?.tagName);
     }
     
+    // 尝试发送RTC消息（不阻塞UI）
     try {
-      // 发送点击触摸消息
-      console.log('👆 发送点击触摸消息');
-      rtcVideoService.sendTouchScreen(
-        proto.eTouchType.click, // click类型
-        {
-          x: 0,
-          y: 0,
-          z: 0
-        },
-        Date.now()
-      );
-      
-      console.log('✅ 点击触摸消息发送成功');
-      
-      // 移除图标显示状态切换，让icon常驻显示
-      // if (!showVideoIcons) {
-      //   setShowVideoIcons(true);
-      //   startIconHideTimer();
-      // } else {
-      //   setShowVideoIcons(false);
-      //   if (iconHideTimer) {
-      //     clearTimeout(iconHideTimer);
-      //     setIconHideTimer(null);
-      //   }
-      // }
-      
-      // 延迟切换暂停状态，确保微信浏览器中的视频状态同步
-      const delay = isWechatBrowser() ? 300 : 300; // 微信浏览器使用300ms延迟
-      setTimeout(() => {
-        const newPausedState = !isVideoPaused;
-        setIsVideoPaused(newPausedState);
-        console.log('⏸️ 切换视频暂停状态:', newPausedState, '延迟:', delay + 'ms');
-        if (isWechatBrowser()) {
-          setIsProcessingClick(false);
-        }
-      }, delay);
-      
+      if (rtcVideoService.getConnectionStatus()) {
+        console.log('👆 发送点击触摸消息');
+        rtcVideoService.sendTouchScreen(
+          proto.eTouchType.click,
+          { x: 0, y: 0, z: 0 },
+          Date.now()
+        );
+        console.log('✅ 点击触摸消息发送成功');
+      } else {
+        console.log('⚠️ RTC未连接，跳过消息发送');
+      }
     } catch (error) {
       console.error('❌ 发送点击触摸消息失败:', error);
-      // 移除图标显示状态切换，让icon常驻显示
-      // if (!showVideoIcons) {
-      //   setShowVideoIcons(true);
-      //   startIconHideTimer();
-      // } else {
-      //   setShowVideoIcons(false);
-      //   if (iconHideTimer) {
-      //     clearTimeout(iconHideTimer);
-      //     setIconHideTimer(null);
-      //   }
-      // }
-      if (isWechatBrowser()) {
-        setIsProcessingClick(false);
-      }
     }
   };
 
@@ -969,6 +906,7 @@ const Home = () => {
   // 处理触摸开始事件
   const handleTouchStart = (event: React.TouchEvent | React.MouseEvent) => {
     console.log('👆 handleTouchStart 被调用');
+    
     const pos = getEventPosition(event);
     setLastTouchPos(pos);
     setIsDragging(false);
@@ -976,6 +914,8 @@ const Home = () => {
     
     // 检测多点触摸（缩放手势）
     if ('touches' in event && event.touches.length === 2) {
+      // 双指触摸时阻止默认行为
+      event.preventDefault();
       const positions = getTouchPositions(event as React.TouchEvent);
       const distance = getDistance(positions[0], positions[1]);
       setInitialDistance(distance);
@@ -997,11 +937,22 @@ const Home = () => {
   // 处理触摸移动事件
   const handleTouchMove = (event: React.TouchEvent | React.MouseEvent) => {
     console.log('👆 handleTouchMove 被调用');
+    
     // 检测缩放手势
     if ('touches' in event && event.touches.length === 2 && initialDistance !== null) {
+      // 双指触摸时阻止默认行为
+      event.preventDefault();
       const positions = getTouchPositions(event as React.TouchEvent);
       const currentDistance = getDistance(positions[0], positions[1]);
       const scaleDelta = currentDistance - (lastScaleDistance || initialDistance);
+      
+      console.log('🔍 缩放检测:', {
+        currentDistance: currentDistance.toFixed(2),
+        initialDistance: initialDistance.toFixed(2),
+        scaleDelta: scaleDelta.toFixed(2),
+        threshold: 5,
+        positions: positions.map(p => ({ x: p.x.toFixed(0), y: p.y.toFixed(0) }))
+      });
       
       // 如果缩放距离超过阈值，发送缩放消息
       if (Math.abs(scaleDelta) > 5) {
@@ -1051,8 +1002,8 @@ const Home = () => {
     // 计算滑动距离
     const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
     
-    // 降低滑动阈值，更早地设置拖动状态，防止误触发点击事件
-    if (distance > 5) { // 降低阈值到5像素，更早地识别为滑动
+    // 进一步提高拖动阈值，让点击更容易触发
+    if (distance > 35) { // 提高阈值到35像素，让点击更容易触发
       console.log('👆 设置拖动状态为true，距离:', distance.toFixed(2));
       setIsDragging(true);
       
@@ -1120,11 +1071,11 @@ const Home = () => {
     // 计算触摸持续时间
     const touchDuration = Date.now() - touchStartTime;
     
-    // 如果没有拖动，则认为是点击事件
+    // 简化点击判断逻辑，让点击更容易触发
     if (!isDragging && lastTouchPos) {
       
-      // 增加更严格的点击判断条件：距离小于3像素且时间间隔合理（100-500ms）
-      if (distance < 3 && touchDuration <= 100) {
+      // 进一步放宽点击判断条件：距离小于50像素且时间间隔合理（10-10000ms）
+      if (distance < 50 && touchDuration >= 10 && touchDuration <= 10000) {
         // 检查点击位置是否在icon区域内，如果是则不触发视频区域点击
         const clickX = currentPos.x;
         const clickY = currentPos.y;
@@ -1152,13 +1103,23 @@ const Home = () => {
           handleVideoAreaClick();
         }
       } else {
-            console.log('👆 不满足点击条件，跳过点击事件:', {
-      distance: distance.toFixed(2) + 'px',
-      touchDuration: touchDuration + 'ms',
-      isDragging: isDragging,
-      lastTouchPos: lastTouchPos
-    });
+        console.log('👆 不满足点击条件，跳过点击事件:', {
+          distance: distance.toFixed(2) + 'px',
+          touchDuration: touchDuration + 'ms',
+          isDragging: isDragging,
+          lastTouchPos: lastTouchPos
+        });
       }
+    }
+    
+    // 添加一个更简单的点击检测机制
+    // 如果没有拖动且触摸时间很短（小于500ms），直接认为是点击
+    if (!isDragging && touchDuration < 500 && distance < 30) {
+      console.log('👆 快速点击检测，触发视频区域点击', {
+        touchDuration: touchDuration + 'ms',
+        distance: distance.toFixed(2) + 'px'
+      });
+      handleVideoAreaClick();
     }
     
     setIsDragging(false);
@@ -1208,6 +1169,52 @@ const Home = () => {
   const isWechatBrowser = (): boolean => {
     const ua = navigator.userAgent.toLowerCase();
     return ua.includes('micromessenger');
+  };
+
+  // 调试双指缩放功能
+  const debugPinchZoom = () => {
+    console.log('🔍 双指缩放调试信息:');
+    console.log('  - 初始距离:', initialDistance);
+    console.log('  - 最后缩放距离:', lastScaleDistance);
+    console.log('  - RTC连接状态:', rtcVideoService.getConnectionStatus());
+    console.log('  - 触摸事件处理器已绑定');
+    console.log('  - 触摸事件阻止默认行为已启用');
+    console.log('  - 浏览器用户代理:', navigator.userAgent);
+    console.log('  - 是否支持触摸事件:', 'ontouchstart' in window);
+    console.log('  - 是否支持多点触摸:', 'ontouchstart' in window && 'touches' in TouchEvent.prototype);
+    
+    // 检查触摸事件处理器
+    const videoContainer = document.querySelector('[style*="touchAction: none"]');
+    if (videoContainer) {
+      console.log('  - 找到视频容器元素:', videoContainer);
+      console.log('  - 视频容器样式:', videoContainer.getAttribute('style'));
+    } else {
+      console.log('  - 未找到视频容器元素');
+    }
+    
+    // 测试触摸事件
+    try {
+      const testEvent = new TouchEvent('touchstart', {
+        touches: [
+          new Touch({ clientX: 100, clientY: 100, identifier: 1 } as any),
+          new Touch({ clientX: 200, clientY: 200, identifier: 2 } as any)
+        ]
+      });
+      console.log('  - 测试双指触摸事件创建成功:', testEvent);
+    } catch (error) {
+      console.log('  - 测试双指触摸事件创建失败:', error);
+    }
+    
+    // 检查是否有其他元素阻止了触摸事件
+    const allElements = document.querySelectorAll('*');
+    const elementsWithTouchAction = Array.from(allElements).filter(el => {
+      const style = window.getComputedStyle(el);
+      return style.touchAction !== 'auto';
+    });
+    console.log('  - 设置了touchAction的元素数量:', elementsWithTouchAction.length);
+    elementsWithTouchAction.slice(0, 5).forEach(el => {
+      console.log('    - 元素:', el.tagName, 'touchAction:', window.getComputedStyle(el).touchAction);
+    });
   };
 
   // 处理微信分享点击
@@ -2569,6 +2576,52 @@ const Home = () => {
             📤 测试分享
           </button>
         )}
+
+        {/* 开发环境调试双指缩放按钮 */}
+        {process.env.NODE_ENV === 'development' && (
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              console.log('调试双指缩放按钮被点击');
+              debugPinchZoom();
+            }}
+            style={{
+              position: 'absolute',
+              top: '20px',
+              right: '200px',
+              backgroundColor: '#1890ff !important',
+              color: 'white !important',
+              border: 'none !important',
+              padding: '8px 16px',
+              borderRadius: '6px',
+              fontSize: '12px',
+              cursor: 'pointer !important',
+              fontWeight: 'bold',
+              transition: 'all 0.3s ease',
+              zIndex: 9999,
+              boxShadow: '0 2px 8px rgba(24, 144, 255, 0.3)',
+              outline: 'none !important',
+              opacity: 1,
+              pointerEvents: 'auto',
+              display: 'inline-block',
+              userSelect: 'none',
+              WebkitUserSelect: 'none',
+              MozUserSelect: 'none',
+              msUserSelect: 'none'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#40a9ff';
+              e.currentTarget.style.transform = 'scale(1.05)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '#1890ff';
+              e.currentTarget.style.transform = 'scale(1)';
+            }}
+          >
+            🔍 调试缩放
+          </button>
+        )}
       </div>
     );
   }
@@ -2627,6 +2680,7 @@ const Home = () => {
         onMouseMove={handleTouchMove}
         onMouseUp={handleTouchEnd}
         onMouseLeave={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
       >
         
         {/* 暂停图标 - 显示在视频正中央 */}
@@ -2671,7 +2725,8 @@ const Home = () => {
           gap: '40px', // 与选择界面保持一致的间距
           height: '200px', // 固定高度，确保对齐
           zIndex: 200, // 提高z-index确保显示在视频上方
-          pointerEvents: 'auto' // 确保点击事件正常工作
+          pointerEvents: 'auto', // 确保点击事件正常工作
+          touchAction: 'none' // 防止触摸事件被阻止
         }}>
             {/* 动作区域 */}
             <div style={{
@@ -2692,6 +2747,12 @@ const Home = () => {
                   e.preventDefault();
                   e.stopPropagation();
                   handleVideoActionClick();
+                }}
+                onTouchStart={(e) => {
+                  // 只处理单指触摸，双指触摸让给缩放处理
+                  if (e.touches.length === 1) {
+                    e.stopPropagation();
+                  }
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.transform = 'scale(1.1)';
@@ -2820,6 +2881,12 @@ const Home = () => {
                   e.preventDefault();
                   e.stopPropagation();
                   handleVideoRealSceneClick();
+                }}
+                onTouchStart={(e) => {
+                  // 只处理单指触摸，双指触摸让给缩放处理
+                  if (e.touches.length === 1) {
+                    e.stopPropagation();
+                  }
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.transform = 'scale(1.1)';
@@ -3057,6 +3124,7 @@ const Home = () => {
           overflow: 'hidden',
           zIndex: 200, // 提高z-index确保显示在视频上方
           pointerEvents: 'auto', // 确保点击事件正常工作
+          touchAction: 'none', // 防止触摸事件被阻止
           paddingTop: '20px' // 添加顶部间距，与首页保持一致
         }}>
             {/* 顶部：当前选中服装的缩略图 */}
@@ -3119,6 +3187,12 @@ const Home = () => {
                         e.preventDefault();
                         e.stopPropagation();
                         handleVideoCategoryClick(category);
+                      }}
+                      onTouchStart={(e) => {
+                        // 只处理单指触摸，双指触摸让给缩放处理
+                        if (e.touches.length === 1) {
+                          e.stopPropagation();
+                        }
                       }}
                       onMouseEnter={(e) => {
                         e.currentTarget.style.transform = 'scale(1.1)';
@@ -3244,6 +3318,12 @@ const Home = () => {
                           e.stopPropagation();
                           handleVideoClothesClick(clothes, index);
                         }}
+                        onTouchStart={(e) => {
+                          // 只处理单指触摸，双指触摸让给缩放处理
+                          if (e.touches.length === 1) {
+                            e.stopPropagation();
+                          }
+                        }}
                         onMouseEnter={(e) => {
                           e.currentTarget.style.transform = 'scale(1.1)';
                         }}
@@ -3325,6 +3405,32 @@ const Home = () => {
           <div style={{ fontSize: '16px', marginBottom: '8px' }}>微信分享</div>
           <div style={{ fontSize: '14px', opacity: 0.8, lineHeight: '1.4' }}>
             请在微信中点击右上角菜单进行分享
+          </div>
+        </div>
+      )}
+
+      {/* 双指缩放提示 - 只在开发环境显示 */}
+      {process.env.NODE_ENV === 'development' && (
+        <div style={{
+          position: 'fixed',
+          bottom: '100px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 300,
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          color: 'white',
+          padding: '12px 20px',
+          borderRadius: '20px',
+          fontSize: '14px',
+          textAlign: 'center',
+          backdropFilter: 'blur(10px)',
+          WebkitBackdropFilter: 'blur(10px)',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+          animation: 'fadeIn 0.3s ease'
+        }}>
+          <div style={{ marginBottom: '8px' }}>🔍 双指缩放测试</div>
+          <div style={{ fontSize: '12px', opacity: 0.8 }}>
+            在视频区域使用双指进行缩放操作
           </div>
         </div>
       )}
