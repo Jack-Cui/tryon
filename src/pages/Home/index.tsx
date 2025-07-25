@@ -3021,7 +3021,7 @@ const Home = () => {
                 }}
               >
                 {/* 只在视频未播放时显示加载文本 */}
-                {!videoPlayingStatus[stream.userId] && (
+                {/* {!videoPlayingStatus[stream.userId] && (
                   <div style={{
                     position: 'absolute',
                     top: '50%',
@@ -3036,7 +3036,7 @@ const Home = () => {
                     <div style={{ fontSize: '24px', marginBottom: '8px' }}>🎬</div>
                     <div>加载视频中...</div>
                   </div>
-                )}
+                )} */}
               </div>
             </div>
           ))
