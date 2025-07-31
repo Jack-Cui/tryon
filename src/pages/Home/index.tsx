@@ -2684,7 +2684,7 @@ const Home = () => {
       >
         
         {/* 暂停图标 - 显示在视频正中央 */}
-        {isVideoPaused && (
+        {/* {isVideoPaused && (
           <div style={{
             position: 'absolute',
             top: '50%',
@@ -2710,7 +2710,7 @@ const Home = () => {
               marginLeft: '6px'
             }} />
           </div>
-        )}
+        )} */}
         
         {/* 左侧图标区域 - 常驻显示 */}
         <div style={{
