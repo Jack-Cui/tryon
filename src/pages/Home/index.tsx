@@ -936,192 +936,69 @@ const Home = () => {
 
   // 处理触摸移动事件
   const handleTouchMove = (event: React.TouchEvent | React.MouseEvent) => {
-    console.log('👆 handleTouchMove 被调用');
-    
-    // 检测缩放手势
+    // 双指缩放逻辑
     if ('touches' in event && event.touches.length === 2 && initialDistance !== null) {
-      // 双指触摸时阻止默认行为
       event.preventDefault();
       const positions = getTouchPositions(event as React.TouchEvent);
       const currentDistance = getDistance(positions[0], positions[1]);
       const scaleDelta = currentDistance - (lastScaleDistance || initialDistance);
-      
-      console.log('🔍 缩放检测:', {
-        currentDistance: currentDistance.toFixed(2),
-        initialDistance: initialDistance.toFixed(2),
-        scaleDelta: scaleDelta.toFixed(2),
-        threshold: 5,
-        positions: positions.map(p => ({ x: p.x.toFixed(0), y: p.y.toFixed(0) }))
-      });
-      
-      // 如果缩放距离超过阈值，发送缩放消息
       if (Math.abs(scaleDelta) > 5) {
-        // 检查RTC连接状态
-        if (!rtcVideoService.getConnectionStatus()) {
-          console.log('⚠️ RTC未连接，跳过缩放消息发送');
-          return;
-        }
-        
+        if (!rtcVideoService.getConnectionStatus()) return;
         try {
-          console.log('🔍 发送缩放触摸消息:', {
-            currentDistance: currentDistance,
-            initialDistance: initialDistance,
-            scaleDelta: scaleDelta,
-            positions: positions
-          });
-          
-          // 发送触摸屏幕消息，touchType=scale
           rtcVideoService.sendTouchScreen(
-            proto.eTouchType.scale, // scale类型
-            {
-              x: scaleDelta,
-              y: 0,
-              z: 0
-            },
+            proto.eTouchType.scale,
+            { x: scaleDelta, y: 0, z: 0 },
             Date.now()
           );
-          
-          console.log('✅ 缩放触摸消息发送成功');
-          
-        } catch (error) {
-          console.error('❌ 发送缩放触摸消息失败:', error);
-        }
-        
+        } catch {}
         setLastScaleDistance(currentDistance);
       }
-      return;
+      return; // 只要是双指缩放，后面单指逻辑都不走
     }
-    
-    // 单点触摸处理（旋转）
+    // 单指拖动逻辑
     if (!lastTouchPos) return;
-    
     const currentPos = getEventPosition(event);
     const deltaX = currentPos.x - lastTouchPos.x;
     const deltaY = currentPos.y - lastTouchPos.y;
-    
-    // 计算滑动距离
     const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-    
-    // 进一步提高拖动阈值，让点击更容易触发
-    if (distance > 35) { // 提高阈值到35像素，让点击更容易触发
-      console.log('👆 设置拖动状态为true，距离:', distance.toFixed(2));
+    // 拖动阈值恢复到10像素
+    if (distance > 10) {
       setIsDragging(true);
-      
-      // 检查RTC连接状态
-      if (!rtcVideoService.getConnectionStatus()) {
-        console.log('⚠️ RTC未连接，跳过触摸消息发送');
-        return;
-      }
-      
+      if (!rtcVideoService.getConnectionStatus()) return;
       try {
-        console.log('🔄 发送旋转触摸消息:', {
-          deltaX: deltaX,
-          deltaY: deltaY,
-          distance: distance
-        });
-        
-        // 发送触摸屏幕消息，touchType=rotate
-        // 调整旋转速度，使用较小的值
-        const rotationScale = 0.3; // 旋转缩放因子
+        const rotationScale = 0.3;
         rtcVideoService.sendTouchScreen(
-          proto.eTouchType.rotate, // rotate类型
-          {
-            x: deltaX * rotationScale,
-            y: deltaY * rotationScale,
-            z: 0
-          },
+          proto.eTouchType.rotate,
+          { x: deltaX * rotationScale, y: deltaY * rotationScale, z: 0 },
           Date.now()
         );
-        
-        console.log('✅ 旋转触摸消息发送成功');
-        
-        // 发送旋转消息后，自动暂停视频
-        if (!isVideoPaused) {
-          console.log('⏸️ 旋转操作后自动暂停视频');
-          setIsVideoPaused(true);
-        }
-        
-      } catch (error) {
-        console.error('❌ 发送旋转触摸消息失败:', error);
-      }
+        if (!isVideoPaused) setIsVideoPaused(true);
+      } catch {}
     }
   };
 
   // 处理触摸结束事件
   const handleTouchEnd = (event: React.TouchEvent | React.MouseEvent) => {
-    console.log('👆 handleTouchEnd 被调用');
-    console.log('👆 isDragging:', isDragging);
-    console.log('👆 lastTouchPos:', lastTouchPos);
-    
     if (isDragging) {
-      console.log('👆 触摸结束，旋转操作完成');
+      // 拖动结束
     }
-    
-    // 清理缩放状态
-    if (initialDistance !== null) {
-      console.log('🔍 缩放操作结束');
-    }
-    
-    // 检查滑动距离，如果很小才认为是点击
     const currentPos = getEventPosition(event);
     const deltaX = currentPos.x - (lastTouchPos?.x || 0);
     const deltaY = currentPos.y - (lastTouchPos?.y || 0);
     const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-    console.log('👆 触摸结束距离:', distance);
-    // 计算触摸持续时间
     const touchDuration = Date.now() - touchStartTime;
-    
-    // 简化点击判断逻辑，让点击更容易触发
+    // 点击判定：距离<20像素，时间0~500ms
     if (!isDragging && lastTouchPos) {
-      
-      // 进一步放宽点击判断条件：距离小于50像素且时间间隔合理（10-10000ms）
-      if (distance < 50 && touchDuration >= 10 && touchDuration <= 10000) {
-        // 检查点击位置是否在icon区域内，如果是则不触发视频区域点击
+      if (distance < 20 && touchDuration >= 0 && touchDuration <= 500) {
         const clickX = currentPos.x;
         const clickY = currentPos.y;
-        
-        // 检查是否点击在左侧icon区域（左侧10px到右侧120px，垂直居中区域，考虑展开选项）
-        const isLeftIconArea = clickX >= 10 && clickX <= 120 && 
-                              clickY >= window.innerHeight * 0.3 && clickY <= window.innerHeight * 0.7;
-        
-        // 检查是否点击在右侧icon区域（右侧10px到左侧120px，垂直居中区域，考虑展开选项）
-        const isRightIconArea = clickX >= window.innerWidth - 120 && clickX <= window.innerWidth - 10 && 
-                               clickY >= window.innerHeight * 0.3 && clickY <= window.innerHeight * 0.7;
-        
-        if (isLeftIconArea || isRightIconArea) {
-          console.log('👆 点击在icon区域内，跳过视频区域点击', {
-            clickX, clickY, isLeftIconArea, isRightIconArea,
-            leftArea: { x1: 10, x2: 120, y1: window.innerHeight * 0.3, y2: window.innerHeight * 0.7 },
-            rightArea: { x1: window.innerWidth - 120, x2: window.innerWidth - 10, y1: window.innerHeight * 0.3, y2: window.innerHeight * 0.7 }
-          });
-        } else {
-          console.log('👆 检测到点击事件，触发视频区域点击', { 
-            clickX, clickY, 
-            touchDuration: touchDuration + 'ms',
-            distance: distance.toFixed(2) + 'px'
-          });
+        const isLeftIconArea = clickX >= 10 && clickX <= 120 && clickY >= window.innerHeight * 0.3 && clickY <= window.innerHeight * 0.7;
+        const isRightIconArea = clickX >= window.innerWidth - 120 && clickX <= window.innerWidth - 10 && clickY >= window.innerHeight * 0.3 && clickY <= window.innerHeight * 0.7;
+        if (!isLeftIconArea && !isRightIconArea) {
           handleVideoAreaClick();
         }
-      } else {
-        console.log('👆 不满足点击条件，跳过点击事件:', {
-          distance: distance.toFixed(2) + 'px',
-          touchDuration: touchDuration + 'ms',
-          isDragging: isDragging,
-          lastTouchPos: lastTouchPos
-        });
       }
     }
-    
-    // 添加一个更简单的点击检测机制
-    // 如果没有拖动且触摸时间很短（小于500ms），直接认为是点击
-    if (!isDragging && touchDuration < 500 && distance < 30) {
-      console.log('👆 快速点击检测，触发视频区域点击', {
-        touchDuration: touchDuration + 'ms',
-        distance: distance.toFixed(2) + 'px'
-      });
-      handleVideoAreaClick();
-    }
-    
     setIsDragging(false);
     setLastTouchPos(null);
     setInitialDistance(null);
