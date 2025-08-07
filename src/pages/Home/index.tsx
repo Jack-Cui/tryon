@@ -26,6 +26,7 @@ import shoesIcon from '../../assets/鞋子.png';
 import shareIcon from '../../assets/相机.png';
 import realSceneIcon from '../../assets/实景.png';
 import realSceneActionIcon from '../../assets/实景动作.png';
+import { apiService, authAPI } from '../../services/api';
 
 const Long = require('long');
 
@@ -284,6 +285,41 @@ const Home = () => {
       alert('启动录制失败，请重试');
     }
   };
+
+  useEffect(() => {
+    if (loginParams?.token) {
+      const checkLoginStatus = async () => {
+        try {
+          const response = await authAPI.checkLogin(loginParams?.token);
+          const parsed = authAPI.parseCheckLoginResponse(response);
+          
+          if (parsed?.status === 424) {
+            // Handle logout
+            console.log('账号在其他地方登录');
+            // Show toast/alert and redirect
+            // 弹出toast，提示账号在其他地方登录，点击确认后跳转到登录页面
+            // 这里使用浏览器自带的alert，也可以替换为自定义Toast组件
+            alert('账号在其他地方登录，请重新登录');
+            window.location.href = '/login';
+          } else {
+            console.log('账号未在其他地方登录')
+          }
+        } catch (error) {
+          console.error('检查登录状态失败:', error);
+        }
+      };
+      // Initial check
+      checkLoginStatus();
+      
+      // Set up interval for periodic checks
+      const intervalId = setInterval(checkLoginStatus, 5000);
+      
+      // Cleanup interval on unmount
+      return () => clearInterval(intervalId);
+    }
+    
+    
+  }, [loginParams?.token]);
 
   // 暂停/恢复录制
   const handleTogglePauseRecord = () => {

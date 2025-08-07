@@ -77,7 +77,10 @@ export const API_ENDPOINTS = {
   GET_CLOTHE_DETAIL: (clothe_id: string) => `/admin/clothe/detail?clotheId=${clothe_id}`,
   
   // 调度服务
-  SCHEDULE: () => '/alloc/room_inst'
+  SCHEDULE: () => '/alloc/room_inst',
+
+  // 检查token重复登录
+  CHECK_LOGIN: (access_token: string) => `/admin/oauth/check_token?token=${access_token}`
 };
 
 // RTC配置

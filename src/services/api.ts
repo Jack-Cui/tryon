@@ -168,6 +168,35 @@ export const authAPI = {
       console.error('解析验证码响应失败:', error);
       return null;
     }
+  },
+
+   // 检查登录状态
+   async checkLogin(access_token: string): Promise<ApiResponse> {
+    console.log('开始检查登录状态');
+    const endpoint = API_ENDPOINTS.CHECK_LOGIN(access_token);
+    const headers = {
+      'Authorization': `Bearer ${access_token}`
+    };
+    return await apiService.get(endpoint, headers);
+  },
+
+  // 解析检查登录状态响应
+  parseCheckLoginResponse(response: ApiResponse): { status: number; message?: string } | null {
+    if (!response.data) {
+      return null;
+    }
+
+    try {
+      return {
+        status: response.status,
+        ...(response.data && { message: JSON.parse(response.data).message })
+      };
+    } catch (error) {
+      console.error('解析检查登录状态响应失败:', error);
+      return {
+        status: response.status
+      };
+    }
   }
 };
 
