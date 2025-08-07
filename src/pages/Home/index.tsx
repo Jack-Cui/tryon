@@ -945,9 +945,11 @@ const Home = () => {
       if (Math.abs(scaleDelta) > 5) {
         if (!rtcVideoService.getConnectionStatus()) return;
         try {
+          // 缩小缩放比例，使用0.1的缩放因子
+          const scaleFactor = 0.1;
           rtcVideoService.sendTouchScreen(
             proto.eTouchType.scale,
-            { x: scaleDelta, y: 0, z: 0 },
+            { x: scaleDelta * scaleFactor, y: 0, z: 0 },
             Date.now()
           );
         } catch {}
@@ -967,9 +969,10 @@ const Home = () => {
       if (!rtcVideoService.getConnectionStatus()) return;
       try {
         const rotationScale = 0.3;
+        // 修复旋转方向：向上移动时Y值为负，向下移动时Y值为正
         rtcVideoService.sendTouchScreen(
           proto.eTouchType.rotate,
-          { x: deltaX * rotationScale, y: deltaY * rotationScale, z: 0 },
+          { x: deltaX * rotationScale, y: -deltaY * rotationScale, z: 0 },
           Date.now()
         );
         if (!isVideoPaused) setIsVideoPaused(true);
