@@ -299,8 +299,8 @@ const Home = () => {
             // Show toast/alert and redirect
             // 弹出toast，提示账号在其他地方登录，点击确认后跳转到登录页面
             // 这里使用浏览器自带的alert，也可以替换为自定义Toast组件
-            alert('账号在其他地方登录，请重新登录');
-            window.location.href = '/login';
+            // alert('账号在其他地方登录，请重新登录');
+            // window.location.href = '/login';
           } else {
             console.log('账号未在其他地方登录')
           }
