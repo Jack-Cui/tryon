@@ -1424,18 +1424,25 @@ const Home = () => {
 
   // 设置余额扣费事件监听器（独立useEffect）
   useEffect(() => {
+    console.log('🔧 设置余额扣费事件监听器');
+    
     const handleBalanceDeduction = (event: Event) => {
       const customEvent = event as CustomEvent;
+      console.log('💰 收到余额扣费事件:', customEvent.detail);
       
       // 异步执行余额扣费，不阻塞事件处理
       (async () => {
         try {
+          const sourceId = Long.fromString("1939613403762253825");
           // 构建扣费数据
           const balanceRaw = {
             deducteList: [{
               deductionType: 2,
               billPrice: 0.3,
+              // sourceId: Long.fromString("1939613403762253825").toString(),
+              // sourceId: '1939613403762253825', 字符串会提示非法，数字的话会提示未加入房间，因为后面成了00
               sourceId: 1939613403762253825,
+              // sourceId: sourceId,
               reduceCount: 1,
               clotheId: 0
             }]
@@ -1445,11 +1452,11 @@ const Home = () => {
           const response = await authAPI.getBalanceDeductionRequest(
             balanceRaw,
             loginParams?.token || '',
-            "1754092805389819906" // 用户ID
+            loginParams?.userId || '' // 用户ID
           );
           
           if (response.ok) {
-            console.log('✅ 余额扣费请求成功');
+            console.log('✅ 余额扣费请求成功:', response.data);
           } else {
             console.error('❌ 余额扣费请求失败:', response.status);
           }
@@ -1461,10 +1468,24 @@ const Home = () => {
 
     // 监听余额扣费事件
     window.addEventListener('rtcBalanceDeduction', handleBalanceDeduction);
+    console.log('✅ 余额扣费事件监听器设置完成');
+
+    // 测试事件监听器是否正常工作
+    setTimeout(() => {
+      console.log('🧪 测试余额扣费事件监听器...');
+      const testEvent = new CustomEvent('rtcBalanceDeduction', {
+        detail: {
+          userId: 'test',
+          timestamp: Date.now()
+        }
+      });
+      window.dispatchEvent(testEvent);
+    }, 1000);
 
     // 清理函数
     return () => {
       window.removeEventListener('rtcBalanceDeduction', handleBalanceDeduction);
+      console.log('🧹 余额扣费事件监听器已清理');
     };
   }, [loginParams?.token]); // 只依赖token，避免不必要的重复设置
 

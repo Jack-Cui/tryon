@@ -205,6 +205,20 @@ export const authAPI = {
   },
 
 
+  generateHMAC2(public_KEY: string, data: string) {
+    const HMAC_SHA256 = 'sha256';
+
+    try {
+        return crypto
+            .createHmac(HMAC_SHA256, Buffer.from(public_KEY, 'utf8'))
+            .update(data, 'utf8')
+            .digest('base64');
+    } catch (e: any) {
+        console.error('HMAC生成失败:', e);
+        return null;
+    }
+  },
+
   generateHMAC(public_KEY: string, data: string) {
     try {
         // 计算 HMAC-SHA256 并返回 Base64 编码结果

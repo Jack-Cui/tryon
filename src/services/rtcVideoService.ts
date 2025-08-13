@@ -73,6 +73,13 @@ export class RTCVideoService {
       this.bindEngineEvents();
       
       console.log('✅ RTC引擎初始化成功');
+      console.log('🔍 RTC引擎状态:', {
+        engine: !!this.engine,
+        config: !!this.config,
+        appId: this.config?.appId,
+        roomId: this.config?.roomId,
+        userId: this.config?.userId
+      });
     } catch (error) {
       console.error('❌ RTC引擎初始化失败:', error);
       throw error;
@@ -82,6 +89,8 @@ export class RTCVideoService {
   // 绑定引擎事件
   private bindEngineEvents(): void {
     if (!this.engine) return;
+    
+    console.log('🔧 开始绑定RTC引擎事件...');
 
     // 用户加入房间
     this.engine.on(VERTC.events.onUserJoined, (event: any) => {
@@ -170,14 +179,16 @@ export class RTCVideoService {
     // 播放器事件
     this.engine.on(VERTC.events.onPlayerEvent, (event: any) => {
       console.log('🎬 播放器事件:', event);
+      
       // 检查是否是视频开始播放的事件
-      if (event.eventType === 'onFirstFrame') {
-        console.log('🎬 视频第一帧渲染完成:', event.userId);
+      // 根据日志，事件有 eventName 属性，我们需要监听 'canplay' 或 'canplaythrough' 事件
+      if (event.eventName === 'canplay' || event.eventName === 'canplaythrough') {
+        console.log('🎬 视频可以播放:', event.userId, '事件:', event.eventName);
         
         // 发送自定义事件到首页
         const customEvent = new CustomEvent('rtcPlayerEvent', {
           detail: {
-            eventType: event.eventType,
+            eventType: event.eventName,
             userId: event.userId
           }
         });
@@ -190,7 +201,10 @@ export class RTCVideoService {
             timestamp: Date.now()
           }
         });
+        console.log('💰 发送余额扣费事件:', event.userId);
         window.dispatchEvent(balanceEvent);
+      } else {
+        console.log('🎬 其他播放器事件:', event.eventName, 'userId:', event.userId);
       }
     });
 
@@ -199,6 +213,8 @@ export class RTCVideoService {
       console.error('❌ RTC错误:', event);
       this.eventHandlers.onError?.(event);
     });
+    
+    console.log('✅ RTC引擎事件绑定完成');
   }
 
   // 加入房间
