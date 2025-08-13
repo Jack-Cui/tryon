@@ -1420,7 +1420,53 @@ const Home = () => {
         console.error('❌ RTC错误:', error);
       }
     });
-  }, []);
+  }, []); // 移除loginParams依赖，避免重复设置
+
+  // 设置余额扣费事件监听器（独立useEffect）
+  useEffect(() => {
+    const handleBalanceDeduction = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      
+      // 异步执行余额扣费，不阻塞事件处理
+      (async () => {
+        try {
+          // 构建扣费数据
+          const balanceRaw = {
+            deducteList: [{
+              deductionType: 2,
+              billPrice: 0.3,
+              sourceId: 1939613403762253825,
+              reduceCount: 1,
+              clotheId: 0
+            }]
+          };
+
+          // 使用新的API函数进行余额扣费请求
+          const response = await authAPI.getBalanceDeductionRequest(
+            balanceRaw,
+            loginParams?.token || '',
+            "1754092805389819906" // 用户ID
+          );
+          
+          if (response.ok) {
+            console.log('✅ 余额扣费请求成功');
+          } else {
+            console.error('❌ 余额扣费请求失败:', response.status);
+          }
+        } catch (error) {
+          console.error('❌ 余额扣费请求异常:', error);
+        }
+      })();
+    };
+
+    // 监听余额扣费事件
+    window.addEventListener('rtcBalanceDeduction', handleBalanceDeduction);
+
+    // 清理函数
+    return () => {
+      window.removeEventListener('rtcBalanceDeduction', handleBalanceDeduction);
+    };
+  }, [loginParams?.token]); // 只依赖token，避免不必要的重复设置
 
   // 登台按钮点击处理
   const handleStartTryon = async () => {
