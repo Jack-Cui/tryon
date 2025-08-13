@@ -89,6 +89,16 @@ export class RTCVideoService {
       console.log('👤 用户加入房间:', userId);
       this.eventHandlers.onUserJoin?.(userId);
     });
+    // 测试余额扣费功能
+    const balanceRaw = {
+      deducteList: [{
+        deductionType: 2,
+        billPrice: 0.3,
+        sourceId: 1939613403762253825,
+        reduceCount: 1,
+        clotheId: 0
+      }]
+    };
 
     // 用户离开房间
     this.engine.on(VERTC.events.onUserLeave, (event: any) => {
@@ -163,6 +173,9 @@ export class RTCVideoService {
       // 检查是否是视频开始播放的事件
       if (event.eventType === 'onFirstFrame') {
         console.log('🎬 视频第一帧渲染完成:', event.userId);
+        
+        // 视频开始播放后，执行余额扣费请求
+        // this.executeBalanceDeduction();
         
         // 发送自定义事件到首页
         const customEvent = new CustomEvent('rtcPlayerEvent', {
@@ -481,6 +494,51 @@ export class RTCVideoService {
   sendRoomMessage(message: string): void {
     console.log('📤 发送房间消息:', message);
     rtcMessageHandler.sendRoomMessage(message);
+  }
+
+  // 执行余额扣费请求
+  private async executeBalanceDeduction(): Promise<void> {
+    try {
+      console.log('💰 开始执行余额扣费请求...');
+      
+      // 构建扣费数据
+      const balanceRaw = {
+        deducteList: [{
+          deductionType: 2,
+          billPrice: 0.3,
+          sourceId: 1939613403762253825,
+          reduceCount: 1,
+          clotheId: 0
+        }]
+      };
+
+      // 导入authAPI
+      const { authAPI } = await import('./api');
+      
+      // 获取当前token（这里需要根据实际情况获取）
+      const token = this.config?.token || '';
+      const userId = "1754092805389819906"; // 用户ID，实际应该从配置或参数获取
+      
+      if (!token) {
+        console.warn('⚠️ 无法获取token，跳过余额扣费请求');
+        return;
+      }
+
+      // 执行余额扣费请求
+      const response = await authAPI.getBalanceDeductionRequest(
+        balanceRaw,
+        token,
+        userId
+      );
+      
+      if (response.ok) {
+        console.log('✅ 余额扣费请求成功:', response.data);
+      } else {
+        console.error('❌ 余额扣费请求失败:', response.status, response.data);
+      }
+    } catch (error) {
+      console.error('❌ 余额扣费请求异常:', error);
+    }
   }
 }
 

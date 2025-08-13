@@ -1,4 +1,6 @@
 import { API_CONFIG, API_ENDPOINTS } from '../config/api';
+import { v4 as uuidv4 } from 'uuid';
+
 import { 
   ApiResponse, 
   LoginResponse, 
@@ -12,6 +14,7 @@ import {
 
 const Long = require('long');
 const crypto = require('crypto');
+
 
 // 通用HTTP请求方法
 class ApiService {
@@ -203,17 +206,59 @@ export const authAPI = {
 
 
   generateHMAC(public_KEY: string, data: string) {
-    const HMAC_SHA256 = 'sha256';
-
     try {
-        return crypto
-            .createHmac(HMAC_SHA256, Buffer.from(public_KEY, 'utf8'))
-            .update(data, 'utf8')
-            .digest('base64');
+        // 计算 HMAC-SHA256 并返回 Base64 编码结果
+        const keyBytes = Buffer.from(public_KEY, 'utf8');
+        const messageBytes = Buffer.from(data, 'utf8');
+        const hmac = crypto.createHmac('sha256', keyBytes);
+        hmac.update(messageBytes);
+        return hmac.digest('base64');
     } catch (e: any) {
         console.error('HMAC生成失败:', e);
         return null;
     }
+  },
+
+  // 余额扣费请求函数
+  async getBalanceDeductionRequest(
+    balanceRaw: any,
+    accessToken: string,
+    userId: string
+  ): Promise<ApiResponse> {
+    console.log('开始余额扣费请求');
+    
+    const url = `${API_CONFIG.BASE_URL}/admin/balance/deduction`;
+    
+    // 构建消息字符串：data|timestamp|userId
+    const timestamp = Date.now().toString();
+    const requestId = uuidv4().replace(/-/g, '');
+    
+    const data = JSON.stringify(balanceRaw).replace(/\s+/g, '');
+    const sMessage = `${data}|${timestamp}|${userId}`;
+    
+    console.log('s_message:', sMessage);
+    
+    // 使用固定的密钥生成签名
+    const KEY = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwxAKb+pGIdtg189rgCtLGClLVTcWkAga0UTiZ8cfDzNDBF3eZBX96iXb5godZLHaAg38OZbtqclZfWBu9nBEpaV+nZudJ5z42RFpJlK6p9ACetR+/rX5Xfol9k0DayI9lP42uyK8h+wv/LPcA5PT/eE4aSMwn2g/xrVuLPGpCXM5Ca3de8s6Rj5JdW2GccLsi3GueLet2N4+a88cvpNMr4poVu135cb+SyxEbt3/4z0HhTFM0QF+GLaw+3faT8A4peiiot4io1UCUyW8fRXIAiHv5J0s8Y3bJW311BZFs/jnAodiIvQKzh3pEMKMyo0kw0T7HF5G4oSe+6Dvn9AV6QIDAQAB";
+    const signature = this.generateHMAC(KEY, sMessage);
+    
+    if (!signature) {
+      throw new Error('生成签名失败');
+    }
+    
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${accessToken}`,
+      'X-timestamp': timestamp,
+      'X-requestId': requestId,
+      'X-signature': signature,
+    };
+    
+    console.log('请求URL:', url);
+    console.log('请求头:', headers);
+    console.log('请求数据:', data);
+    
+    return await apiService.post(url, data, headers);
   }
 };
 
