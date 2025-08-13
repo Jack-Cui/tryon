@@ -288,19 +288,22 @@ const Home = () => {
 
   useEffect(() => {
     if (loginParams?.token) {
+      let intervalId: NodeJS.Timeout;
+      
       const checkLoginStatus = async () => {
         try {
           const response = await authAPI.checkLogin(loginParams?.token);
           const parsed = authAPI.parseCheckLoginResponse(response);
           
           if (parsed?.status === 424) {
-            // Handle logout
             console.log('账号在其他地方登录');
-            // Show toast/alert and redirect
-            // 弹出toast，提示账号在其他地方登录，点击确认后跳转到登录页面
-            // 这里使用浏览器自带的alert，也可以替换为自定义Toast组件
+            // 立即清理定时器，防止重复弹窗
+            if (intervalId) {
+              clearInterval(intervalId);
+            }
             alert('账号在其他地方登录，请重新登录');
             window.location.href = '/login';
+            return; // 提前返回，不执行后续代码
           } else {
             console.log('账号未在其他地方登录')
           }
@@ -319,10 +322,14 @@ const Home = () => {
       checkLoginStatus();
       
       // Set up interval for periodic checks
-      const intervalId = setInterval(checkLoginStatus, 5000);
+      intervalId = setInterval(checkLoginStatus, 5000);
       
       // Cleanup interval on unmount
-      return () => clearInterval(intervalId);
+      return () => {
+        if (intervalId) {
+          clearInterval(intervalId);
+        }
+      };
     }
     
     
