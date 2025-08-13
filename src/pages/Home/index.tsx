@@ -299,11 +299,18 @@ const Home = () => {
             // Show toast/alert and redirect
             // 弹出toast，提示账号在其他地方登录，点击确认后跳转到登录页面
             // 这里使用浏览器自带的alert，也可以替换为自定义Toast组件
-            // alert('账号在其他地方登录，请重新登录');
-            // window.location.href = '/login';
+            alert('账号在其他地方登录，请重新登录');
+            window.location.href = '/login';
           } else {
             console.log('账号未在其他地方登录')
           }
+          // const demoData = '{"deducteList":[{"deduction":4,"billPrice":0.5,"sourceId":1898976321989808130,"reduceCount":1,"clotheId":0},{"deductionType":2,"billPrice":0.3,"sourceId":1898976321989808130,"reduceCount":1,"clotheId":0}]}|1754899991159|1783115976386400257';
+          const demoData = '{"deducteList":[{"deductionType":2,"billPrice":0.3,"sourceId":1939613403762253825,"reduceCount":1,"clotheId":0}]}|1754967405101|1754092805389819906';
+          const public_KEY = 'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwxAKb+pGIdtg189rgCtLGClLVTcWkAga0UTiZ8cfDzNDBF3eZBX96iXb5godZLHaAg38OZbtqclZfWBu9nBEpaV+nZudJ5z42RFpJlK6p9ACetR+/rX5Xfol9k0DayI9lP42uyK8h+wv/LPcA5PT/eE4aSMwn2g/xrVuLPGpCXM5Ca3de8s6Rj5JdW2GccLsi3GueLet2N4+a88cvpNMr4poVu135cb+SyxEbt3/4z0HhTFM0QF+GLaw+3faT8A4peiiot4io1UCUyW8fRXIAiHv5J0s8Y3bJW311BZFs/jnAodiIvQKzh3pEMKMyo0kw0T7HF5G4oSe+6Dvn9AV6QIDAQAB'; // 需要替换成你的密钥
+          const hmac = authAPI.generateHMAC(public_KEY, demoData);
+          console.log('data=>', demoData);
+          console.log('key=>', public_KEY);
+          console.log('生成的hmac:', hmac);
         } catch (error) {
           console.error('检查登录状态失败:', error);
         }

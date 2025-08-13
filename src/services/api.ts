@@ -11,6 +11,7 @@ import {
 } from '../types/api';
 
 const Long = require('long');
+const crypto = require('crypto');
 
 // 通用HTTP请求方法
 class ApiService {
@@ -175,7 +176,8 @@ export const authAPI = {
     console.log('开始检查登录状态');
     const endpoint = API_ENDPOINTS.CHECK_LOGIN(access_token);
     const headers = {
-      'Authorization': `Bearer ${access_token}`
+      // 'Authorization': `Bearer ${access_token}`
+      "Authorization": "Basic cGlnOnBpZw=="
     };
     return await apiService.get(endpoint, headers);
   },
@@ -196,6 +198,21 @@ export const authAPI = {
       return {
         status: response.status
       };
+    }
+  },
+
+
+  generateHMAC(public_KEY: string, data: string) {
+    const HMAC_SHA256 = 'sha256';
+
+    try {
+        return crypto
+            .createHmac(HMAC_SHA256, Buffer.from(public_KEY, 'utf8'))
+            .update(data, 'utf8')
+            .digest('base64');
+    } catch (e: any) {
+        console.error('HMAC生成失败:', e);
+        return null;
     }
   }
 };
