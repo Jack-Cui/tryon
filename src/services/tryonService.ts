@@ -99,6 +99,7 @@ export class TryonService {
       // 2. 创建房间
       console.log('步骤2: 创建房间');
       this.roomPrimaryId = await this.createRoom();
+      console.log('创建房间 roomPrimaryId:', this.roomPrimaryId);
       
       console.log('✅ 房间信息初始化完成');
       console.log('  - 房间ID:', this.roomId);
@@ -172,6 +173,7 @@ export class TryonService {
       // 2. 创建房间
       console.log('步骤2: 创建房间');
       const roomPrimaryId = await this.createRoom();
+      console.log('创建房间111 roomPrimaryId:', roomPrimaryId);
       this.roomPrimaryId = roomPrimaryId;
       
       // 3. 加入房间

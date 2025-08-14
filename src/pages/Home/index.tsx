@@ -1463,17 +1463,13 @@ const Home = () => {
       // 异步执行余额扣费，不阻塞事件处理
       (async () => {
         try {
-          const sourceId = Long.fromString("1939613403762253825");
           // 构建扣费数据
           const balanceRaw = {
             deducteList: [{
               deductionType: 2,
-              billPrice: 0.3,
-              // sourceId: Long.fromString("1939613403762253825").toString(),
-              // sourceId: '1939613403762253825', 字符串会提示非法，数字的话会提示未加入房间，因为后面成了00
-              // sourceId: BigInt("1939613403762253825"),
-              sourceId: tryonService.getRoomPrimaryId(),
-              // sourceId: sourceId,
+              // billPrice: 0.3,
+              billPrice: 0.1,
+              sourceId: BigInt(tryonService.getRoomPrimaryId()),
               reduceCount: 1,
               clotheId: 0
             }]
@@ -1488,6 +1484,32 @@ const Home = () => {
           
           if (response.ok) {
             console.log('✅ 余额扣费请求成功:', response.data);
+            // 解析返回的余额数据
+            try {
+              let parsedData = response.data;
+              if (typeof parsedData === 'string') {
+                parsedData = JSON.parse(parsedData);
+                console.log('✅ 余额扣费请求成功111:', parsedData);
+              } else {
+                parsedData = response.data;
+                console.log('✅ 余额扣费请求成功222:', parsedData);
+              }
+              // 彻底修复 TS 报错：Property 'data' does not exist on type 'never'
+              // 通过类型断言 any，保证 TS 不会推断为 never
+              const accountBalance = (parsedData as any)?.data?.accountBalance;
+              if (typeof accountBalance === 'number') {
+                console.log('✅ 余额扣费请求成功333:', accountBalance);
+                // 余额乘以10取模5等于0时，弹窗提示
+                if ((accountBalance * 10) % 5 === 0) {
+                  console.log('✅ 余额扣费请求成功444:', accountBalance);
+                  window.alert('余额已经花光');
+                }
+              } else {
+                console.log('✅ 余额扣费请求成功555:', parsedData);
+              }
+            } catch (e) {
+              console.error('解析余额数据失败:', e);
+            }
           } else {
             console.error('❌ 余额扣费请求失败:', response.status);
           }
@@ -1537,8 +1559,9 @@ const Home = () => {
             const balanceRaw = {
               deducteList: [{
                 deductionType: 2,
-                billPrice: 0.3,
-                sourceId: 1939613403762253825,
+                // billPrice: 0.3,
+                billPrice: 0.1,
+                sourceId: BigInt(tryonService.getRoomPrimaryId()),
                 reduceCount: 1,
                 clotheId: 0
               }]
@@ -1553,6 +1576,22 @@ const Home = () => {
             
             if (response.ok) {
               console.log('✅ 定时扣费请求成功:', response.data);
+              // 解析返回的余额数据
+              try {
+                let parsedData = response.data;
+                if (typeof parsedData === 'string') {
+                  parsedData = JSON.parse(parsedData);
+                }
+                const accountBalance = (parsedData as any)?.data?.accountBalance;
+                if (typeof accountBalance === 'number') {
+                  // 余额乘以10取模5等于0时，弹窗提示
+                  if ((accountBalance * 10) % 5 === 0) {
+                    window.alert('余额已经花光');
+                  }
+                }
+              } catch (e) {
+                console.error('解析余额数据失败:', e);
+              }
             } else {
               console.error('❌ 定时扣费请求失败:', response.status);
             }
@@ -1560,7 +1599,7 @@ const Home = () => {
             console.error('❌ 定时扣费请求异常:', error);
           }
         }
-      }, 60000); // 每60秒（1分钟）执行一次
+      }, 3000); // 每60秒（1分钟）执行一次
     };
 
     // 启动播放时间计时器
