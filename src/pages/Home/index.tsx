@@ -27,6 +27,8 @@ import shareIcon from '../../assets/相机.png';
 import realSceneIcon from '../../assets/实景.png';
 import realSceneActionIcon from '../../assets/实景动作.png';
 import { apiService, authAPI } from '../../services/api';
+import DownloadAppModal from '../../components/DownloadAppModal';
+import FixedDownloadPrompt from '../../components/FixedDownloadPrompt';
 
 const Long = require('long');
 
@@ -81,6 +83,9 @@ const Home = () => {
 
   // 新增状态：用户是否已离开过舞台
   const [hasLeftStage, setHasLeftStage] = useState(false);
+  
+  // 余额弹窗状态
+  const [showBalanceModal, setShowBalanceModal] = useState(false);
 
   // 录制相关状态
   const [isRecording, setIsRecording] = useState(false); // 是否正在录制
@@ -1502,7 +1507,7 @@ const Home = () => {
                 // 余额乘以10取模5等于0时，弹窗提示
                 if ((accountBalance * 10) % 5 === 0) {
                   console.log('✅ 余额扣费请求成功444:', accountBalance);
-                  window.alert('余额已经花光');
+                  setShowBalanceModal(true);
                 }
               } else {
                 console.log('✅ 余额扣费请求成功555:', parsedData);
@@ -1586,7 +1591,7 @@ const Home = () => {
                 if (typeof accountBalance === 'number') {
                   // 余额乘以10取模5等于0时，弹窗提示
                   if ((accountBalance * 10) % 5 === 0) {
-                    window.alert('余额已经花光');
+                    setShowBalanceModal(true);
                   }
                 }
               } catch (e) {
@@ -4027,8 +4032,21 @@ const Home = () => {
             </div>
           </div>
         )}
-    </div>
-  );
-};
+
+        {/* 余额弹窗 */}
+        <DownloadAppModal
+          isOpen={showBalanceModal}
+          onClose={() => setShowBalanceModal(false)}
+          title="体验已结束"
+          description="请下载APP继续体验更多功能！"
+          buttonText="去下载APP"
+          showCloseButton={true}
+        />
+
+        {/* 固定下载APP提示 */}
+        <FixedDownloadPrompt />
+      </div>
+    );
+  };
 
 export default Home; 

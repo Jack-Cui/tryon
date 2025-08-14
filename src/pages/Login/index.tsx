@@ -7,6 +7,7 @@ import { saveTokens } from '../../utils/auth';
 import { saveLoginCache } from '../../utils/loginCache';
 import { tryonService } from '../../services/tryonService';
 import { DEFAULT_TEST_DATA } from '../../config/config';
+import FixedDownloadPrompt from '../../components/FixedDownloadPrompt';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -283,6 +284,9 @@ const Login = () => {
           {toastMessage}
         </div>
       )}
+      
+      {/* 固定下载APP提示 */}
+      <FixedDownloadPrompt />
     </div>
   );
 };
