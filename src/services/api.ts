@@ -102,7 +102,7 @@ class ApiService {
       console.log('POST请求响应头:', Object.fromEntries(response.headers.entries()));
       
       const responseText = await response.text();
-      console.log('POST请求响应内容:', responseText);
+      // console.log('POST请求响应内容:', responseText);
 
       return {
         status: response.status,

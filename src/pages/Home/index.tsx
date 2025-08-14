@@ -520,7 +520,7 @@ const Home = () => {
         newClothesItemInfoList.push(item);
       } else {
         for (let i = 0; i < arr.length; ++i) {
-          const longValue = Long.fromString(arr[i]);
+          const longValue = BigInt(arr[i]);
           const item = {
             classifyId: classifyId,
             clothesId: longValue
