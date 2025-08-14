@@ -1,5 +1,7 @@
 import { API_CONFIG, API_ENDPOINTS } from '../config/api';
 import { v4 as uuidv4 } from 'uuid';
+import JSONbig from 'json-bigint';
+
 
 import { 
   ApiResponse, 
@@ -247,7 +249,7 @@ export const authAPI = {
     const timestamp = Date.now().toString();
     const requestId = uuidv4().replace(/-/g, '');
     
-    const data = JSON.stringify(balanceRaw).replace(/\s+/g, '');
+    const data = JSONbig().stringify(balanceRaw).replace(/\s+/g, '');
     const sMessage = `${data}|${timestamp}|${userId}`;
     
     console.log('s_message:', sMessage);

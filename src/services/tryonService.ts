@@ -550,6 +550,10 @@ export class TryonService {
     console.log('📡 发送服饰列表更新事件，服饰分类数量:', this.clothesList.length);
   }
 
+  getRoomPrimaryId(): number {
+    return this.roomPrimaryId || 0;
+  }
+
   // 获取房间名称
   getRoomName(): string | null {
     return this.roomName;

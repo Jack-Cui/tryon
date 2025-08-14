@@ -92,6 +92,12 @@ const Home = () => {
   const [recordTime, setRecordTime] = useState(0); // 录制时间（秒）
   const recordTimerRef = useRef<NodeJS.Timeout | null>(null); // 录制计时器
 
+  // 定时扣费相关状态
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false); // 视频是否正在播放
+  const [videoPlayTime, setVideoPlayTime] = useState(0); // 视频播放时间（秒）
+  const deductionTimerRef = useRef<NodeJS.Timeout | null>(null); // 扣费定时器
+  const playTimeTimerRef = useRef<NodeJS.Timeout | null>(null); // 播放时间计时器
+
   // 获取当前视频流的video/canvas元素
   const getCurrentVideoElement = (): HTMLVideoElement | HTMLCanvasElement | null => {
     if (videoStreams.length > 0) {
@@ -1347,6 +1353,8 @@ const Home = () => {
               ...prev,
               [userId]: true
             }));
+            // 设置全局视频播放状态为true
+            setIsVideoPlaying(true);
           } else {
             // 继续检查，但限制检查次数
             setTimeout(checkPlaying, 1000);
@@ -1361,6 +1369,18 @@ const Home = () => {
               ...prev,
               [userId]: true
             }));
+            // 设置全局视频播放状态为true
+            setIsVideoPlaying(true);
+          });
+          
+          videoTag.addEventListener('pause', () => {
+            console.log(`⏸️ 视频 ${userId} 暂停事件触发`);
+            setIsVideoPlaying(false);
+          });
+          
+          videoTag.addEventListener('ended', () => {
+            console.log(`🔚 视频 ${userId} 结束事件触发`);
+            setIsVideoPlaying(false);
           });
           
           videoTag.addEventListener('loadeddata', () => {
@@ -1399,6 +1419,11 @@ const Home = () => {
           delete newStatus[userId];
           return newStatus;
         });
+        
+        // 如果没有其他用户，停止视频播放状态
+        if (videoStreams.length <= 1) {
+          setIsVideoPlaying(false);
+        }
       },
       
       onUserPublishStream: (userId: string, hasVideo: boolean, hasAudio: boolean) => {
@@ -1414,6 +1439,11 @@ const Home = () => {
           delete newStatus[userId];
           return newStatus;
         });
+        
+        // 如果没有其他用户，停止视频播放状态
+        if (videoStreams.length <= 1) {
+          setIsVideoPlaying(false);
+        }
       },
       
       onError: (error: any) => {
@@ -1441,7 +1471,8 @@ const Home = () => {
               billPrice: 0.3,
               // sourceId: Long.fromString("1939613403762253825").toString(),
               // sourceId: '1939613403762253825', 字符串会提示非法，数字的话会提示未加入房间，因为后面成了00
-              sourceId: 1939613403762253825,
+              // sourceId: BigInt("1939613403762253825"),
+              sourceId: tryonService.getRoomPrimaryId(),
               // sourceId: sourceId,
               reduceCount: 1,
               clotheId: 0
@@ -1488,6 +1519,91 @@ const Home = () => {
       console.log('🧹 余额扣费事件监听器已清理');
     };
   }, [loginParams?.token]); // 只依赖token，避免不必要的重复设置
+
+  // 定时扣费功能
+  useEffect(() => {
+    // 每分钟执行一次扣费
+    const startDeductionTimer = () => {
+      if (deductionTimerRef.current) {
+        clearInterval(deductionTimerRef.current);
+      }
+      
+      deductionTimerRef.current = setInterval(async () => {
+        if (isVideoPlaying && loginParams?.token && loginParams?.userId) {
+          console.log('⏰ 执行定时扣费，视频播放时间:', videoPlayTime, '秒');
+          
+          try {
+            // 构建扣费数据
+            const balanceRaw = {
+              deducteList: [{
+                deductionType: 2,
+                billPrice: 0.3,
+                sourceId: 1939613403762253825,
+                reduceCount: 1,
+                clotheId: 0
+              }]
+            };
+
+            // 发送扣费请求
+            const response = await authAPI.getBalanceDeductionRequest(
+              balanceRaw,
+              loginParams.token,
+              loginParams.userId
+            );
+            
+            if (response.ok) {
+              console.log('✅ 定时扣费请求成功:', response.data);
+            } else {
+              console.error('❌ 定时扣费请求失败:', response.status);
+            }
+          } catch (error) {
+            console.error('❌ 定时扣费请求异常:', error);
+          }
+        }
+      }, 60000); // 每60秒（1分钟）执行一次
+    };
+
+    // 启动播放时间计时器
+    const startPlayTimeTimer = () => {
+      if (playTimeTimerRef.current) {
+        clearInterval(playTimeTimerRef.current);
+      }
+      
+      playTimeTimerRef.current = setInterval(() => {
+        if (isVideoPlaying) {
+          setVideoPlayTime(prev => prev + 1);
+        }
+      }, 1000); // 每秒更新一次播放时间
+    };
+
+    // 当视频播放状态改变时，启动或停止定时器
+    if (isVideoPlaying) {
+      console.log('🎬 视频开始播放，启动定时扣费');
+      startDeductionTimer();
+      startPlayTimeTimer();
+    } else {
+      console.log('⏸️ 视频停止播放，清除定时扣费');
+      if (deductionTimerRef.current) {
+        clearInterval(deductionTimerRef.current);
+        deductionTimerRef.current = null;
+      }
+      if (playTimeTimerRef.current) {
+        clearInterval(playTimeTimerRef.current);
+        playTimeTimerRef.current = null;
+      }
+      setVideoPlayTime(0); // 重置播放时间
+    }
+
+    // 清理函数
+    return () => {
+      if (deductionTimerRef.current) {
+        clearInterval(deductionTimerRef.current);
+      }
+      if (playTimeTimerRef.current) {
+        clearInterval(playTimeTimerRef.current);
+      }
+    };
+  }, [isVideoPlaying, loginParams?.token, loginParams?.userId, videoPlayTime]);
 
   // 登台按钮点击处理
   const handleStartTryon = async () => {
@@ -1788,6 +1904,14 @@ const Home = () => {
         if (mediaRecorderRef.current.state === 'recording' || mediaRecorderRef.current.state === 'paused') {
           mediaRecorderRef.current.stop();
         }
+      }
+      
+      // 清理定时扣费相关定时器
+      if (deductionTimerRef.current) {
+        clearInterval(deductionTimerRef.current);
+      }
+      if (playTimeTimerRef.current) {
+        clearInterval(playTimeTimerRef.current);
       }
     };
   }, []);
@@ -2636,8 +2760,10 @@ const Home = () => {
         color: '#fff',
         padding: '20px 20px 60px 20px',
         display: 'flex',
+        flexDirection: 'column',
         justifyContent: 'center',
-        alignItems: 'center'
+        alignItems: 'center',
+        gap: '10px'
       }}>
         <h1 style={{
           margin: 0,
@@ -3733,6 +3859,44 @@ const Home = () => {
                 📤 仅分享
               </button>
             </div>
+
+            {/* 播放时间显示 - 底部居中 */}
+            {isVideoPlaying && (
+              <div style={{
+                position: 'fixed',
+                bottom: '80px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                zIndex: 10000,
+                backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                color: '#fff',
+                padding: '12px 20px',
+                borderRadius: '20px',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                textAlign: 'center',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+                backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255, 255, 255, 0.2)'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px'
+                }}>
+                  <span>⏱️ {Math.floor(videoPlayTime / 60)}分{videoPlayTime % 60}秒</span>
+                  <span>💰 ¥0.30/分钟</span>
+                </div>
+                <div style={{
+                  fontSize: '12px',
+                  color: '#ccc',
+                  marginTop: '5px',
+                  opacity: 0.8
+                }}>
+                  下次扣费: {60 - (videoPlayTime % 60)}秒后
+                </div>
+              </div>
+            )}
 
             {/* 离开舞台按钮 */}
             <div style={{
