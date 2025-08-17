@@ -162,7 +162,7 @@ const Login = () => {
           saveTokens(loginData.access_token, loginData.refresh_token);
           console.log('Token已保存');
           const user_id = loginData.user_id || 'default_user_id';
-          const co_creation_id = loginData.co_creation_id || Number(location.search.split('=')[1])|| 2;
+          const co_creation_id = loginData.co_creation_id || Number(location.search.split('=')[1]);
           
           // 保存登录信息到缓存
           saveLoginCache({
