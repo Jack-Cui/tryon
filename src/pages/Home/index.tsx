@@ -105,7 +105,7 @@ const Home = () => {
   const playTimeTimerRef = useRef<NodeJS.Timeout | null>(null); // 播放时间计时器
 
   const [musicUrl,setMusicUrl]= useState('https://admins3.tos-cn-shanghai.volces.com/25dcee31d9034129bffc2e52518a5f19.mp3');
-  const [musicPlay,setMusicPlay]= useState(true);
+  const [musicPlay,setMusicPlay]= useState(false);
 
 
   // 获取当前视频流的video/canvas元素
