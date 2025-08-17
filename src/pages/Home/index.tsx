@@ -29,6 +29,7 @@ import realSceneActionIcon from '../../assets/实景动作.png';
 import { apiService, authAPI } from '../../services/api';
 import DownloadAppModal from '../../components/DownloadAppModal';
 import FixedDownloadPrompt from '../../components/FixedDownloadPrompt';
+import ReactHowler from 'react-howler';
 
 const Long = require('long');
 
@@ -102,6 +103,10 @@ const Home = () => {
   const [videoPlayTime, setVideoPlayTime] = useState(0); // 视频播放时间（秒）
   const deductionTimerRef = useRef<NodeJS.Timeout | null>(null); // 扣费定时器
   const playTimeTimerRef = useRef<NodeJS.Timeout | null>(null); // 播放时间计时器
+
+  const [musicUrl,setMusicUrl]= useState('https://admins3.tos-cn-shanghai.volces.com/25dcee31d9034129bffc2e52518a5f19.mp3');
+  const [musicPlay,setMusicPlay]= useState(false);
+
 
   // 获取当前视频流的video/canvas元素
   const getCurrentVideoElement = (): HTMLVideoElement | HTMLCanvasElement | null => {
@@ -1981,7 +1986,6 @@ const Home = () => {
       </div>
     );
   }
-
   // 选择界面
   if (showSelectionScreen) {
     return (
@@ -1992,6 +1996,12 @@ const Home = () => {
         flexDirection: 'column',
         position: 'relative'
       }}>
+        {/* 音乐开始 */}
+        <ReactHowler
+          src={musicUrl}
+          playing={musicPlay}
+        />
+        {/* 音乐结束 */}
         {/* 顶部标题区域 - 与视频播放界面对齐 */}
         <div style={{
           position: 'fixed',
