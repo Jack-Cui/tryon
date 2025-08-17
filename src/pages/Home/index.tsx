@@ -105,7 +105,7 @@ const Home = () => {
   const playTimeTimerRef = useRef<NodeJS.Timeout | null>(null); // 播放时间计时器
 
   const [musicUrl,setMusicUrl]= useState('https://admins3.tos-cn-shanghai.volces.com/25dcee31d9034129bffc2e52518a5f19.mp3');
-  const [musicPlay,setMusicPlay]= useState(false);
+  const [musicPlay,setMusicPlay]= useState(true);
 
 
   // 获取当前视频流的video/canvas元素
@@ -2803,6 +2803,12 @@ const Home = () => {
       flexDirection: 'column',
       position: 'relative'
     }}>
+      {/* 音乐开始 */}
+        <ReactHowler
+          src={musicUrl}
+          playing={musicPlay}
+        />
+      {/* 音乐结束 */}
       {/* 顶部标题区域 - 放在正中间 */}
       <div style={{
         position: 'fixed',

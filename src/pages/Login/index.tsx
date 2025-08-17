@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import './index.css';
 import logo from '../../assets/logo.png';
 import { authAPI } from '../../services/api';
@@ -16,6 +16,7 @@ const Login = () => {
   const [isCountingDown, setIsCountingDown] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [verifyCode, setVerifyCode] = useState('');
+  const [searchParams] = useSearchParams();
   const [isAgreementChecked, setIsAgreementChecked] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isGettingCode, setIsGettingCode] = useState(false);
@@ -162,7 +163,7 @@ const Login = () => {
           saveTokens(loginData.access_token, loginData.refresh_token);
           console.log('Token已保存');
           const user_id = loginData.user_id || 'default_user_id';
-          const co_creation_id = loginData.co_creation_id || Number(location.search.split('=')[1]);
+          const co_creation_id = loginData.co_creation_id || Number(location.search.split('=')[1]) || Number(searchParams.get('co_creation_id'));
           
           // 保存登录信息到缓存
           saveLoginCache({
