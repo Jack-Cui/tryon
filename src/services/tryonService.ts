@@ -51,19 +51,20 @@ export class TryonService {
 
   // 生成RTC Token
   private generateRTCToken(): string {
-    if (!this.config || !this.roomId) {
-      throw new Error('缺少必要参数：config 或 roomId');
+    if (!this.config || !this.roomPrimaryId) {
+      throw new Error('缺少必要参数：config 或 roomPrimaryId');
     }
 
     const appId = RTC_CONFIG.APP_ID;
     const appKey = RTC_CONFIG.APP_KEY;
-    const roomId = this.roomId;
+    const roomId = this.roomPrimaryId.toString();
     const userId = this.config.userId;
 
     console.log('🔑 生成RTC Token...');
     console.log('  - appId:', appId);
     console.log('  - roomId:', roomId);
     console.log('  - userId:', userId);
+    console.log('  - roomPrimaryId:', this.roomPrimaryId);
 
     const token = new AccessToken(appId, appKey, roomId, userId);
     
@@ -127,6 +128,12 @@ export class TryonService {
     
     // 更新配置（主要是RTC配置）
     this.config = config;
+    
+    // 确保RTC配置中的房间ID正确设置
+    if (this.config.rtcConfig) {
+      this.config.rtcConfig.roomId = this.roomPrimaryId.toString();
+      console.log('🔄 已更新RTC配置中的房间ID:', this.roomPrimaryId);
+    }
     
     try {
       console.log('🚀 开始简化试穿流程...');
@@ -244,9 +251,6 @@ export class TryonService {
     this.roomId = roomInfo.data.roomId;
     console.log('房间ID:', this.roomId);
     
-    // 将房间ID添加到登录缓存
-    updateRoomIdInCache(this.roomId);
-    
     // 更新RTC配置中的房间ID
     if (this.config.rtcConfig) {
       this.config.rtcConfig.roomId = this.roomId;
@@ -300,6 +304,9 @@ export class TryonService {
     
     if (!createRoomData.data.id) {
       throw new Error('解析创建房间响应失败：响应数据中没有id字段');
+    } else {
+      console.log('将房间ID添加到登录缓存:', createRoomData.data.id);
+      updateRoomIdInCache(createRoomData.data.id.toString());
     }
     
     // 获取房间名称
@@ -384,13 +391,13 @@ export class TryonService {
 
   // 调度分配实例
   private async scheduleInstance(): Promise<any> {
-    if (!this.config || !this.roomId) {
+    if (!this.config || !this.roomPrimaryId) {
       throw new Error('未配置参数或未获取房间信息');
     }
     
     const scheduleRequest = {
       user_id: this.config.userId,
-      room_id: this.roomId
+      room_id: this.roomPrimaryId.toString()
     };
     
     const scheduleResult = await scheduleService.schedule(scheduleRequest);
@@ -410,12 +417,13 @@ export class TryonService {
       uid: this.config.userId,
       accessToken: this.accessToken,
       insToken: scheduleResult.data.inst_acc_info.token,
-      roomId: this.roomId,
+      // roomId: this.roomId,
+      roomId: this.roomPrimaryId?.toString() || '',
       enterStageInfo: this.enterStageInfo,
       rtcConfig: {
         appId: RTC_CONFIG.APP_ID,
         appKey: RTC_CONFIG.APP_KEY,
-        roomId: this.roomId,
+        roomId: this.roomPrimaryId?.toString() || '',
         userId: this.config.userId,
         token: this.generateRTCToken() // 动态生成token
       }
@@ -476,6 +484,12 @@ export class TryonService {
       });
       
       console.log('🔧 开始初始化RTC服务...');
+      
+      // 确保RTC配置中的房间ID是最新的
+      if (this.roomPrimaryId && this.config.rtcConfig) {
+        this.config.rtcConfig.roomId = this.roomPrimaryId.toString();
+        console.log('🔄 在startRTCVideo中更新RTC配置房间ID:', this.roomPrimaryId);
+      }
       
       // 初始化RTC服务
       await this.rtcVideoService!.initialize(this.config.rtcConfig);

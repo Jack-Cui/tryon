@@ -968,7 +968,7 @@ export class WebSocketService {
       
       if (enterRoomAsw.code === proto.eError.SUCCESS) {
         // 将 Long 类型转换为字符串显示
-        const roomIdStr = this.longToString(enterRoomAsw.roomId);
+        const roomIdStr = enterRoomAsw.roomId.toString();
         console.log(`成功进入房间: ${roomIdStr}`);
         console.log(`在线用户数量: ${enterRoomAsw.onlineUsers.length}`);
         console.log(`舞台数量: ${enterRoomAsw.stageCount}`);
