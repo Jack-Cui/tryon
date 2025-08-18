@@ -1,6 +1,7 @@
 import VERTC, { MediaType, StreamIndex } from '@volcengine/rtc';
 import { rtcMessageHandler } from './rtcMessageHandler';
 import * as proto from '../proto/xproto';
+import { getLoginCache } from '../utils/loginCache';
 
 export interface RTCVideoConfig {
   appId: string;
@@ -98,12 +99,27 @@ export class RTCVideoService {
       console.log('👤 用户加入房间:', userId);
       this.eventHandlers.onUserJoin?.(userId);
     });
+    const cachedLoginData = getLoginCache();
+    let roomId = '';
+    if (cachedLoginData) {
+      if (cachedLoginData.roomId) {
+        roomId = cachedLoginData.roomId;
+      }
+    }
+    if (roomId == '') {
+      console.log('❌ 房间ID为空，跳过试穿流程');
+      return;
+    } else {
+      console.log('✅ 房间ID:', roomId);
+    }
     // 测试余额扣费功能
     const balanceRaw = {
       deducteList: [{
         deductionType: 2,
         billPrice: 0.3,
-        sourceId: 1939613403762253825,
+        // sourceId: 1939613403762253825,
+        // sourceId: 1956266414970302466,
+        sourceId: BigInt(roomId),
         reduceCount: 1,
         clotheId: 0
       }]

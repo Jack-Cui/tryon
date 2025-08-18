@@ -4,7 +4,7 @@ import { webSocketService, WebSocketConfig } from './websocketService';
 import { RTCVideoService, RTCVideoConfig, rtcVideoService } from './rtcVideoService';
 import { RTC_CONFIG } from '../config/config';
 import { AccessToken, Privilege } from '../token/AccessToken';
-import { updateRoomNameInCache, updateClothesListInCache } from '../utils/loginCache';
+import { updateRoomNameInCache, updateClothesListInCache, updateRoomIdInCache } from '../utils/loginCache';
 import { ClothesItem } from '../types/api';
 
 export interface TryonConfig {
@@ -244,6 +244,9 @@ export class TryonService {
     this.roomId = roomInfo.data.roomId;
     console.log('房间ID:', this.roomId);
     
+    // 将房间ID添加到登录缓存
+    updateRoomIdInCache(this.roomId);
+    
     // 更新RTC配置中的房间ID
     if (this.config.rtcConfig) {
       this.config.rtcConfig.roomId = this.roomId;
@@ -260,7 +263,7 @@ export class TryonService {
 
   // 创建房间
   private async createRoom(): Promise<number> {
-    if (!this.config || !this.accessToken || !this.roomId) {
+    if (!this.config || !this.accessToken || !this.roomId || this.config.coCreationId == 0) {
       throw new Error('未配置参数、未登录或未获取房间信息');
     }
     

@@ -6,6 +6,7 @@ export interface LoginCacheData {
   userId: string;
   phone: string;
   coCreationId: number;
+  roomId?: string; // 房间ID，可选
   roomName?: string; // 房间名称，可选
   clothesList?: ClothesItem[]; // 服饰列表，可选
   timestamp: number; // 缓存时间戳
@@ -150,5 +151,25 @@ export const updateClothesListInCache = (clothesList: ClothesItem[]): void => {
     }
   } catch (error) {
     console.error('❌ 更新缓存中的服饰列表失败:', error);
+  }
+}; 
+
+/**
+ * 更新缓存中的房间ID
+ * @param roomId 房间ID
+ */
+export const updateRoomIdInCache = (roomId: string): void => {
+  try {
+    const cachedData = getLoginCache();
+    if (cachedData) {
+      const updatedData = { ...cachedData, roomId };
+      const cacheDurationStr = localStorage.getItem(CACHE_KEY + '_duration');
+      const cacheDuration = cacheDurationStr ? parseInt(cacheDurationStr) : DEFAULT_CACHE_DURATION;
+      
+      localStorage.setItem(CACHE_KEY, JSON.stringify(updatedData));
+      console.log('✅ 房间ID已更新到缓存:', roomId);
+    }
+  } catch (error) {
+    console.error('❌ 更新缓存中的房间ID失败:', error);
   }
 }; 

@@ -1220,7 +1220,12 @@ const Home = () => {
   }, []);
 
   // 初始化登录参数
+  const loginParamsInitializedRef = useRef(false);
+  
   useEffect(() => {
+    if (loginParamsInitializedRef.current) return;
+    loginParamsInitializedRef.current = true;
+    
     // 首先尝试从路由state获取参数
     if (locationState.token && locationState.userId && locationState.phone && locationState.coCreationId) {
       console.log('✅ 从路由state获取登录参数, coCreationId:', locationState.coCreationId);
@@ -1291,15 +1296,23 @@ const Home = () => {
       clearLoginCache();
       navigate('/login?redirect=' + encodeURIComponent(location.pathname));
     }
-  }, [locationState]); // 只依赖locationState，避免重复执行
+  }, []); // 空依赖数组，只在组件挂载时执行一次
 
   // 初始化房间名称和服饰列表
-  const initializedRef = useRef(false);
+  const tryonInitializedRef = useRef(false);
   
   useEffect(() => {
-    if (!loginParams || initializedRef.current) return;
+    console.log('🔍 第二个useEffect被触发');
+    console.log('🔍 loginParams:', loginParams);
+    console.log('🔍 tryonInitializedRef.current:', tryonInitializedRef.current);
     
-    initializedRef.current = true;
+    if (!loginParams || tryonInitializedRef.current) {
+      console.log('🔍 条件不满足，退出useEffect');
+      return;
+    }
+    
+    console.log('🔍 设置tryonInitializedRef.current = true');
+    tryonInitializedRef.current = true;
     
     // 如果当前房间名称还是默认值，尝试从 tryonService 获取
     if (roomName === 'PADA2024秀款礼服系列') {
@@ -1332,8 +1345,21 @@ const Home = () => {
 
     // 自动执行登台流程（只有在用户没有离开过舞台时才执行）
     const autoStartTryon = async () => {
+      console.log('🔍 autoStartTryon 被调用，hasLeftStage:', hasLeftStage);
+      console.log('🔍 RTC连接状态:', rtcVideoService.getConnectionStatus());
+      
       // 延迟一点时间确保页面完全加载
       setTimeout(async () => {
+        console.log('🔍 延迟后检查，hasLeftStage:', hasLeftStage);
+        console.log('🔍 延迟后RTC连接状态:', rtcVideoService.getConnectionStatus());
+        
+        // 强制检查：如果URL参数变化了，重置hasLeftStage状态
+        const urlCoCreationId = getCoCreationIdWithUrlPriority();
+        if (isValidCoCreationId(urlCoCreationId) && urlCoCreationId !== loginParams?.coCreationId) {
+          console.log('🔄 检测到URL参数变化，重置hasLeftStage状态');
+          setHasLeftStage(false);
+        }
+        
         if (!hasLeftStage) {
           console.log('🚀 自动开始登台流程...');
           await handleStartTryon();
@@ -1344,6 +1370,8 @@ const Home = () => {
           if (!rtcVideoService.getConnectionStatus()) {
             console.log('🔄 检测到RTC未连接，尝试重新连接...');
             await handleStartTryon();
+          } else {
+            console.log('✅ RTC已连接，无需重新连接');
           }
         }
       }, 1000);
@@ -1674,6 +1702,7 @@ const Home = () => {
 
   // 登台按钮点击处理
   const handleStartTryon = async () => {
+    console.log('🔍 开始试穿流程，登录参数:', loginParams);
     if (!loginParams) {
       console.warn('缺少登录参数，无法开始试穿');
       return;
@@ -1694,11 +1723,22 @@ const Home = () => {
     try {
       hasStartedTryon.current = true;
       setShowSelectionScreen(false); // 隐藏选择界面，显示视频播放界面
-      
+      const cachedLoginData = getLoginCache();
+      let roomId = '';
+      if (cachedLoginData) {
+        roomId = cachedLoginData.roomId || '';
+      }
+      if (roomId == '') {
+        console.log('❌ 房间ID为空，跳过试穿流程');
+        return;
+      }
+      console.log('✅ 房间ID:', roomId);
       const rtcConfig: RTCVideoConfig = {
         appId: '643e46acb15c24012c963951',
         appKey: 'b329b39ca8df4b5185078f29d8d8025f',
-        roomId: '1939613403762253825',
+        // roomId: '1939613403762253825',
+        // roomId: '1956266414970302466',
+        roomId: roomId,
         userId: loginParams.userId
       };
       

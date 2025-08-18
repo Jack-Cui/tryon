@@ -35,10 +35,7 @@ export const getCoCreationIdFromURL = (): number | null => {
     if (pathMatch && pathMatch[1]) {
       const parsedId = parseInt(pathMatch[1], 10);
       if (!isNaN(parsedId) && parsedId > 0) {
-        console.log('✅ 从URL路径解析获取到coCreationId:', parsedId);
         return parsedId;
-      } else {
-        console.log('❌ 从URL路径解析获取到coCreationId:', pathMatch[1]);
       }
     }
     
@@ -48,15 +45,11 @@ export const getCoCreationIdFromURL = (): number | null => {
       if (searchMatch && searchMatch[1]) {
         const parsedId = parseInt(searchMatch[1], 10);
         if (!isNaN(parsedId) && parsedId > 0) {
-          console.log('✅ 从window.location.search获取到coCreationId:', parsedId);
           return parsedId;
-        } else {
-          console.log('❌ 从window.location.search获取到coCreationId:', searchMatch[1]);
         }
       }
     }
     
-    console.log('⚠️ 从URL中未找到有效的coCreationId');
     return null;
     
   } catch (error) {
