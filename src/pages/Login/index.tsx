@@ -8,6 +8,7 @@ import { saveLoginCache } from '../../utils/loginCache';
 import { tryonService } from '../../services/tryonService';
 import { DEFAULT_TEST_DATA } from '../../config/config';
 import FixedDownloadPrompt from '../../components/FixedDownloadPrompt';
+import { getCoCreationId, getCoCreationIdWithUrlPriority, getCoCreationIdFromURL, isValidCoCreationId, showCoCreationIdError } from '../../utils/coCreationIdHelper';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -163,14 +164,36 @@ const Login = () => {
           saveTokens(loginData.access_token, loginData.refresh_token);
           console.log('Token已保存');
           const user_id = loginData.user_id || 'default_user_id';
-          const co_creation_id = loginData.co_creation_id || Number(location.search.split('=')[1]) || Number(searchParams.get('co_creation_id'));
+          
+          // 获取coCreationId，优先级：服务器响应 > URL参数 > 缓存
+          let co_creation_id: number | undefined = loginData.co_creation_id;
+          
+          // 如果服务器没有返回，强制从URL获取（完全忽略缓存）
+          if (!co_creation_id) {
+            const urlCoCreationId = getCoCreationIdFromURL();
+            if (urlCoCreationId !== null) {
+              co_creation_id = urlCoCreationId;
+              console.log('🔒 强制使用URL参数，忽略缓存:', urlCoCreationId);
+            }
+          }
+          
+          // 如果最终还是没有获取到，显示错误
+          if (!isValidCoCreationId(co_creation_id)) {
+            console.error('❌ 无法获取有效的coCreationId');
+            showCoCreationIdError();
+            setErrorMessage('共创ID不存在，请检查URL参数或联系管理员');
+            return;
+          }
+          
+          // 确保co_creation_id是有效的数字
+          const finalCoCreationId = co_creation_id as number;
           
           // 保存登录信息到缓存
           saveLoginCache({
             token: loginData.access_token,
             userId: user_id,
             phone: phoneNumber,
-            coCreationId: co_creation_id,
+            coCreationId: finalCoCreationId,
           });
           
           // 登录成功后立即初始化房间信息
@@ -178,7 +201,7 @@ const Login = () => {
             console.log('🏠 登录成功，开始初始化房间信息...');
             await tryonService.initializeAfterLogin({
               phone: phoneNumber,
-              coCreationId: co_creation_id,
+              coCreationId: finalCoCreationId,
               userId: user_id,
               accessToken: loginData.access_token,
             });
@@ -191,15 +214,15 @@ const Login = () => {
           // 登录成功后跳转到目标页面，并传递参数
           const redirectUrl = getRedirectUrl();
           const roomName = tryonService.getRoomName(); // 获取房间名称
-          navigate(redirectUrl, {
-            state: {
-              token: loginData.access_token,
-              userId: user_id,
-              phone: phoneNumber,
-              coCreationId: co_creation_id,
-              roomName: roomName, // 传递房间名称
-            }
-          });
+                      navigate(redirectUrl, {
+              state: {
+                token: loginData.access_token,
+                userId: user_id,
+                phone: phoneNumber,
+                coCreationId: finalCoCreationId,
+                roomName: roomName, // 传递房间名称
+              }
+            });
         }
       } else {
         setErrorMessage(`登录失败: ${response.status}`);

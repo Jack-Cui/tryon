@@ -7,6 +7,7 @@ import { RTCVideoConfig } from '../../services/rtcVideoService';
 import { webSocketService } from '../../services/websocketService';
 import { wechatShareService } from '../../services/wechatShareService';
 import { getLoginCache, clearLoginCache } from '../../utils/loginCache';
+import { getCoCreationId, getCoCreationIdWithUrlPriority, isValidCoCreationId, showCoCreationIdError, clearCoCreationIdCache } from '../../utils/coCreationIdHelper';
 import { ClothesItem } from '../../types/api';
 import { WECHAT_CONFIG } from '../../config/config';
 import * as proto from '../../proto/xproto';
@@ -1222,7 +1223,7 @@ const Home = () => {
   useEffect(() => {
     // 首先尝试从路由state获取参数
     if (locationState.token && locationState.userId && locationState.phone && locationState.coCreationId) {
-      console.log('✅ 从路由state获取登录参数');
+      console.log('✅ 从路由state获取登录参数, coCreationId:', locationState.coCreationId);
       setLoginParams({
         token: locationState.token,
         userId: locationState.userId,
@@ -1245,32 +1246,48 @@ const Home = () => {
       return;
     }
 
-    // 如果路由state没有参数，尝试从缓存获取
-    // console.log('🔍 路由state中没有登录参数，尝试从缓存获取');
+    // 如果路由state没有参数，优先从URL获取coCreationId
+    const urlCoCreationId = getCoCreationIdWithUrlPriority();
+    
+    // 尝试从缓存获取
     const cachedLoginData = getLoginCache();
     
     if (cachedLoginData) {
-      // console.log('✅ 从缓存获取登录参数成功');
+      // 优先使用URL参数，如果没有URL参数则使用缓存
+      const finalCoCreationId = isValidCoCreationId(urlCoCreationId) ? (urlCoCreationId as number) : cachedLoginData.coCreationId;
+      
+      if (isValidCoCreationId(urlCoCreationId)) {
+        console.log('✅ 从URL获取到coCreationId:', urlCoCreationId);
+      } else {
+        console.log('✅ 从缓存获取登录参数成功, coCreationId:', cachedLoginData.coCreationId);
+      }
+      
       setLoginParams({
         token: cachedLoginData.token,
         userId: cachedLoginData.userId,
         phone: cachedLoginData.phone,
-        coCreationId: cachedLoginData.coCreationId
+        coCreationId: finalCoCreationId,
       });
       
       // 如果缓存中有房间名称，也设置到状态中
       if (cachedLoginData.roomName) {
         setRoomName(cachedLoginData.roomName);
-        // console.log('✅ 从缓存获取到房间名称:', cachedLoginData.roomName);
       }
       
       // 如果缓存中有服饰列表，也设置到状态中
       if (cachedLoginData.clothesList && cachedLoginData.clothesList.length > 0) {
         setClothesList(cachedLoginData.clothesList);
-        // console.log('✅ 从缓存获取到服饰列表:', cachedLoginData.clothesList);
       }
     } else {
-      console.log('❌ 缓存中没有有效的登录参数，跳转到登录页面');
+      // 没有缓存，检查URL参数
+      if (isValidCoCreationId(urlCoCreationId)) {
+        console.log('✅ 从URL获取到coCreationId:', urlCoCreationId);
+        // 有URL参数但没有缓存，跳转登录页面
+        navigate('/login?redirect=' + encodeURIComponent(location.pathname));
+        return;
+      }
+      
+      console.log('❌ 缓存中没有有效的登录参数，且URL中也没有coCreationId，跳转到登录页面');
       clearLoginCache();
       navigate('/login?redirect=' + encodeURIComponent(location.pathname));
     }
