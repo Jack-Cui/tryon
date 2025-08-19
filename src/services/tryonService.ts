@@ -4,7 +4,7 @@ import { webSocketService, WebSocketConfig } from './websocketService';
 import { RTCVideoService, RTCVideoConfig, rtcVideoService } from './rtcVideoService';
 import { RTC_CONFIG } from '../config/config';
 import { AccessToken, Privilege } from '../token/AccessToken';
-import { updateRoomNameInCache, updateClothesListInCache } from '../utils/loginCache';
+import { updateRoomNameInCache, updateClothesListInCache, updateRoomIdInCache, updateScenesListInCache } from '../utils/loginCache';
 import { ClothesItem } from '../types/api';
 
 export interface TryonConfig {
@@ -22,6 +22,7 @@ export class TryonService {
   private roomName: string | null = null; // 添加房间名称属性
   private roomPrimaryId: number | null = null; // 添加房间主键ID属性
   private clothesList: ClothesItem[] = []; // 添加服饰列表属性
+  private scenesList: { [key: string]: { name: string; code: string; bgm?: string } } = {}; // 添加场景列表映射属性
   private enterStageInfo: string | null = null;
   private rtcVideoService: RTCVideoService | null = null;
   private rtcStarted: boolean = false; // 防止重复启动RTC
@@ -51,19 +52,20 @@ export class TryonService {
 
   // 生成RTC Token
   private generateRTCToken(): string {
-    if (!this.config || !this.roomId) {
-      throw new Error('缺少必要参数：config 或 roomId');
+    if (!this.config || !this.roomPrimaryId) {
+      throw new Error('缺少必要参数：config 或 roomPrimaryId');
     }
 
     const appId = RTC_CONFIG.APP_ID;
     const appKey = RTC_CONFIG.APP_KEY;
-    const roomId = this.roomId;
+    const roomId = this.roomPrimaryId.toString();
     const userId = this.config.userId;
 
     console.log('🔑 生成RTC Token...');
     console.log('  - appId:', appId);
     console.log('  - roomId:', roomId);
     console.log('  - userId:', userId);
+    console.log('  - roomPrimaryId:', this.roomPrimaryId);
 
     const token = new AccessToken(appId, appKey, roomId, userId);
     
@@ -96,6 +98,10 @@ export class TryonService {
       console.log('步骤1: 获取房间信息');
       await this.getRoomInfo();
       
+      // 1.5. 获取场景列表
+      console.log('步骤1.5: 获取场景列表');
+      await this.getSceneList();
+      
       // 2. 创建房间
       console.log('步骤2: 创建房间');
       this.roomPrimaryId = await this.createRoom();
@@ -127,6 +133,12 @@ export class TryonService {
     
     // 更新配置（主要是RTC配置）
     this.config = config;
+    
+    // 确保RTC配置中的房间ID正确设置
+    if (this.config.rtcConfig) {
+      this.config.rtcConfig.roomId = this.roomPrimaryId.toString();
+      console.log('🔄 已更新RTC配置中的房间ID:', this.roomPrimaryId);
+    }
     
     try {
       console.log('🚀 开始简化试穿流程...');
@@ -169,6 +181,10 @@ export class TryonService {
       // 1. 获取房间信息
       console.log('步骤1: 获取房间信息');
       await this.getRoomInfo();
+      
+      // 1.5. 获取场景列表
+      console.log('步骤1.5: 获取场景列表');
+      await this.getSceneList();
       
       // 2. 创建房间
       console.log('步骤2: 创建房间');
@@ -258,9 +274,76 @@ export class TryonService {
     return roomInfo;
   }
 
+  // 获取场景列表
+  private async getSceneList(): Promise<any> {
+    if (!this.config || !this.accessToken) {
+      throw new Error('未配置参数或未提供accessToken');
+    }
+
+    const response = await roomAPI.getSceneList(this.accessToken);
+    console.log('场景列表响应:', response);
+    console.log('场景列表响应数据:', response.data);
+
+    if (!response.ok) {
+      // 检查响应数据中是否包含code 424
+      try {
+        const responseData = JSON.parse(response.data);
+        if (responseData.code === 424) {
+          console.log('🚨 获取场景列表时检测到登录过期 (code: 424)');
+          this.handleLoginExpired();
+          throw new Error('登录已过期');
+        }
+      } catch (parseError) {
+        console.log('解析响应数据失败:', parseError);
+      }
+
+      throw new Error(`获取场景列表失败: HTTP ${response.status}`);
+    }
+
+    try {
+      const scenesData = JSON.parse(response.data);
+      console.log('解析后的场景列表数据:', scenesData);
+
+      if (!scenesData) {
+        throw new Error('解析场景列表响应失败：响应数据为空');
+      }
+
+      if (!Array.isArray(scenesData)) {
+        throw new Error('解析场景列表失败：响应数据不是数组格式');
+      }
+
+      // 构建场景列表映射：id => {name, code, bgm}
+      const scenesMap: { [key: string]: { name: string; code: string; bgm?: string } } = {};
+      scenesData.forEach((scene: any) => {
+        if (scene.id && scene.name && scene.code) {
+          scenesMap[scene.id] = {
+            name: scene.name,
+            code: scene.code,
+            bgm: scene.bgm
+          };
+        }
+      });
+
+      this.scenesList = scenesMap;
+      console.log('场景列表获取成功，数量:', Object.keys(this.scenesList).length);
+      console.log('场景列表映射:', scenesMap);
+
+      // 更新缓存中的场景列表
+      updateScenesListInCache(scenesMap);
+
+      // 触发场景列表更新事件
+      this.triggerScenesListUpdate();
+
+      return scenesData;
+    } catch (parseError) {
+      console.error('解析场景列表数据失败:', parseError);
+      throw new Error('解析场景列表数据失败');
+    }
+  }
+
   // 创建房间
   private async createRoom(): Promise<number> {
-    if (!this.config || !this.accessToken || !this.roomId) {
+    if (!this.config || !this.accessToken || !this.roomId || this.config.coCreationId == 0) {
       throw new Error('未配置参数、未登录或未获取房间信息');
     }
     
@@ -297,6 +380,9 @@ export class TryonService {
     
     if (!createRoomData.data.id) {
       throw new Error('解析创建房间响应失败：响应数据中没有id字段');
+    } else {
+      console.log('将房间ID添加到登录缓存:', createRoomData.data.id);
+      updateRoomIdInCache(createRoomData.data.id.toString());
     }
     
     // 获取房间名称
@@ -337,6 +423,40 @@ export class TryonService {
       this.triggerClothesListUpdate();
     } else {
       console.log('创建房间响应中没有 clothesList 字段或格式不正确');
+    }
+    
+    // 获取场景列表
+    if (createRoomData.data.scenesList && Array.isArray(createRoomData.data.scenesList)) {
+      const scenesMap: { [key: string]: { name: string; code: string; bgm?: string } } = {};
+      createRoomData.data.scenesList.forEach((scene: any) => {
+        if (scene.id && scene.name && scene.code) {
+          scenesMap[scene.id] = {
+            name: scene.name,
+            code: scene.code,
+            bgm: scene.bgm
+          };
+        }
+      });
+      this.scenesList = scenesMap;
+      console.log('场景列表数量:', Object.keys(this.scenesList).length);
+      
+      // 打印场景列表信息用于验证数据结构
+      const sceneEntries = Object.entries(this.scenesList);
+      if (sceneEntries.length > 0) {
+        sceneEntries.forEach(([id, scene], index) => {
+          console.log(`场景 ${index + 1}:`, {
+            id,
+            name: scene.name,
+            code: scene.code,
+            bgm: scene.bgm
+          });
+        });
+      }
+      
+      // 触发场景列表更新事件
+      this.triggerScenesListUpdate();
+    } else {
+      console.log('创建房间响应中没有 scenesList 字段或格式不正确');
     }
     
     console.log('房间创建成功，primary room key:', createRoomData.data.id);
@@ -381,13 +501,13 @@ export class TryonService {
 
   // 调度分配实例
   private async scheduleInstance(): Promise<any> {
-    if (!this.config || !this.roomId) {
+    if (!this.config || !this.roomPrimaryId) {
       throw new Error('未配置参数或未获取房间信息');
     }
     
     const scheduleRequest = {
       user_id: this.config.userId,
-      room_id: this.roomId
+      room_id: this.roomPrimaryId.toString()
     };
     
     const scheduleResult = await scheduleService.schedule(scheduleRequest);
@@ -407,12 +527,13 @@ export class TryonService {
       uid: this.config.userId,
       accessToken: this.accessToken,
       insToken: scheduleResult.data.inst_acc_info.token,
-      roomId: this.roomId,
+      // roomId: this.roomId,
+      roomId: this.roomPrimaryId?.toString() || '',
       enterStageInfo: this.enterStageInfo,
       rtcConfig: {
         appId: RTC_CONFIG.APP_ID,
         appKey: RTC_CONFIG.APP_KEY,
-        roomId: this.roomId,
+        roomId: this.roomPrimaryId?.toString() || '',
         userId: this.config.userId,
         token: this.generateRTCToken() // 动态生成token
       }
@@ -473,6 +594,12 @@ export class TryonService {
       });
       
       console.log('🔧 开始初始化RTC服务...');
+      
+      // 确保RTC配置中的房间ID是最新的
+      if (this.roomPrimaryId && this.config.rtcConfig) {
+        this.config.rtcConfig.roomId = this.roomPrimaryId.toString();
+        console.log('🔄 在startRTCVideo中更新RTC配置房间ID:', this.roomPrimaryId);
+      }
       
       // 初始化RTC服务
       await this.rtcVideoService!.initialize(this.config.rtcConfig);
@@ -552,6 +679,19 @@ export class TryonService {
     console.log('📡 发送服饰列表更新事件，服饰分类数量:', this.clothesList.length);
   }
 
+  // 触发场景列表更新事件
+  private triggerScenesListUpdate(): void {
+    // 创建自定义事件，通知UI组件更新场景列表
+    const event = new CustomEvent('scenesListUpdate', {
+      detail: {
+        scenesList: this.scenesList
+      }
+    });
+    
+    window.dispatchEvent(event);
+    console.log('�� 发送场景列表更新事件，场景数量:', Object.keys(this.scenesList).length);
+  }
+
   getRoomPrimaryId(): number {
     return this.roomPrimaryId || 0;
   }
@@ -564,6 +704,11 @@ export class TryonService {
   // 获取服饰列表
   getClothesList(): ClothesItem[] {
     return this.clothesList;
+  }
+
+  // 获取场景列表
+  getScenesList(): { [key: string]: { name: string; code: string; bgm?: string } } {
+    return this.scenesList;
   }
 
   // 断开连接
@@ -587,6 +732,7 @@ export class TryonService {
     this.roomPrimaryId = null;
     this.enterStageInfo = null;
     this.clothesList = []; // 清理服饰列表
+    this.scenesList = {}; // 清理场景列表
   }
 
   // 获取连接状态

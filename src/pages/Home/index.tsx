@@ -7,6 +7,7 @@ import { RTCVideoConfig } from '../../services/rtcVideoService';
 import { webSocketService } from '../../services/websocketService';
 import { wechatShareService } from '../../services/wechatShareService';
 import { getLoginCache, clearLoginCache } from '../../utils/loginCache';
+import { getCoCreationId, getCoCreationIdWithUrlPriority, isValidCoCreationId, showCoCreationIdError, clearCoCreationIdCache } from '../../utils/coCreationIdHelper';
 import { ClothesItem } from '../../types/api';
 import { WECHAT_CONFIG } from '../../config/config';
 import * as proto from '../../proto/xproto';
@@ -104,8 +105,9 @@ const Home = () => {
   const deductionTimerRef = useRef<NodeJS.Timeout | null>(null); // 扣费定时器
   const playTimeTimerRef = useRef<NodeJS.Timeout | null>(null); // 播放时间计时器
 
-  const [musicUrl,setMusicUrl]= useState('https://admins3.tos-cn-shanghai.volces.com/25dcee31d9034129bffc2e52518a5f19.mp3');
-  const [musicPlay,setMusicPlay]= useState(true);
+  const [musicUrl, setMusicUrl] = useState('https://admins3.tos-cn-shanghai.volces.com/25dcee31d9034129bffc2e52518a5f19.mp3');
+  const [musicPlay, setMusicPlay] = useState(true);
+  const [currentSceneName, setCurrentSceneName] = useState<string>('教堂'); // 当前场景名称
 
 
   // 获取当前视频流的video/canvas元素
@@ -625,14 +627,15 @@ const Home = () => {
   // 默认动作图标（未展开时显示）
   const defaultActionIcon = { icon: actionIcon, name: '动作' };
 
-  // 实景图标数组，对应不同的地图
-  const realSceneIcons = [
-    { icon: realSceneActionIcon, name: '教堂', mapName: 'Maps_jiaotang' },
-    { icon: realSceneActionIcon, name: '广场', mapName: 'Maps_guangchang' },
-    { icon: realSceneActionIcon, name: '博物馆', mapName: 'Maps_Museum' },
-    { icon: realSceneActionIcon, name: '沙滩', mapName: 'Maps_shatan' },
-    { icon: realSceneActionIcon, name: '其他', mapName: 'Maps_udraper' }
-  ];
+  // 实景图标数组，对应不同的地图 - 动态从服务器获取
+  const [realSceneIcons, setRealSceneIcons] = useState<Array<{icon: string, name: string, mapName: string}>>([
+    // 默认场景，在服务器数据加载前显示（已注释，只从接口返回）
+    // { icon: realSceneActionIcon, name: '教堂', mapName: 'Maps_jiaotang' },
+    // { icon: realSceneActionIcon, name: '广场', mapName: 'Maps_guangchang' },
+    // { icon: realSceneActionIcon, name: '博物馆', mapName: 'Maps_Museum' },
+    // { icon: realSceneActionIcon, name: '沙滩', mapName: 'Maps_shatan' },
+    // { icon: realSceneActionIcon, name: '其他', mapName: 'Maps_udraper' }
+  ]);
 
   // 衣服管理相关状态
   const [mClothesItemInfoList, setMClothesItemInfoList] = useState<any[]>([]);
@@ -668,6 +671,9 @@ const Home = () => {
       
       const selectedScene = realSceneIcons[index];
       console.log('选中实景:', selectedScene.name, '地图名称:', selectedScene.mapName);
+      
+      // 切换场景音乐
+      switchSceneMusic(selectedScene.name);
       
       // 检查RTC连接状态
       if (!rtcVideoService.getConnectionStatus()) {
@@ -707,6 +713,29 @@ const Home = () => {
     // // 优先使用服务器返回的classifyUrl，如果没有则使用本地图标
     // return categoryItem?.classifyUrl || getClothesIcon(classifyName);
     return getClothesIcon(classifyName);
+  };
+
+  // 根据场景名称获取对应的BGM
+  const getBGMBySceneName = (sceneName: string): string => {
+    const cachedLoginData = getLoginCache();
+    if (cachedLoginData && cachedLoginData.scenesList) {
+      const sceneEntry = Object.entries(cachedLoginData.scenesList).find(([id, scene]) => scene.name === sceneName);
+      if (sceneEntry && sceneEntry[1].bgm) {
+        return sceneEntry[1].bgm;
+      }
+    }
+    // 默认BGM
+    return 'https://admins3.tos-cn-shanghai.volces.com/25dcee31d9034129bffc2e52518a5f19.mp3';
+  };
+
+  // 切换场景音乐
+  const switchSceneMusic = (sceneName: string) => {
+    const newBGM = getBGMBySceneName(sceneName);
+    if (newBGM !== musicUrl) {
+      setMusicUrl(newBGM);
+      setCurrentSceneName(sceneName);
+      console.log('🎵 切换场景音乐:', sceneName, 'BGM:', newBGM);
+    }
   };
 
   // 获取第一个分类的第一个服装（用于顶部显示）
@@ -880,6 +909,9 @@ const Home = () => {
       
       const selectedScene = realSceneIcons[index];
       console.log('选中实景:', selectedScene.name, '地图名称:', selectedScene.mapName);
+      
+      // 切换场景音乐
+      switchSceneMusic(selectedScene.name);
       
       // 检查RTC连接状态
       if (!rtcVideoService.getConnectionStatus()) {
@@ -1219,10 +1251,15 @@ const Home = () => {
   }, []);
 
   // 初始化登录参数
+  const loginParamsInitializedRef = useRef(false);
+  
   useEffect(() => {
+    if (loginParamsInitializedRef.current) return;
+    loginParamsInitializedRef.current = true;
+    
     // 首先尝试从路由state获取参数
     if (locationState.token && locationState.userId && locationState.phone && locationState.coCreationId) {
-      console.log('✅ 从路由state获取登录参数');
+      console.log('✅ 从路由state获取登录参数, coCreationId:', locationState.coCreationId);
       setLoginParams({
         token: locationState.token,
         userId: locationState.userId,
@@ -1245,44 +1282,76 @@ const Home = () => {
       return;
     }
 
-    // 如果路由state没有参数，尝试从缓存获取
-    // console.log('🔍 路由state中没有登录参数，尝试从缓存获取');
+    // 如果路由state没有参数，优先从URL获取coCreationId
+    const urlCoCreationId = getCoCreationIdWithUrlPriority();
+    
+    // 尝试从缓存获取
     const cachedLoginData = getLoginCache();
     
     if (cachedLoginData) {
-      // console.log('✅ 从缓存获取登录参数成功');
+      // 优先使用URL参数，如果没有URL参数则使用缓存
+      const finalCoCreationId = isValidCoCreationId(urlCoCreationId) ? (urlCoCreationId as number) : cachedLoginData.coCreationId;
+      
+      if (isValidCoCreationId(urlCoCreationId)) {
+        console.log('✅ 从URL获取到coCreationId:', urlCoCreationId);
+      } else {
+        console.log('✅ 从缓存获取登录参数成功, coCreationId:', cachedLoginData.coCreationId);
+      }
+      
       setLoginParams({
         token: cachedLoginData.token,
         userId: cachedLoginData.userId,
         phone: cachedLoginData.phone,
-        coCreationId: cachedLoginData.coCreationId
+        coCreationId: finalCoCreationId,
       });
       
       // 如果缓存中有房间名称，也设置到状态中
       if (cachedLoginData.roomName) {
         setRoomName(cachedLoginData.roomName);
-        // console.log('✅ 从缓存获取到房间名称:', cachedLoginData.roomName);
       }
       
       // 如果缓存中有服饰列表，也设置到状态中
       if (cachedLoginData.clothesList && cachedLoginData.clothesList.length > 0) {
         setClothesList(cachedLoginData.clothesList);
-        // console.log('✅ 从缓存获取到服饰列表:', cachedLoginData.clothesList);
+      }
+      
+      // 如果缓存中有默认场景名称，设置到状态中
+      if (cachedLoginData.defaultSceneName) {
+        setCurrentSceneName(cachedLoginData.defaultSceneName);
+        // 设置对应的音乐
+        const defaultBGM = getBGMBySceneName(cachedLoginData.defaultSceneName);
+        setMusicUrl(defaultBGM);
       }
     } else {
-      console.log('❌ 缓存中没有有效的登录参数，跳转到登录页面');
+      // 没有缓存，检查URL参数
+      if (isValidCoCreationId(urlCoCreationId)) {
+        console.log('✅ 从URL获取到coCreationId:', urlCoCreationId);
+        // 有URL参数但没有缓存，跳转登录页面
+        navigate('/login?redirect=' + encodeURIComponent(location.pathname));
+        return;
+      }
+      
+      console.log('❌ 缓存中没有有效的登录参数，且URL中也没有coCreationId，跳转到登录页面');
       clearLoginCache();
       navigate('/login?redirect=' + encodeURIComponent(location.pathname));
     }
-  }, [locationState]); // 只依赖locationState，避免重复执行
+  }, []); // 空依赖数组，只在组件挂载时执行一次
 
   // 初始化房间名称和服饰列表
-  const initializedRef = useRef(false);
+  const tryonInitializedRef = useRef(false);
   
   useEffect(() => {
-    if (!loginParams || initializedRef.current) return;
+    console.log('🔍 第二个useEffect被触发');
+    console.log('🔍 loginParams:', loginParams);
+    console.log('🔍 tryonInitializedRef.current:', tryonInitializedRef.current);
     
-    initializedRef.current = true;
+    if (!loginParams || tryonInitializedRef.current) {
+      console.log('🔍 条件不满足，退出useEffect');
+      return;
+    }
+    
+    console.log('🔍 设置tryonInitializedRef.current = true');
+    tryonInitializedRef.current = true;
     
     // 如果当前房间名称还是默认值，尝试从 tryonService 获取
     if (roomName === 'PADA2024秀款礼服系列') {
@@ -1313,10 +1382,52 @@ const Home = () => {
       // console.log('服饰分类数量:', clothesList.length);
     }
 
+    // 获取场景列表（只有当前状态为空时才尝试从服务获取）
+    if (realSceneIcons.length === 0) { // 如果场景列表为空
+      const scenesListFromService = tryonService.getScenesList();
+      console.log('🔍 尝试从 tryonService 获取场景列表:', scenesListFromService);
+      
+      if (scenesListFromService && Object.keys(scenesListFromService).length > 0) {
+        // 将服务器返回的场景数据转换为UI需要的格式
+        const newRealSceneIcons = Object.entries(scenesListFromService).map(([id, scene]: [string, any], index) => {
+          const iconData = {
+            icon: realSceneActionIcon, // 使用默认图标
+            name: scene.name || '未知场景',
+            mapName: scene.code || 'Maps_unknown'
+          };
+          console.log(`场景 ${index}:`, iconData);
+          return iconData;
+        });
+        
+        console.log('✅ 从 tryonService 获取到场景列表');
+        console.log('场景数量:', Object.keys(scenesListFromService).length);
+        console.log('转换后的场景列表:', newRealSceneIcons);
+        setRealSceneIcons(newRealSceneIcons);
+      } else {
+        console.log('⚠️ tryonService 中没有场景列表，等待服务器数据');
+      }
+    } else {
+      console.log('✅ 场景列表已更新，跳过从 tryonService 获取');
+      console.log('当前场景列表:', realSceneIcons);
+    }
+
     // 自动执行登台流程（只有在用户没有离开过舞台时才执行）
     const autoStartTryon = async () => {
+      console.log('🔍 autoStartTryon 被调用，hasLeftStage:', hasLeftStage);
+      console.log('🔍 RTC连接状态:', rtcVideoService.getConnectionStatus());
+      
       // 延迟一点时间确保页面完全加载
       setTimeout(async () => {
+        console.log('🔍 延迟后检查，hasLeftStage:', hasLeftStage);
+        console.log('🔍 延迟后RTC连接状态:', rtcVideoService.getConnectionStatus());
+        
+        // 强制检查：如果URL参数变化了，重置hasLeftStage状态
+        const urlCoCreationId = getCoCreationIdWithUrlPriority();
+        if (isValidCoCreationId(urlCoCreationId) && urlCoCreationId !== loginParams?.coCreationId) {
+          console.log('🔄 检测到URL参数变化，重置hasLeftStage状态');
+          setHasLeftStage(false);
+        }
+        
         if (!hasLeftStage) {
           console.log('🚀 自动开始登台流程...');
           await handleStartTryon();
@@ -1327,6 +1438,8 @@ const Home = () => {
           if (!rtcVideoService.getConnectionStatus()) {
             console.log('🔄 检测到RTC未连接，尝试重新连接...');
             await handleStartTryon();
+          } else {
+            console.log('✅ RTC已连接，无需重新连接');
           }
         }
       }, 1000);
@@ -1511,7 +1624,8 @@ const Home = () => {
               if (typeof accountBalance === 'number') {
                 console.log('✅ 余额扣费请求成功333:', accountBalance);
                 // 余额乘以10取模5等于0时，弹窗提示
-                if ((accountBalance * 10) % 5 === 0) {
+                // if ((accountBalance * 10) % 5 === 0) {
+                if (accountBalance < 0.1) {
                   console.log('✅ 余额扣费请求成功444:', accountBalance);
                   setShowBalanceModal(true);
                 }
@@ -1596,7 +1710,8 @@ const Home = () => {
                 const accountBalance = (parsedData as any)?.data?.accountBalance;
                 if (typeof accountBalance === 'number') {
                   // 余额乘以10取模5等于0时，弹窗提示
-                  if ((accountBalance * 10) % 5 === 0) {
+                  // if ((accountBalance * 10) % 5 === 0) {
+                  if (accountBalance < 0.1) {
                     setShowBalanceModal(true);
                   }
                 }
@@ -1657,6 +1772,7 @@ const Home = () => {
 
   // 登台按钮点击处理
   const handleStartTryon = async () => {
+    console.log('🔍 开始试穿流程，登录参数:', loginParams);
     if (!loginParams) {
       console.warn('缺少登录参数，无法开始试穿');
       return;
@@ -1677,11 +1793,22 @@ const Home = () => {
     try {
       hasStartedTryon.current = true;
       setShowSelectionScreen(false); // 隐藏选择界面，显示视频播放界面
-      
+      const cachedLoginData = getLoginCache();
+      let roomId = '';
+      if (cachedLoginData) {
+        roomId = cachedLoginData.roomId || '';
+      }
+      if (roomId == '') {
+        console.log('❌ 房间ID为空，跳过试穿流程');
+        return;
+      }
+      console.log('✅ 房间ID:', roomId);
       const rtcConfig: RTCVideoConfig = {
         appId: '643e46acb15c24012c963951',
         appKey: 'b329b39ca8df4b5185078f29d8d8025f',
-        roomId: '1939613403762253825',
+        // roomId: '1939613403762253825',
+        // roomId: '1956266414970302466',
+        roomId: roomId,
         userId: loginParams.userId
       };
       
@@ -1754,6 +1881,52 @@ const Home = () => {
 
     return () => {
       window.removeEventListener('clothesListUpdate', handleClothesListUpdate as EventListener);
+    };
+  }, []);
+
+  // 监听场景列表更新事件
+  useEffect(() => {
+    const handleScenesListUpdate = (event: CustomEvent) => {
+      const { scenesList } = event.detail;
+      console.log('收到场景列表更新事件');
+      console.log('场景数量:', scenesList ? Object.keys(scenesList).length : 0);
+      console.log('原始场景数据:', scenesList);
+      
+      if (scenesList && typeof scenesList === 'object' && Object.keys(scenesList).length > 0) {
+        // 将服务器返回的场景数据转换为UI需要的格式
+        const newRealSceneIcons = Object.entries(scenesList).map(([id, scene]: [string, any], index) => {
+          const iconData = {
+            icon: realSceneActionIcon, // 使用默认图标
+            name: scene.name || '未知场景',
+            mapName: scene.code || 'Maps_unknown'
+          };
+          console.log(`场景 ${index}:`, iconData);
+          return iconData;
+        });
+        
+        console.log('转换后的场景列表:', newRealSceneIcons);
+        setRealSceneIcons(newRealSceneIcons);
+        
+        // 设置默认场景名称和音乐
+        const cachedLoginData = getLoginCache();
+        if (cachedLoginData && cachedLoginData.defaultSceneName) {
+          setCurrentSceneName(cachedLoginData.defaultSceneName);
+          switchSceneMusic(cachedLoginData.defaultSceneName);
+        } else if (newRealSceneIcons.length > 0) {
+          // 如果没有默认场景名称，使用第一个场景
+          const firstScene = newRealSceneIcons[0];
+          setCurrentSceneName(firstScene.name);
+          switchSceneMusic(firstScene.name);
+        }
+      } else {
+        console.log('场景列表为空或格式不正确，保持默认场景');
+      }
+    };
+
+    window.addEventListener('scenesListUpdate', handleScenesListUpdate as EventListener);
+
+    return () => {
+      window.removeEventListener('scenesListUpdate', handleScenesListUpdate as EventListener);
     };
   }, []);
 
@@ -2173,62 +2346,63 @@ const Home = () => {
                 )}
               </div>
 
-              {/* 实景区域 */}
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-                position: 'relative' // 为绝对定位的展开选项提供定位基准
-              }}>
-                {/* 主实景图标 */}
+              {/* 实景区域 - 只在有场景数据时显示 */}
+              {realSceneIcons.length > 0 && (
                 <div style={{
                   display: 'flex',
-                  flexDirection: 'column',
                   alignItems: 'center',
-                  gap: '8px',
-                  cursor: 'pointer',
-                  transition: 'transform 0.2s ease'
-                }}
-                  onClick={() => handleRealSceneClick()}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = 'scale(1.1)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = 'scale(1)';
-                  }}
-                >
+                  gap: '10px',
+                  position: 'relative' // 为绝对定位的展开选项提供定位基准
+                }}>
+                  {/* 主实景图标 */}
                   <div style={{
                     display: 'flex',
+                    flexDirection: 'column',
                     alignItems: 'center',
-                    justifyContent: 'center',
-                    width: '40px', // 缩小尺寸
-                    height: '40px',
-                    borderRadius: '10px',
-                    backgroundColor: isRealSceneExpanded ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.6)',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                    border: isRealSceneExpanded ? '2px solid #52c41a' : '2px solid transparent'
-                  }}>
-                    <img 
-                      src={realSceneIcons[selectedRealSceneIndex].icon} 
-                      alt={realSceneIcons[selectedRealSceneIndex].name} 
-                      style={{
-                        width: '24px', // 缩小图标尺寸
-                        height: '24px',
-                        objectFit: 'contain'
-                      }}
-                    />
+                    gap: '8px',
+                    cursor: 'pointer',
+                    transition: 'transform 0.2s ease'
+                  }}
+                    onClick={() => handleRealSceneClick()}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'scale(1.1)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'scale(1)';
+                    }}
+                  >
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: '40px', // 缩小尺寸
+                      height: '40px',
+                      borderRadius: '10px',
+                      backgroundColor: isRealSceneExpanded ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.6)',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                      border: isRealSceneExpanded ? '2px solid #52c41a' : '2px solid transparent'
+                    }}>
+                      <img 
+                        src={realSceneIcons[selectedRealSceneIndex]?.icon || realSceneActionIcon} 
+                        alt={realSceneIcons[selectedRealSceneIndex]?.name || '实景'} 
+                        style={{
+                          width: '24px', // 缩小图标尺寸
+                          height: '24px',
+                          objectFit: 'contain'
+                        }}
+                      />
+                    </div>
+                    <div style={{
+                      fontSize: '10px', // 缩小字体
+                      color: '#333',
+                      fontWeight: 'normal',
+                      textAlign: 'center',
+                      lineHeight: '1',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      {realSceneIcons[selectedRealSceneIndex]?.name || '实景'}
+                    </div>
                   </div>
-                  <div style={{
-                    fontSize: '10px', // 缩小字体
-                    color: '#333',
-                    fontWeight: 'normal',
-                    textAlign: 'center',
-                    lineHeight: '1',
-                    whiteSpace: 'nowrap'
-                  }}>
-                    {realSceneIcons[selectedRealSceneIndex].name}
-                  </div>
-                </div>
 
                 {/* 展开的实景选项 */}
                 {isRealSceneExpanded && (
@@ -2250,7 +2424,12 @@ const Home = () => {
                         cursor: 'pointer',
                         transition: 'all 0.2s ease'
                       }}
-                        onClick={() => handleRealSceneClick(index)}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          console.log(`🎯 点击实景按钮 ${index}:`, scene);
+                          handleRealSceneClick(index);
+                        }}
                         onMouseEnter={(e) => {
                           e.currentTarget.style.transform = 'scale(1.1)';
                         }}
@@ -2293,8 +2472,9 @@ const Home = () => {
                     ))}
                   </div>
                 )}
+                  </div>
+                )}
               </div>
-            </div>
 
             {/* 右侧服装展示区域 - 纵向排列 */}
             <div style={{
@@ -2791,6 +2971,57 @@ const Home = () => {
             🔍 调试缩放
           </button>
         )}
+
+        {/* 开发环境调试场景列表按钮 */}
+        {process.env.NODE_ENV === 'development' && (
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              console.log('调试场景列表按钮被点击');
+              console.log('当前场景列表状态:', {
+                realSceneIcons,
+                selectedRealSceneIndex,
+                isRealSceneExpanded,
+                scenesListFromService: tryonService.getScenesList()
+              });
+            }}
+            style={{
+              position: 'absolute',
+              top: '20px',
+              right: '280px',
+              backgroundColor: '#722ed1 !important',
+              color: 'white !important',
+              border: 'none !important',
+              padding: '8px 16px',
+              borderRadius: '6px',
+              fontSize: '12px',
+              cursor: 'pointer !important',
+              fontWeight: 'bold',
+              transition: 'all 0.3s ease',
+              zIndex: 9999,
+              boxShadow: '0 2px 8px rgba(114, 46, 209, 0.3)',
+              outline: 'none !important',
+              opacity: 1,
+              pointerEvents: 'auto',
+              display: 'inline-block',
+              userSelect: 'none',
+              WebkitUserSelect: 'none',
+              MozUserSelect: 'none',
+              msUserSelect: 'none'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#9254de';
+              e.currentTarget.style.transform = 'scale(1.05)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '#722ed1';
+              e.currentTarget.style.transform = 'scale(1)';
+            }}
+          >
+            🎭 调试场景
+          </button>
+        )}
       </div>
     );
   }
@@ -3038,73 +3269,74 @@ const Home = () => {
                 )}
             </div>
 
-            {/* 实景区域 */}
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              position: 'relative' // 为绝对定位的展开选项提供定位基准
-            }}>
-              {/* 主实景图标 */}
+            {/* 实景区域 - 只在有场景数据时显示 */}
+            {realSceneIcons.length > 0 && (
               <div style={{
                 display: 'flex',
-                flexDirection: 'column',
                 alignItems: 'center',
-                gap: '8px',
-                cursor: 'pointer',
-                transition: 'transform 0.2s ease'
-              }}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handleVideoRealSceneClick();
-                }}
-                onTouchStart={(e) => {
-                  // 只处理单指触摸，双指触摸让给缩放处理
-                  if (e.touches.length === 1) {
-                    e.stopPropagation();
-                  }
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'scale(1.1)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'scale(1)';
-                }}
-              >
+                gap: '10px',
+                position: 'relative' // 为绝对定位的展开选项提供定位基准
+              }}>
+                {/* 主实景图标 */}
                 <div style={{
                   display: 'flex',
+                  flexDirection: 'column',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  width: '40px', // 缩小尺寸
-                  height: '40px',
-                  borderRadius: '10px',
-                  backgroundColor: isRealSceneExpanded ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.6)',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                  border: isRealSceneExpanded ? '2px solid #52c41a' : '2px solid transparent'
-                }}>
-                  <img 
-                    src={realSceneIcons[selectedRealSceneIndex].icon} 
-                    alt={realSceneIcons[selectedRealSceneIndex].name} 
-                    style={{
-                      width: '24px', // 缩小图标尺寸
-                      height: '24px',
-                      objectFit: 'contain'
-                    }}
-                  />
+                  gap: '8px',
+                  cursor: 'pointer',
+                  transition: 'transform 0.2s ease'
+                }}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleVideoRealSceneClick();
+                  }}
+                  onTouchStart={(e) => {
+                    // 只处理单指触摸，双指触摸让给缩放处理
+                    if (e.touches.length === 1) {
+                      e.stopPropagation();
+                    }
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'scale(1.1)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'scale(1)';
+                  }}
+                >
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '40px', // 缩小尺寸
+                    height: '40px',
+                    borderRadius: '10px',
+                    backgroundColor: isRealSceneExpanded ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.6)',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                    border: isRealSceneExpanded ? '2px solid #52c41a' : '2px solid transparent'
+                  }}>
+                    <img 
+                      src={realSceneIcons[selectedRealSceneIndex]?.icon || realSceneActionIcon} 
+                      alt={realSceneIcons[selectedRealSceneIndex]?.name || '实景'} 
+                      style={{
+                        width: '24px', // 缩小图标尺寸
+                        height: '24px',
+                        objectFit: 'contain'
+                      }}
+                    />
+                  </div>
+                  <div style={{
+                    fontSize: '10px', // 缩小字体
+                    color: '#fff',
+                    fontWeight: 'normal',
+                    textAlign: 'center',
+                    lineHeight: '1',
+                    whiteSpace: 'nowrap',
+                    textShadow: '0 1px 2px rgba(0,0,0,0.8)'
+                  }}>
+                    {realSceneIcons[selectedRealSceneIndex]?.name || '实景'}
+                  </div>
                 </div>
-                <div style={{
-                  fontSize: '10px', // 缩小字体
-                  color: '#fff',
-                  fontWeight: 'normal',
-                  textAlign: 'center',
-                  lineHeight: '1',
-                  whiteSpace: 'nowrap',
-                  textShadow: '0 1px 2px rgba(0,0,0,0.8)'
-                }}>
-                  {realSceneIcons[selectedRealSceneIndex].name}
-                </div>
-              </div>
 
               {/* 展开的实景选项 */}
               {isRealSceneExpanded && (
@@ -3129,6 +3361,7 @@ const Home = () => {
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
+                        console.log(`🎬 点击视频界面实景按钮 ${index}:`, scene);
                         handleVideoRealSceneClick(index);
                       }}
                       onMouseEnter={(e) => {
@@ -3174,8 +3407,9 @@ const Home = () => {
                   ))}
                 </div>
               )}
-            </div>
-          </div>
+                  </div>
+                )}
+              </div>
         
 
         {/* 视频播放区域 - 全屏显示 */}

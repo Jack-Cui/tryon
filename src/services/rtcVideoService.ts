@@ -1,6 +1,7 @@
 import VERTC, { MediaType, StreamIndex } from '@volcengine/rtc';
 import { rtcMessageHandler } from './rtcMessageHandler';
 import * as proto from '../proto/xproto';
+import { getLoginCache } from '../utils/loginCache';
 
 export interface RTCVideoConfig {
   appId: string;
@@ -8,6 +9,15 @@ export interface RTCVideoConfig {
   roomId: string;
   userId: string;
   token?: string;
+}
+
+export interface EventHandlers {
+  onUserJoin?: (userId: string) => void;
+  onUserLeave?: (userId: string) => void;
+  onUserPublishStream?: (userId: string, hasVideo: boolean, hasAudio: boolean) => void;
+  onUserUnpublishStream?: (userId: string) => void;
+  onError?: (error: any) => void;
+  onHeartbeat?: (delay: number) => void;
 }
 
 export interface RemoteStream {
@@ -22,14 +32,7 @@ export class RTCVideoService {
   private config: RTCVideoConfig | null = null;
   private isConnected: boolean = false;
   private remoteStreams: Map<string, RemoteStream> = new Map();
-  private eventHandlers: {
-    onUserJoin?: (userId: string) => void;
-    onUserLeave?: (userId: string) => void;
-    onUserPublishStream?: (userId: string, hasVideo: boolean, hasAudio: boolean) => void;
-    onUserUnpublishStream?: (userId: string) => void;
-    onError?: (error: any) => void;
-    onHeartbeat?: (delay: number) => void;
-  } = {};
+  private eventHandlers: EventHandlers = {};
 
   constructor() {
     // 初始化消息处理器
@@ -43,7 +46,7 @@ export class RTCVideoService {
   }
 
   // 设置事件处理器
-  setEventHandlers(handlers: typeof this.eventHandlers): void {
+  setEventHandlers(handlers: EventHandlers): void {
     this.eventHandlers = { ...this.eventHandlers, ...handlers };
   }
 
@@ -98,12 +101,27 @@ export class RTCVideoService {
       console.log('👤 用户加入房间:', userId);
       this.eventHandlers.onUserJoin?.(userId);
     });
+    const cachedLoginData = getLoginCache();
+    let roomId = '';
+    if (cachedLoginData) {
+      if (cachedLoginData.roomId) {
+        roomId = cachedLoginData.roomId;
+      }
+    }
+    if (roomId == '') {
+      console.log('❌ 房间ID为空，跳过试穿流程');
+      return;
+    } else {
+      console.log('✅ 房间ID:', roomId);
+    }
     // 测试余额扣费功能
     const balanceRaw = {
       deducteList: [{
         deductionType: 2,
         billPrice: 0.3,
-        sourceId: 1939613403762253825,
+        // sourceId: 1939613403762253825,
+        // sourceId: 1956266414970302466,
+        sourceId: BigInt(roomId),
         reduceCount: 1,
         clotheId: 0
       }]
