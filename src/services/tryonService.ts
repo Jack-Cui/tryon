@@ -22,6 +22,7 @@ export class TryonService {
   private roomName: string | null = null; // 添加房间名称属性
   private roomPrimaryId: number | null = null; // 添加房间主键ID属性
   private clothesList: ClothesItem[] = []; // 添加服饰列表属性
+  private scenesList: any[] = []; // 添加场景列表属性
   private enterStageInfo: string | null = null;
   private rtcVideoService: RTCVideoService | null = null;
   private rtcStarted: boolean = false; // 防止重复启动RTC
@@ -349,6 +350,27 @@ export class TryonService {
       console.log('创建房间响应中没有 clothesList 字段或格式不正确');
     }
     
+    // 获取场景列表
+    if (createRoomData.data.scenesList && Array.isArray(createRoomData.data.scenesList)) {
+      this.scenesList = createRoomData.data.scenesList;
+      console.log('场景列表数量:', this.scenesList.length);
+      
+      // 打印场景列表信息用于验证数据结构
+      if (this.scenesList.length > 0) {
+        this.scenesList.forEach((scene, index) => {
+          console.log(`场景 ${index + 1}:`, {
+            name: scene.name,
+            code: scene.code
+          });
+        });
+      }
+      
+      // 触发场景列表更新事件
+      this.triggerScenesListUpdate();
+    } else {
+      console.log('创建房间响应中没有 scenesList 字段或格式不正确');
+    }
+    
     console.log('房间创建成功，primary room key:', createRoomData.data.id);
     return createRoomData.data.id;
   }
@@ -569,6 +591,19 @@ export class TryonService {
     console.log('📡 发送服饰列表更新事件，服饰分类数量:', this.clothesList.length);
   }
 
+  // 触发场景列表更新事件
+  private triggerScenesListUpdate(): void {
+    // 创建自定义事件，通知UI组件更新场景列表
+    const event = new CustomEvent('scenesListUpdate', {
+      detail: {
+        scenesList: this.scenesList
+      }
+    });
+    
+    window.dispatchEvent(event);
+    console.log('📡 发送场景列表更新事件，场景数量:', this.scenesList.length);
+  }
+
   getRoomPrimaryId(): number {
     return this.roomPrimaryId || 0;
   }
@@ -581,6 +616,11 @@ export class TryonService {
   // 获取服饰列表
   getClothesList(): ClothesItem[] {
     return this.clothesList;
+  }
+
+  // 获取场景列表
+  getScenesList(): any[] {
+    return this.scenesList;
   }
 
   // 断开连接
@@ -604,6 +644,7 @@ export class TryonService {
     this.roomPrimaryId = null;
     this.enterStageInfo = null;
     this.clothesList = []; // 清理服饰列表
+    this.scenesList = []; // 清理场景列表
   }
 
   // 获取连接状态
