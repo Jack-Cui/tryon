@@ -385,13 +385,13 @@ export const roomAPI = {
           });
           
           // 参考 handleClothesManagement 的逻辑处理服装
-          // const classifyId = clothe_detail.classifyId;
-          // const clothesId = clothe_detail.id;
-          // const suitIds = clothe_detail.suitIds || '';
+          const classifyId = clothe_detail.classifyId;
+          const clothesId = clothe_detail.id;
+          const suitIds = clothe_detail.suitIds || '';
 
-          const classifyId = 4;
-          const clothesId = "1916394930865287170";
-          const suitIds = "1916394256718999553";
+          // const classifyId = 4;
+          // const clothesId = "1916394930865287170";
+          // const suitIds = "1916394256718999553";
           
           console.log('👕 处理衣服管理逻辑:', {
             classifyId: classifyId,
