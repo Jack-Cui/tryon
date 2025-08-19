@@ -76,6 +76,9 @@ export const API_ENDPOINTS = {
   // 获取衣服详情
   GET_CLOTHE_DETAIL: (clothe_id: string) => `/admin/clothe/detail?clotheId=${clothe_id}`,
   
+  // 获取场景列表
+  GET_SCENE_LIST: () => `/admin/sysscenario/listScenairo`,
+  
   // 调度服务
   SCHEDULE: () => '/alloc/room_inst',
 

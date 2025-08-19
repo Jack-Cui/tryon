@@ -1349,9 +1349,9 @@ const Home = () => {
       const scenesListFromService = tryonService.getScenesList();
       console.log('🔍 尝试从 tryonService 获取场景列表:', scenesListFromService);
       
-      if (scenesListFromService && scenesListFromService.length > 0) {
+      if (scenesListFromService && Object.keys(scenesListFromService).length > 0) {
         // 将服务器返回的场景数据转换为UI需要的格式
-        const newRealSceneIcons = scenesListFromService.map((scene, index) => {
+        const newRealSceneIcons = Object.entries(scenesListFromService).map(([id, scene]: [string, any], index) => {
           const iconData = {
             icon: realSceneActionIcon, // 使用默认图标
             name: scene.name || '未知场景',
@@ -1362,7 +1362,7 @@ const Home = () => {
         });
         
         console.log('✅ 从 tryonService 获取到场景列表');
-        console.log('场景数量:', scenesListFromService.length);
+        console.log('场景数量:', Object.keys(scenesListFromService).length);
         console.log('转换后的场景列表:', newRealSceneIcons);
         setRealSceneIcons(newRealSceneIcons);
       } else {
@@ -1849,12 +1849,12 @@ const Home = () => {
     const handleScenesListUpdate = (event: CustomEvent) => {
       const { scenesList } = event.detail;
       console.log('收到场景列表更新事件');
-      console.log('场景数量:', scenesList?.length || 0);
+      console.log('场景数量:', scenesList ? Object.keys(scenesList).length : 0);
       console.log('原始场景数据:', scenesList);
       
-      if (scenesList && Array.isArray(scenesList) && scenesList.length > 0) {
+      if (scenesList && typeof scenesList === 'object' && Object.keys(scenesList).length > 0) {
         // 将服务器返回的场景数据转换为UI需要的格式
-        const newRealSceneIcons = scenesList.map((scene, index) => {
+        const newRealSceneIcons = Object.entries(scenesList).map(([id, scene]: [string, any], index) => {
           const iconData = {
             icon: realSceneActionIcon, // 使用默认图标
             name: scene.name || '未知场景',

@@ -4,7 +4,7 @@ import { webSocketService, WebSocketConfig } from './websocketService';
 import { RTCVideoService, RTCVideoConfig, rtcVideoService } from './rtcVideoService';
 import { RTC_CONFIG } from '../config/config';
 import { AccessToken, Privilege } from '../token/AccessToken';
-import { updateRoomNameInCache, updateClothesListInCache, updateRoomIdInCache } from '../utils/loginCache';
+import { updateRoomNameInCache, updateClothesListInCache, updateRoomIdInCache, updateScenesListInCache } from '../utils/loginCache';
 import { ClothesItem } from '../types/api';
 
 export interface TryonConfig {
@@ -22,7 +22,7 @@ export class TryonService {
   private roomName: string | null = null; // 添加房间名称属性
   private roomPrimaryId: number | null = null; // 添加房间主键ID属性
   private clothesList: ClothesItem[] = []; // 添加服饰列表属性
-  private scenesList: any[] = []; // 添加场景列表属性
+  private scenesList: { [key: string]: { name: string; code: string } } = {}; // 添加场景列表映射属性
   private enterStageInfo: string | null = null;
   private rtcVideoService: RTCVideoService | null = null;
   private rtcStarted: boolean = false; // 防止重复启动RTC
@@ -97,6 +97,10 @@ export class TryonService {
       // 1. 获取房间信息
       console.log('步骤1: 获取房间信息');
       await this.getRoomInfo();
+      
+      // 1.5. 获取场景列表
+      console.log('步骤1.5: 获取场景列表');
+      await this.getSceneList();
       
       // 2. 创建房间
       console.log('步骤2: 创建房间');
@@ -177,6 +181,10 @@ export class TryonService {
       // 1. 获取房间信息
       console.log('步骤1: 获取房间信息');
       await this.getRoomInfo();
+      
+      // 1.5. 获取场景列表
+      console.log('步骤1.5: 获取场景列表');
+      await this.getSceneList();
       
       // 2. 创建房间
       console.log('步骤2: 创建房间');
@@ -266,6 +274,72 @@ export class TryonService {
     return roomInfo;
   }
 
+  // 获取场景列表
+  private async getSceneList(): Promise<any> {
+    if (!this.config || !this.accessToken) {
+      throw new Error('未配置参数或未提供accessToken');
+    }
+
+    const response = await roomAPI.getSceneList(this.accessToken);
+    console.log('场景列表响应:', response);
+    console.log('场景列表响应数据:', response.data);
+
+    if (!response.ok) {
+      // 检查响应数据中是否包含code 424
+      try {
+        const responseData = JSON.parse(response.data);
+        if (responseData.code === 424) {
+          console.log('🚨 获取场景列表时检测到登录过期 (code: 424)');
+          this.handleLoginExpired();
+          throw new Error('登录已过期');
+        }
+      } catch (parseError) {
+        console.log('解析响应数据失败:', parseError);
+      }
+
+      throw new Error(`获取场景列表失败: HTTP ${response.status}`);
+    }
+
+    try {
+      const scenesData = JSON.parse(response.data);
+      console.log('解析后的场景列表数据:', scenesData);
+
+      if (!scenesData) {
+        throw new Error('解析场景列表响应失败：响应数据为空');
+      }
+
+      if (!Array.isArray(scenesData)) {
+        throw new Error('解析场景列表失败：响应数据不是数组格式');
+      }
+
+      // 构建场景列表映射：id => {name, code}
+      const scenesMap: { [key: string]: { name: string; code: string } } = {};
+      scenesData.forEach((scene: any) => {
+        if (scene.id && scene.name && scene.code) {
+          scenesMap[scene.id] = {
+            name: scene.name,
+            code: scene.code
+          };
+        }
+      });
+
+      this.scenesList = scenesMap;
+      console.log('场景列表获取成功，数量:', Object.keys(this.scenesList).length);
+      console.log('场景列表映射:', scenesMap);
+
+      // 更新缓存中的场景列表
+      updateScenesListInCache(scenesMap);
+
+      // 触发场景列表更新事件
+      this.triggerScenesListUpdate();
+
+      return scenesData;
+    } catch (parseError) {
+      console.error('解析场景列表数据失败:', parseError);
+      throw new Error('解析场景列表数据失败');
+    }
+  }
+
   // 创建房间
   private async createRoom(): Promise<number> {
     if (!this.config || !this.accessToken || !this.roomId || this.config.coCreationId == 0) {
@@ -352,13 +426,24 @@ export class TryonService {
     
     // 获取场景列表
     if (createRoomData.data.scenesList && Array.isArray(createRoomData.data.scenesList)) {
-      this.scenesList = createRoomData.data.scenesList;
-      console.log('场景列表数量:', this.scenesList.length);
+      const scenesMap: { [key: string]: { name: string; code: string } } = {};
+      createRoomData.data.scenesList.forEach((scene: any) => {
+        if (scene.id && scene.name && scene.code) {
+          scenesMap[scene.id] = {
+            name: scene.name,
+            code: scene.code
+          };
+        }
+      });
+      this.scenesList = scenesMap;
+      console.log('场景列表数量:', Object.keys(this.scenesList).length);
       
       // 打印场景列表信息用于验证数据结构
-      if (this.scenesList.length > 0) {
-        this.scenesList.forEach((scene, index) => {
+      const sceneEntries = Object.entries(this.scenesList);
+      if (sceneEntries.length > 0) {
+        sceneEntries.forEach(([id, scene], index) => {
           console.log(`场景 ${index + 1}:`, {
+            id,
             name: scene.name,
             code: scene.code
           });
@@ -601,7 +686,7 @@ export class TryonService {
     });
     
     window.dispatchEvent(event);
-    console.log('📡 发送场景列表更新事件，场景数量:', this.scenesList.length);
+    console.log('�� 发送场景列表更新事件，场景数量:', Object.keys(this.scenesList).length);
   }
 
   getRoomPrimaryId(): number {
@@ -619,7 +704,7 @@ export class TryonService {
   }
 
   // 获取场景列表
-  getScenesList(): any[] {
+  getScenesList(): { [key: string]: { name: string; code: string } } {
     return this.scenesList;
   }
 
@@ -644,7 +729,7 @@ export class TryonService {
     this.roomPrimaryId = null;
     this.enterStageInfo = null;
     this.clothesList = []; // 清理服饰列表
-    this.scenesList = []; // 清理场景列表
+    this.scenesList = {}; // 清理场景列表
   }
 
   // 获取连接状态

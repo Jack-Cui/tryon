@@ -11,6 +11,15 @@ export interface RTCVideoConfig {
   token?: string;
 }
 
+export interface EventHandlers {
+  onUserJoin?: (userId: string) => void;
+  onUserLeave?: (userId: string) => void;
+  onUserPublishStream?: (userId: string, hasVideo: boolean, hasAudio: boolean) => void;
+  onUserUnpublishStream?: (userId: string) => void;
+  onError?: (error: any) => void;
+  onHeartbeat?: (delay: number) => void;
+}
+
 export interface RemoteStream {
   userId: string;
   hasVideo: boolean;
@@ -23,14 +32,7 @@ export class RTCVideoService {
   private config: RTCVideoConfig | null = null;
   private isConnected: boolean = false;
   private remoteStreams: Map<string, RemoteStream> = new Map();
-  private eventHandlers: {
-    onUserJoin?: (userId: string) => void;
-    onUserLeave?: (userId: string) => void;
-    onUserPublishStream?: (userId: string, hasVideo: boolean, hasAudio: boolean) => void;
-    onUserUnpublishStream?: (userId: string) => void;
-    onError?: (error: any) => void;
-    onHeartbeat?: (delay: number) => void;
-  } = {};
+  private eventHandlers: EventHandlers = {};
 
   constructor() {
     // 初始化消息处理器
@@ -44,7 +46,7 @@ export class RTCVideoService {
   }
 
   // 设置事件处理器
-  setEventHandlers(handlers: typeof this.eventHandlers): void {
+  setEventHandlers(handlers: EventHandlers): void {
     this.eventHandlers = { ...this.eventHandlers, ...handlers };
   }
 

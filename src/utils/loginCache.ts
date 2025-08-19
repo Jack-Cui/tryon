@@ -9,6 +9,7 @@ export interface LoginCacheData {
   roomId?: string; // 房间ID，可选
   roomName?: string; // 房间名称，可选
   clothesList?: ClothesItem[]; // 服饰列表，可选
+  scenesList?: { [key: string]: { name: string; code: string } }; // 场景列表映射，可选
   timestamp: number; // 缓存时间戳
 }
 
@@ -171,5 +172,25 @@ export const updateRoomIdInCache = (roomId: string): void => {
     }
   } catch (error) {
     console.error('❌ 更新缓存中的房间ID失败:', error);
+  }
+}; 
+
+/**
+ * 更新缓存中的场景列表
+ * @param scenesList 场景列表映射
+ */
+export const updateScenesListInCache = (scenesList: { [key: string]: { name: string; code: string } }): void => {
+  try {
+    const cachedData = getLoginCache();
+    if (cachedData) {
+      const updatedData = { ...cachedData, scenesList };
+      const cacheDurationStr = localStorage.getItem(CACHE_KEY + '_duration');
+      const cacheDuration = cacheDurationStr ? parseInt(cacheDurationStr) : DEFAULT_CACHE_DURATION;
+      
+      localStorage.setItem(CACHE_KEY, JSON.stringify(updatedData));
+      console.log('✅ 场景列表已更新到缓存:', scenesList);
+    }
+  } catch (error) {
+    console.error('❌ 更新缓存中的场景列表失败:', error);
   }
 }; 
