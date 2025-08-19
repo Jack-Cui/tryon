@@ -62,7 +62,7 @@ const DownloadAppModal: React.FC<DownloadAppModalProps> = ({
         position: 'relative'
       }}>
         {/* 关闭按钮 */}
-        {showCloseButton && (
+        {/* {showCloseButton && (
           <button
             onClick={onClose}
             style={{
@@ -93,7 +93,7 @@ const DownloadAppModal: React.FC<DownloadAppModalProps> = ({
           >
             ×
           </button>
-        )}
+        )} */}
 
         <div style={{
           display: 'flex',

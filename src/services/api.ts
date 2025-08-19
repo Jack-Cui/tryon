@@ -13,7 +13,7 @@ import {
   JoinRoomResponse, 
   EnterStageInfo 
 } from '../types/api';
-import { getLoginCache } from '../utils/loginCache';
+import { getLoginCache, updateDefaultSceneNameInCache } from '../utils/loginCache';
 
 const Long = require('long');
 const crypto = require('crypto');
@@ -546,15 +546,17 @@ export const roomAPI = {
 
     const login_cache = getLoginCache();
     let scene_code = "";
+    let scene_name = "";
     
-    // 优先使用房间信息中的场景ID来查找场景代码
+    // 优先使用房间信息中的场景ID来查找场景代码和名称
     if (room_info_data.scenarioId) {
       console.log("🔍 房间信息中有场景ID:", room_info_data.scenarioId);
       if (login_cache && login_cache.scenesList) {
         const scene_list = login_cache.scenesList;
         if (scene_list[room_info_data.scenarioId]) {
           scene_code = scene_list[room_info_data.scenarioId].code;
-          console.log("✅ 根据场景ID找到场景代码:", scene_code);
+          scene_name = scene_list[room_info_data.scenarioId].name;
+          console.log("✅ 根据场景ID找到场景代码:", scene_code, "名称:", scene_name);
         } else {
           console.log("⚠️ 场景ID在缓存中未找到:", room_info_data.scenarioId);
         }
@@ -568,7 +570,7 @@ export const roomAPI = {
         const scene_list_keys = Object.keys(scene_list);
         if (scene_list_keys.length > 0) {
           const scene_id = scene_list_keys[0];
-          const scene_name = scene_list[scene_id].name;
+          scene_name = scene_list[scene_id].name;
           scene_code = scene_list[scene_id].code;
           console.log("🔄 使用缓存中第一个场景:", scene_name, "代码:", scene_code);
         }
@@ -578,7 +580,13 @@ export const roomAPI = {
     // 如果还是没有场景代码，使用默认值
     if (scene_code === "") {
       scene_code = "Maps_jiaotang";
+      scene_name = "教堂";
       console.log("⚠️ 场景代码为空，使用默认场景代码: Maps_jiaotang");
+    }
+    
+    // 更新缓存中的默认场景名称
+    if (scene_name && login_cache) {
+      updateDefaultSceneNameInCache(scene_name);
     }
     const enter_stage_info: EnterStageInfo = {
       AvatarId: 0,

@@ -22,7 +22,7 @@ export class TryonService {
   private roomName: string | null = null; // 添加房间名称属性
   private roomPrimaryId: number | null = null; // 添加房间主键ID属性
   private clothesList: ClothesItem[] = []; // 添加服饰列表属性
-  private scenesList: { [key: string]: { name: string; code: string } } = {}; // 添加场景列表映射属性
+  private scenesList: { [key: string]: { name: string; code: string; bgm?: string } } = {}; // 添加场景列表映射属性
   private enterStageInfo: string | null = null;
   private rtcVideoService: RTCVideoService | null = null;
   private rtcStarted: boolean = false; // 防止重复启动RTC
@@ -312,13 +312,14 @@ export class TryonService {
         throw new Error('解析场景列表失败：响应数据不是数组格式');
       }
 
-      // 构建场景列表映射：id => {name, code}
-      const scenesMap: { [key: string]: { name: string; code: string } } = {};
+      // 构建场景列表映射：id => {name, code, bgm}
+      const scenesMap: { [key: string]: { name: string; code: string; bgm?: string } } = {};
       scenesData.forEach((scene: any) => {
         if (scene.id && scene.name && scene.code) {
           scenesMap[scene.id] = {
             name: scene.name,
-            code: scene.code
+            code: scene.code,
+            bgm: scene.bgm
           };
         }
       });
@@ -426,12 +427,13 @@ export class TryonService {
     
     // 获取场景列表
     if (createRoomData.data.scenesList && Array.isArray(createRoomData.data.scenesList)) {
-      const scenesMap: { [key: string]: { name: string; code: string } } = {};
+      const scenesMap: { [key: string]: { name: string; code: string; bgm?: string } } = {};
       createRoomData.data.scenesList.forEach((scene: any) => {
         if (scene.id && scene.name && scene.code) {
           scenesMap[scene.id] = {
             name: scene.name,
-            code: scene.code
+            code: scene.code,
+            bgm: scene.bgm
           };
         }
       });
@@ -445,7 +447,8 @@ export class TryonService {
           console.log(`场景 ${index + 1}:`, {
             id,
             name: scene.name,
-            code: scene.code
+            code: scene.code,
+            bgm: scene.bgm
           });
         });
       }
@@ -704,7 +707,7 @@ export class TryonService {
   }
 
   // 获取场景列表
-  getScenesList(): { [key: string]: { name: string; code: string } } {
+  getScenesList(): { [key: string]: { name: string; code: string; bgm?: string } } {
     return this.scenesList;
   }
 

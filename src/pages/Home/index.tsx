@@ -105,8 +105,9 @@ const Home = () => {
   const deductionTimerRef = useRef<NodeJS.Timeout | null>(null); // 扣费定时器
   const playTimeTimerRef = useRef<NodeJS.Timeout | null>(null); // 播放时间计时器
 
-  const [musicUrl,setMusicUrl]= useState('https://admins3.tos-cn-shanghai.volces.com/25dcee31d9034129bffc2e52518a5f19.mp3');
-  const [musicPlay,setMusicPlay]= useState(true);
+  const [musicUrl, setMusicUrl] = useState('https://admins3.tos-cn-shanghai.volces.com/25dcee31d9034129bffc2e52518a5f19.mp3');
+  const [musicPlay, setMusicPlay] = useState(true);
+  const [currentSceneName, setCurrentSceneName] = useState<string>('教堂'); // 当前场景名称
 
 
   // 获取当前视频流的video/canvas元素
@@ -671,6 +672,9 @@ const Home = () => {
       const selectedScene = realSceneIcons[index];
       console.log('选中实景:', selectedScene.name, '地图名称:', selectedScene.mapName);
       
+      // 切换场景音乐
+      switchSceneMusic(selectedScene.name);
+      
       // 检查RTC连接状态
       if (!rtcVideoService.getConnectionStatus()) {
         console.error('❌ RTC未连接，无法切换地图');
@@ -709,6 +713,29 @@ const Home = () => {
     // // 优先使用服务器返回的classifyUrl，如果没有则使用本地图标
     // return categoryItem?.classifyUrl || getClothesIcon(classifyName);
     return getClothesIcon(classifyName);
+  };
+
+  // 根据场景名称获取对应的BGM
+  const getBGMBySceneName = (sceneName: string): string => {
+    const cachedLoginData = getLoginCache();
+    if (cachedLoginData && cachedLoginData.scenesList) {
+      const sceneEntry = Object.entries(cachedLoginData.scenesList).find(([id, scene]) => scene.name === sceneName);
+      if (sceneEntry && sceneEntry[1].bgm) {
+        return sceneEntry[1].bgm;
+      }
+    }
+    // 默认BGM
+    return 'https://admins3.tos-cn-shanghai.volces.com/25dcee31d9034129bffc2e52518a5f19.mp3';
+  };
+
+  // 切换场景音乐
+  const switchSceneMusic = (sceneName: string) => {
+    const newBGM = getBGMBySceneName(sceneName);
+    if (newBGM !== musicUrl) {
+      setMusicUrl(newBGM);
+      setCurrentSceneName(sceneName);
+      console.log('🎵 切换场景音乐:', sceneName, 'BGM:', newBGM);
+    }
   };
 
   // 获取第一个分类的第一个服装（用于顶部显示）
@@ -882,6 +909,9 @@ const Home = () => {
       
       const selectedScene = realSceneIcons[index];
       console.log('选中实景:', selectedScene.name, '地图名称:', selectedScene.mapName);
+      
+      // 切换场景音乐
+      switchSceneMusic(selectedScene.name);
       
       // 检查RTC连接状态
       if (!rtcVideoService.getConnectionStatus()) {
@@ -1284,6 +1314,14 @@ const Home = () => {
       if (cachedLoginData.clothesList && cachedLoginData.clothesList.length > 0) {
         setClothesList(cachedLoginData.clothesList);
       }
+      
+      // 如果缓存中有默认场景名称，设置到状态中
+      if (cachedLoginData.defaultSceneName) {
+        setCurrentSceneName(cachedLoginData.defaultSceneName);
+        // 设置对应的音乐
+        const defaultBGM = getBGMBySceneName(cachedLoginData.defaultSceneName);
+        setMusicUrl(defaultBGM);
+      }
     } else {
       // 没有缓存，检查URL参数
       if (isValidCoCreationId(urlCoCreationId)) {
@@ -1586,7 +1624,8 @@ const Home = () => {
               if (typeof accountBalance === 'number') {
                 console.log('✅ 余额扣费请求成功333:', accountBalance);
                 // 余额乘以10取模5等于0时，弹窗提示
-                if ((accountBalance * 10) % 5 === 0) {
+                // if ((accountBalance * 10) % 5 === 0) {
+                if (accountBalance < 0.1) {
                   console.log('✅ 余额扣费请求成功444:', accountBalance);
                   setShowBalanceModal(true);
                 }
@@ -1671,7 +1710,8 @@ const Home = () => {
                 const accountBalance = (parsedData as any)?.data?.accountBalance;
                 if (typeof accountBalance === 'number') {
                   // 余额乘以10取模5等于0时，弹窗提示
-                  if ((accountBalance * 10) % 5 === 0) {
+                  // if ((accountBalance * 10) % 5 === 0) {
+                  if (accountBalance < 0.1) {
                     setShowBalanceModal(true);
                   }
                 }
@@ -1866,6 +1906,18 @@ const Home = () => {
         
         console.log('转换后的场景列表:', newRealSceneIcons);
         setRealSceneIcons(newRealSceneIcons);
+        
+        // 设置默认场景名称和音乐
+        const cachedLoginData = getLoginCache();
+        if (cachedLoginData && cachedLoginData.defaultSceneName) {
+          setCurrentSceneName(cachedLoginData.defaultSceneName);
+          switchSceneMusic(cachedLoginData.defaultSceneName);
+        } else if (newRealSceneIcons.length > 0) {
+          // 如果没有默认场景名称，使用第一个场景
+          const firstScene = newRealSceneIcons[0];
+          setCurrentSceneName(firstScene.name);
+          switchSceneMusic(firstScene.name);
+        }
       } else {
         console.log('场景列表为空或格式不正确，保持默认场景');
       }
