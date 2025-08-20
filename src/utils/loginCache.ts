@@ -9,6 +9,7 @@ export interface LoginCacheData {
   roomId?: string; // 房间ID，可选
   roomName?: string; // 房间名称，可选
   clothesList?: ClothesItem[]; // 服饰列表，可选
+  clothesDetails?: { [key: string]: any }; // 衣服详情缓存，可选
   scenesList?: { [key: string]: { name: string; code: string; bgm?: string } }; // 场景列表映射，可选
   defaultSceneName?: string; // 默认场景名称，可选
   timestamp: number; // 缓存时间戳
@@ -213,5 +214,43 @@ export const updateDefaultSceneNameInCache = (sceneName: string): void => {
     }
   } catch (error) {
     console.error('❌ 更新默认场景名称缓存失败:', error);
+  }
+}; 
+
+/**
+ * 更新缓存中的衣服详情
+ * @param clothesDetails 衣服详情映射
+ */
+export const updateClothesDetailsInCache = (clothesDetails: { [key: string]: any }): void => {
+  try {
+    const cachedData = getLoginCache();
+    if (cachedData) {
+      const updatedData = { ...cachedData, clothesDetails };
+      const cacheDurationStr = localStorage.getItem(CACHE_KEY + '_duration');
+      const cacheDuration = cacheDurationStr ? parseInt(cacheDurationStr) : DEFAULT_CACHE_DURATION;
+      
+      localStorage.setItem(CACHE_KEY, JSON.stringify(updatedData));
+      console.log('✅ 衣服详情已更新到缓存:', clothesDetails);
+    }
+  } catch (error) {
+    console.error('❌ 更新衣服详情缓存失败:', error);
+  }
+};
+
+/**
+ * 获取缓存中的衣服详情
+ * @param clotheId 衣服ID
+ * @returns 衣服详情，如果没有则返回null
+ */
+export const getClothesDetailFromCache = (clotheId: string): any | null => {
+  try {
+    const cachedData = getLoginCache();
+    if (cachedData?.clothesDetails && cachedData.clothesDetails[clotheId]) {
+      return cachedData.clothesDetails[clotheId];
+    }
+    return null;
+  } catch (error) {
+    console.error('❌ 从缓存获取衣服详情失败:', error);
+    return null;
   }
 }; 

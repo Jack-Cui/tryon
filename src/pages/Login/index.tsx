@@ -206,6 +206,23 @@ const Login = () => {
               accessToken: loginData.access_token,
             });
             console.log('✅ 房间信息初始化成功');
+            
+            // 预加载衣服详情到缓存
+            try {
+              console.log('🔄 开始预加载衣服详情到缓存...');
+              
+              // 异步预加载，不阻塞登录流程
+              import('../../services/api').then(({ roomAPI }) => {
+                if (loginData.access_token) {
+                  roomAPI.preloadClothesDetails(finalCoCreationId, loginData.access_token);
+                }
+              }).catch(error => {
+                console.error('❌ 预加载衣服详情失败:', error);
+              });
+            } catch (error) {
+              console.error('❌ 预加载衣服详情失败:', error);
+              // 不影响登录流程
+            }
           } catch (error) {
             console.error('❌ 房间信息初始化失败:', error);
             // 即使初始化失败，也允许用户继续，后续会使用完整流程

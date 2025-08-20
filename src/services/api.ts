@@ -13,7 +13,7 @@ import {
   JoinRoomResponse, 
   EnterStageInfo 
 } from '../types/api';
-import { getLoginCache, updateDefaultSceneNameInCache } from '../utils/loginCache';
+import { getLoginCache, updateDefaultSceneNameInCache, getClothesDetailFromCache, updateClothesDetailsInCache } from '../utils/loginCache';
 
 const Long = require('long');
 const crypto = require('crypto');
@@ -354,8 +354,42 @@ export const roomAPI = {
 
   // 构建进入舞台信息
   async buildEnterStageInfo(room_info: RoomInfoResponse, access_token: string): Promise<string> {
-    console.log('开始构建进入舞台信息');
+    console.log('🚀 开始构建进入舞台信息');
+    console.log('🔍 房间信息:', room_info);
+    console.log('🔍 access_token:', access_token ? '存在' : '不存在');
+    
     const room_info_data = room_info.data;
+    console.log('🔍 房间数据:', room_info_data);
+    console.log('🔍 clothId:', room_info_data.clothId);
+    console.log('🔍 userId:', room_info_data.userId);
+    console.log('🔍 scenarioId:', room_info_data.scenarioId);
+
+    // 安全检查：确保clothId存在
+    if (!room_info_data.clothId) {
+      console.warn('⚠️ 房间信息中没有clothId，使用空的服装列表');
+      const enter_stage_info: EnterStageInfo = {
+        AvatarId: 0,
+        UserId: String(room_info_data.userId || 0),
+        MapName: "Maps_jiaotang",
+        Garments: {
+          Garment1Id: "0",
+          Garment1Size: "1",
+          Garment2Id: "0",
+          Garment2Size: "1",
+          Garment3Id: "0",
+          Garment3Size: "1"
+        },
+        Animation: null,
+        Camera: true,
+        Voice: false,
+        isControl: true,
+        startTime: 0,
+        endTime: 0,
+        Size: 4
+      };
+      console.log('进入舞台信息（无服装）:', enter_stage_info);
+      return JSON.stringify(enter_stage_info);
+    }
 
     const clothe_ids = room_info_data.clothId.split(';');
     const garments: any = {};
@@ -366,28 +400,55 @@ export const roomAPI = {
     
     for (let i = 0; i < clothe_ids.length; i++) {
       const clothe_id = clothe_ids[i];
-      console.log(`处理衣服ID: ${clothe_id}`);
+      console.log(`👕 处理衣服ID [${i + 1}/${clothe_ids.length}]: ${clothe_id}`);
       
       if (!clothe_id || clothe_id === '' || clothe_id === '0') {
-        console.log(`跳过无效的衣服ID: ${clothe_id}`);
+        console.log(`⚠️ 跳过无效的衣服ID: ${clothe_id}`);
         continue;
       }
       
       // 判断 clothe_id 是否大于0
       const clotheIdNum = Long.fromString(clothe_id);
       if (clotheIdNum.toNumber() <= 0) {
-        console.log(`跳过无效的衣服ID: ${clothe_id}`);
+        console.log(`⚠️ 跳过无效的衣服ID: ${clothe_id}`);
         continue;
       }
+      
+      console.log(`✅ 衣服ID ${clothe_id} 验证通过，开始获取详情...`);
       
       try {
         // 获取衣服详情
         console.log(`获取衣服详情: ${clothe_id}`);
-        const clothe_detail_response = await this.getClotheDetail(clothe_id, access_token);
+        let clothe_detail_data = getClothesDetailFromCache(clothe_id);
         
-        if (clothe_detail_response.ok) {
-          const clothe_detail_data = JSON.parse(clothe_detail_response.data) as ClotheDetailResponse;
-          const clothe_detail = clothe_detail_data.data;
+        // 如果缓存中没有，尝试实时获取
+        if (!clothe_detail_data) {
+          console.log(`⚠️ 缓存中没有衣服详情: ${clothe_id}，尝试实时获取...`);
+          console.log(`🔍 当前缓存状态:`, getLoginCache()?.clothesDetails ? '有衣服详情缓存' : '无衣服详情缓存');
+          try {
+            const response = await this.getClotheDetail(clothe_id, access_token);
+            if (response.ok && response.data) {
+              const parsed_response = JSON.parse(response.data) as ClotheDetailResponse;
+              clothe_detail_data = parsed_response.data;
+              console.log(`✅ 实时获取衣服详情成功: ${clothe_id}`);
+              
+              // 更新缓存
+              const clothesDetails: { [key: string]: any } = {};
+              clothesDetails[clothe_id] = clothe_detail_data;
+              updateClothesDetailsInCache(clothesDetails);
+              console.log(`✅ 已更新衣服详情到缓存: ${clothe_id}`);
+            } else {
+              console.warn(`⚠️ 实时获取衣服详情失败: ${clothe_id}`);
+              continue;
+            }
+          } catch (apiError) {
+            console.error(`❌ 实时获取衣服详情出错: ${clothe_id}`, apiError);
+            continue;
+          }
+        }
+        
+        if (clothe_detail_data) {
+          const clothe_detail = clothe_detail_data;
           
           console.log(`衣服详情获取成功:`, {
             id: clothe_detail.id,
@@ -508,10 +569,14 @@ export const roomAPI = {
           }
           
         } else {
-          console.error(`获取衣服详情失败: ${clothe_id}`, clothe_detail_response);
+          console.warn(`⚠️ 缓存中没有衣服详情: ${clothe_id}，跳过处理`);
+          // 如果缓存中没有衣服详情，跳过这件衣服，继续处理下一件
+          continue;
         }
       } catch (error) {
         console.error(`获取衣服详情失败: ${clothe_id}`, error);
+        // 如果出错，跳过这件衣服，继续处理下一件
+        continue;
       }
     }
     
@@ -525,9 +590,9 @@ export const roomAPI = {
     const garment1Id = clothesItemInfoList.length >= 1 ? clothesItemInfoList[0].clothesId : Long.ZERO;
     const garment2Id = clothesItemInfoList.length >= 2 ? clothesItemInfoList[1].clothesId : Long.ZERO;
     const garment3Id = clothesItemInfoList.length >= 3 ? clothesItemInfoList[2].clothesId : Long.ZERO;
-    const garment1Size = 4; // 默认尺寸，实际应该从服务器获取
-    const garment2Size = garment2Id.gt(Long.ZERO) ? 4 : 1; // 默认尺寸，实际应该从服务器获取
-    const garment3Size = garment3Id.gt(Long.ZERO) ? 4 : 1; // 默认尺寸，实际应该从服务器获取
+    const garment1Size = "4"; // 默认尺寸，实际应该从服务器获取
+    const garment2Size = garment2Id.gt(Long.ZERO) ? "4" : "1"; // 默认尺寸，实际应该从服务器获取
+    const garment3Size = garment3Id.gt(Long.ZERO) ? "4" : "1"; // 默认尺寸，实际应该从服务器获取
 
     console.log('👕 构建的服装参数:', {
       garment1Id: garment1Id.toString(), 
@@ -588,9 +653,15 @@ export const roomAPI = {
     if (scene_name && login_cache) {
       updateDefaultSceneNameInCache(scene_name);
     }
+    
+    console.log('🔍 准备构建最终进入舞台信息...');
+    console.log('🔍 场景代码:', scene_code);
+    console.log('🔍 场景名称:', scene_name);
+    console.log('🔍 服装信息:', garments);
+    
     const enter_stage_info: EnterStageInfo = {
       AvatarId: 0,
-      UserId: room_info_data.userId,
+      UserId: String(room_info_data.userId || 0),
       // MapName: room_info_data.scenarioId,
       MapName: scene_code,
       Garments: garments,
@@ -603,8 +674,10 @@ export const roomAPI = {
       Size: 4
     };
 
-    console.log('进入舞台信息:', enter_stage_info);
-    return JSON.stringify(enter_stage_info);
+    console.log('✅ 进入舞台信息构建完成:', enter_stage_info);
+    const result = JSON.stringify(enter_stage_info);
+    console.log('✅ 返回的JSON字符串:', result);
+    return result;
   },
 
   // 解析房间信息响应
@@ -646,6 +719,113 @@ export const roomAPI = {
     } catch (error) {
       console.error('解析加入房间响应失败:', error);
       return null;
+    }
+  },
+
+  // 预加载衣服详情到缓存
+  async preloadClothesDetails(co_creation_id: number, access_token: string): Promise<void> {
+    console.log('🚀 开始预加载衣服详情到缓存');
+    console.log('🔍 co_creation_id:', co_creation_id);
+    console.log('🔍 access_token:', access_token ? '存在' : '不存在');
+    
+    if (!co_creation_id || !access_token) {
+      console.log('⚠️ 缺少必要参数，无法预加载衣服详情');
+      return;
+    }
+
+    try {
+      // 1. 通过 getSysRoomShare 获取房间信息
+      console.log('📋 步骤1: 获取房间信息...');
+      const roomResponse = await this.getSysRoomShare(co_creation_id, access_token);
+      
+      if (!roomResponse.ok || !roomResponse.data) {
+        console.warn('⚠️ 获取房间信息失败，无法预加载衣服详情');
+        return;
+      }
+      
+      const roomInfo = this.parseRoomInfoResponse(roomResponse);
+      if (!roomInfo || !roomInfo.data || !roomInfo.data.clothId) {
+        console.warn('⚠️ 房间信息中没有clothId，无法预加载衣服详情');
+        return;
+      }
+      
+      console.log('✅ 房间信息获取成功');
+      console.log('🔍 clothId:', roomInfo.data.clothId);
+      
+      // 2. 从 clothId 中提取衣服ID列表
+      const clothe_ids = roomInfo.data.clothId.split(';').filter(id => id && id !== '0');
+      console.log('📦 提取到的衣服ID列表:', clothe_ids);
+      
+      if (clothe_ids.length === 0) {
+        console.log('⚠️ 没有有效的衣服ID需要预加载');
+        return;
+      }
+      
+      // 3. 获取每件衣服的详情
+      const clothesDetails: { [key: string]: any } = {};
+      console.log(`📦 开始处理 ${clothe_ids.length} 件衣服...`);
+      
+      for (const clothe_id of clothe_ids) {
+        console.log(`📦 处理衣服ID: ${clothe_id}`);
+        try {
+          const response = await this.getClotheDetail(clothe_id, access_token);
+          if (response.ok && response.data) {
+            const clothe_detail_data = JSON.parse(response.data) as ClotheDetailResponse;
+            clothesDetails[clothe_id] = clothe_detail_data.data;
+            console.log(`✅ 预加载衣服详情成功: ${clothe_id}`, clothe_detail_data.data);
+            
+            // 4. 更新右侧顶部图片（如果这是第一件衣服）
+            if (Object.keys(clothesDetails).length === 1) {
+              console.log('🖼️ 准备更新右侧顶部图片，衣服数据:', clothe_detail_data.data);
+              this.updateTopRightClothesImage(clothe_detail_data.data);
+            }
+          } else {
+            console.warn(`⚠️ 预加载衣服详情失败: ${clothe_id}`, response);
+          }
+        } catch (error) {
+          console.error(`❌ 预加载衣服详情出错: ${clothe_id}`, error);
+        }
+      }
+      
+      // 5. 更新缓存
+      if (Object.keys(clothesDetails).length > 0) {
+        console.log(`📦 准备更新缓存，衣服详情数量: ${Object.keys(clothesDetails).length}`);
+        console.log(`📦 衣服详情列表:`, Object.keys(clothesDetails));
+        updateClothesDetailsInCache(clothesDetails);
+        console.log(`✅ 已预加载 ${Object.keys(clothesDetails).length} 件衣服的详情到缓存`);
+        
+        // 验证缓存是否更新成功
+        const updatedCache = getLoginCache();
+        console.log(`🔍 缓存更新验证:`, updatedCache?.clothesDetails ? '成功' : '失败');
+        if (updatedCache?.clothesDetails) {
+          console.log(`🔍 缓存中的衣服详情数量:`, Object.keys(updatedCache.clothesDetails).length);
+        }
+      } else {
+        console.log(`⚠️ 没有成功预加载的衣服详情，跳过缓存更新`);
+      }
+      
+    } catch (error) {
+      console.error('❌ 预加载衣服详情过程中出错:', error);
+    }
+  },
+
+  // 更新右侧顶部图片
+  updateTopRightClothesImage(clothesData: any): void {
+    console.log('🖼️ 准备更新右侧顶部图片:', clothesData);
+    
+    try {
+      // 创建自定义事件，通知UI组件更新顶部图片
+      const event = new CustomEvent('updateTopRightClothesImage', {
+        detail: {
+          clothesData: clothesData
+        }
+      });
+      
+      window.dispatchEvent(event);
+      console.log('📡 发送更新顶部图片事件:', clothesData);
+      
+    } catch (error) {
+      console.error('❌ 更新右侧顶部图片失败:', error);
     }
   }
 }; 

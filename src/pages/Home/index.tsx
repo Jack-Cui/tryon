@@ -109,6 +109,8 @@ const Home = () => {
   const [musicPlay, setMusicPlay] = useState(true);
   const [currentSceneName, setCurrentSceneName] = useState<string>('教堂'); // 当前场景名称
 
+  // 新增状态：右侧顶部图片
+  const [lastSelectedClothes, setLastSelectedClothes] = useState<ClothesItem | null>(null);
 
   // 获取当前视频流的video/canvas元素
   const getCurrentVideoElement = (): HTMLVideoElement | HTMLCanvasElement | null => {
@@ -751,14 +753,38 @@ const Home = () => {
 
   // 获取当前应该在顶部显示的服装
   const getCurrentDisplayClothes = (): any | null => {
+    console.log('🔍 getCurrentDisplayClothes 被调用');
+    console.log('🔍 lastSelectedClothes:', lastSelectedClothes);
+    console.log('🔍 isBrowsingClothes:', isBrowsingClothes);
+    console.log('🔍 selectedCategory:', selectedCategory);
+    console.log('🔍 selectedClothesIndex:', selectedClothesIndex);
+    
+    // 优先显示从房间信息获取的衣服
+    if (lastSelectedClothes) {
+      console.log('✅ 返回从房间信息获取的衣服:', lastSelectedClothes);
+      // 确保返回的衣服对象有正确的图片字段
+      const normalizedClothes = {
+        ...lastSelectedClothes,
+        clothesImageUrl: lastSelectedClothes.clothesImageUrl || lastSelectedClothes.image || '',
+        clothesName: lastSelectedClothes.clothesName || lastSelectedClothes.name || '',
+        classifyName: lastSelectedClothes.classifyName || lastSelectedClothes.type || ''
+      };
+      console.log('✅ 标准化后的衣服对象:', normalizedClothes);
+      return normalizedClothes;
+    }
+    
     // 如果正在浏览某个分类，显示选中的服装
     if (isBrowsingClothes && selectedCategory) {
       const categoryClothes = getClothesForCategory(selectedCategory);
-      return categoryClothes.length > selectedClothesIndex ? categoryClothes[selectedClothesIndex] : null;
+      const result = categoryClothes.length > selectedClothesIndex ? categoryClothes[selectedClothesIndex] : null;
+      console.log('✅ 返回分类中选中的衣服:', result);
+      return result;
     }
     
     // 否则显示第一个分类的第一个服装
-    return getFirstClothesOfFirstCategory();
+    const result = getFirstClothesOfFirstCategory();
+    console.log('✅ 返回第一个分类的第一个衣服:', result);
+    return result;
   };
 
   // 获取某个分类下的所有服装（从clothesItems中获取）
@@ -798,6 +824,9 @@ const Home = () => {
   const handleClothesClick = async (clothesItem: any, index: number) => {
     // 更新顶部显示的服装 - 使用在当前分类下的相对索引
     setSelectedClothesIndex(index);
+    
+    // 更新右侧顶部图片显示的衣服
+    setLastSelectedClothes(clothesItem);
     
     // 打印详细的衣服信息日志
     console.log('👕 选中服装详细信息:', {
@@ -1250,6 +1279,26 @@ const Home = () => {
     };
   }, []);
 
+  // 监听更新右侧顶部图片事件
+  useEffect(() => {
+    const handleUpdateTopRightClothesImage = (event: CustomEvent) => {
+      console.log('🖼️ 收到更新右侧顶部图片事件:', event.detail);
+      const { clothesData } = event.detail;
+      
+      if (clothesData) {
+        // 更新右侧顶部图片显示的衣服
+        setLastSelectedClothes(clothesData);
+        console.log('✅ 右侧顶部图片已更新为:', clothesData);
+      }
+    };
+
+    window.addEventListener('updateTopRightClothesImage', handleUpdateTopRightClothesImage as EventListener);
+
+    return () => {
+      window.removeEventListener('updateTopRightClothesImage', handleUpdateTopRightClothesImage as EventListener);
+    };
+  }, []);
+
   // 初始化登录参数
   const loginParamsInitializedRef = useRef(false);
   
@@ -1377,9 +1426,18 @@ const Home = () => {
         console.log('⚠️ tryonService 中没有服饰列表，等待服务器数据');
         // 不清空列表，保持从缓存读取的数据
       }
-    } else {
-      // console.log('✅ 服饰列表已存在，跳过从 tryonService 获取');
-      // console.log('服饰分类数量:', clothesList.length);
+    }
+
+    // 预加载衣服详情到缓存
+    if (loginParams?.token) {
+      console.log('🔄 开始预加载衣服详情到缓存');
+      
+      // 异步预加载，不阻塞UI
+      import('../../services/api').then(({ roomAPI }) => {
+        roomAPI.preloadClothesDetails(loginParams.coCreationId, loginParams.token);
+      }).catch(error => {
+        console.error('❌ 预加载衣服详情失败:', error);
+      });
     }
 
     // 获取场景列表（只有当前状态为空时才尝试从服务获取）
@@ -2518,10 +2576,15 @@ const Home = () => {
                          const categoryName = displayClothes.classifyName || selectedCategory || '';
                          target.src = getCategoryIcon(categoryName);
                        }
-                       console.log('顶部服装图片加载失败，使用分类图标:', getCurrentDisplayClothes()?.clothesImageUrl);
+                       console.log('❌ 顶部服装图片加载失败，使用分类图标');
+                       console.log('❌ 失败的图片URL:', getCurrentDisplayClothes()?.clothesImageUrl);
+                       console.log('❌ 衣服对象:', getCurrentDisplayClothes());
+                       console.log('❌ 分类名称:', displayClothes?.classifyName || selectedCategory);
                      }}
                      onLoad={() => {
-                       console.log('顶部服装图片加载成功:', getCurrentDisplayClothes()?.clothesImageUrl);
+                       console.log('✅ 顶部服装图片加载成功');
+                       console.log('✅ 图片URL:', getCurrentDisplayClothes()?.clothesImageUrl);
+                       console.log('✅ 衣服对象:', getCurrentDisplayClothes());
                      }}
                    />
                  </div>
