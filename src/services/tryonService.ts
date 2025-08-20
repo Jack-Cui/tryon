@@ -94,13 +94,17 @@ export class TryonService {
     try {
       console.log('🏠 开始初始化房间信息...');
       
-      // 1. 获取房间信息
+      // 1. 获取房间信息（但不构建登台信息）
       console.log('步骤1: 获取房间信息');
-      await this.getRoomInfo();
+      await this.getRoomInfoWithoutStageInfo();
       
       // 1.5. 获取场景列表
       console.log('步骤1.5: 获取场景列表');
       await this.getSceneList();
+      
+      // 1.6. 构建登台信息（在获取场景列表之后）
+      console.log('步骤1.6: 构建登台信息');
+      await this.buildStageInfo();
       
       // 2. 创建房间
       console.log('步骤2: 创建房间');
@@ -137,7 +141,7 @@ export class TryonService {
     // 确保RTC配置中的房间ID正确设置
     if (this.config.rtcConfig) {
       this.config.rtcConfig.roomId = this.roomPrimaryId.toString();
-      console.log('🔄 已更新RTC配置中的房间ID:', this.roomPrimaryId);
+      console.log('🔄 已更新RTC配置中的房间ID:', this.roomId);
     }
     
     try {
@@ -178,13 +182,17 @@ export class TryonService {
     try {
       console.log('开始完整试穿流程...');
       
-      // 1. 获取房间信息
+      // 1. 获取房间信息（但不构建登台信息）
       console.log('步骤1: 获取房间信息');
-      await this.getRoomInfo();
+      await this.getRoomInfoWithoutStageInfo();
       
       // 1.5. 获取场景列表
       console.log('步骤1.5: 获取场景列表');
       await this.getSceneList();
+      
+      // 1.6. 构建登台信息（在获取场景列表之后）
+      console.log('步骤1.6: 构建登台信息');
+      await this.buildStageInfo();
       
       // 2. 创建房间
       console.log('步骤2: 创建房间');
@@ -216,16 +224,16 @@ export class TryonService {
     }
   }
 
-  // 获取房间信息
-  private async getRoomInfo(): Promise<any> {
+  // 获取房间信息（不构建登台信息）
+  private async getRoomInfoWithoutStageInfo(): Promise<any> {
     if (!this.config || !this.accessToken) {
       throw new Error('未配置参数或未提供accessToken');
     }
-    
+
     const response = await roomAPI.getSysRoomShare(this.config.coCreationId, this.accessToken);
     console.log('房间信息响应:', response);
     console.log('房间信息响应数据:', response.data);
-    
+
     if (!response.ok) {
       // 检查响应数据中是否包含code 424
       try {
@@ -238,40 +246,57 @@ export class TryonService {
       } catch (parseError) {
         console.log('解析响应数据失败:', parseError);
       }
-      
+
       throw new Error(`获取房间信息失败: HTTP ${response.status}`);
     }
-    
+
     const roomInfo = roomAPI.parseRoomInfoResponse(response);
     console.log('解析后的房间信息:', roomInfo);
-    
+
     if (!roomInfo) {
       throw new Error('解析房间信息失败：响应数据为空');
     }
-    
+
     if (!roomInfo.data) {
       throw new Error('解析房间信息失败：响应数据中没有data字段');
     }
-    
+
     if (!roomInfo.data.roomId) {
       throw new Error('解析房间信息失败：响应数据中没有roomId字段');
     }
-    
+
     this.roomId = roomInfo.data.roomId;
     console.log('房间ID:', this.roomId);
-    
+
     // 更新RTC配置中的房间ID
     if (this.config.rtcConfig) {
       this.config.rtcConfig.roomId = this.roomId;
       console.log('🔄 已更新RTC配置中的房间ID:', this.roomId);
     }
-    
+
+    return roomInfo;
+  }
+
+  // 构建登台信息（在获取场景列表之后）
+  private async buildStageInfo(): Promise<void> {
+    if (!this.config || !this.accessToken) {
+      throw new Error('未配置参数或未提供accessToken');
+    }
+
+    // 重新获取房间信息用于构建登台信息
+    const response = await roomAPI.getSysRoomShare(this.config.coCreationId, this.accessToken);
+    if (!response.ok) {
+      throw new Error(`获取房间信息失败: HTTP ${response.status}`);
+    }
+
+    const roomInfo = roomAPI.parseRoomInfoResponse(response);
+    if (!roomInfo) {
+      throw new Error('解析房间信息失败');
+    }
+
     // 构建登台信息
     this.enterStageInfo = await roomAPI.buildEnterStageInfo(roomInfo, this.accessToken);
-    console.log('房间信息获取成功，roomId:', this.roomId);
-    console.log('登台信息:', this.enterStageInfo);
-    
-    return roomInfo;
+    console.log('登台信息构建成功:', this.enterStageInfo);
   }
 
   // 获取场景列表
