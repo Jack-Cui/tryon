@@ -1,5 +1,7 @@
 import React from 'react';
 import './DownloadAppModal.css';
+import wx from 'weixin-js-sdk'; 
+// 如果需要使用微信JS-SDK，可以引入这个库
 
 interface DownloadAppModalProps {
   isOpen: boolean;
@@ -20,18 +22,63 @@ const DownloadAppModal: React.FC<DownloadAppModalProps> = ({
 }) => {
   if (!isOpen) return null;
 
+  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const isAndroid = /Android/i.test(navigator.userAgent);  
+  const isWeChat = /MicroMessenger/i.test(navigator.userAgent);
+
   // 唤起APP的函数
   const handleDownloadApp = () => {
     try {
-      // 尝试唤起APP
-      const appUrl = 'airverse://message?id=xxxxx';
-      window.location.href = appUrl;
       
-      // 如果唤起失败，延迟后跳转到应用商店
-      setTimeout(() => {
-        // 这里可以添加应用商店链接
-        console.log('APP唤起失败，可以跳转到应用商店');
-      }, 2000);
+      if (isIOS) {
+        // iOS设备，使用自定义协议唤起APP
+        alert('iOS版本APP后续开放,敬请期待...');
+        return;
+      }
+
+      if (isAndroid){
+        if(isWeChat){
+
+          // wx.config({
+          //   debug: true, // 开启调试模式,调用的所有api的返回值会在客户端alert出来，若要查看传入的参数，可以在pc端打开，参数信息会通过log打出，仅在pc端时才会打印
+          //   appId: '', // 必填，公众号的唯一标识
+          //   timestamp: , // 必填，生成签名的时间戳
+          //   nonceStr: '', // 必填，生成签名的随机串
+          //   signature: '',// 必填，签名
+          //   jsApiList: [], // 必填，需要使用的JS接口列表
+          //   openTagList: [
+          //     'wx-open-launch-app'
+          //   ] // 可选，需要使用的开放标签列表，例如['wx-open-launch-app']
+          // });
+        }else{
+          // Android设备，使用自定义协议唤起APP
+          window.location.href = "airverse://message?id=2";
+          console.log('APP唤起xxxx');   
+          
+          
+        }
+
+
+        // 如果唤起失败，延迟后跳转到应用商店
+        setTimeout(() => {
+          if (!document.hidden) {
+          // 这里可以添加应用商店链接
+          window.location.href = 'https://play.google.com/store/apps/details?id=com.tencent.mobileqq'; // 替换为实际的应用商店链接
+          window.location.href = 'https://play.google.com/store/apps/details?id=com.tencent.mobileqq'; // 替换为实际的应用商店链接
+          alert('APP唤起失败，可以跳转到应用商店');
+          console.log('APP唤起失败，可以跳转到应用商店');
+          }
+        }, 2000);
+
+      }
+
+      // // 尝试唤起APP
+      // const appUrl = 'airverse://message?id=xxxxx';
+      // window.location.href = appUrl;
+      
+
+
+
     } catch (error) {
       console.error('唤起APP失败:', error);
     }
