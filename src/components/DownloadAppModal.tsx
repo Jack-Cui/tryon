@@ -36,6 +36,47 @@ const DownloadAppModal: React.FC<DownloadAppModalProps> = ({
         return;
       }
 
+      var appId= 'appidwxb9f44b8faeead9f7'; // 你的公众号APPID
+      var secret = 'a5c34dba7eb0115b064bbfd84d9ac604'; // 你的公众号密钥
+      var access_token = ''; // 这里需要获取到有效的access_token
+      var jsapi_ticket = ''; // 这里需要获取到有效的jsapi_ticket
+      var nonceStr = Math.random().toString(36).substr(2, 15);
+      var timestamp = Math.floor(Date.now() / 1000).toString();
+      var url = window.location.href.split('#')[0]; // 获取当前页面的URL
+      var signature = ''; // 这里需要根据实际情况生成签名
+
+      const at_fetchData = async (appId:string, secret: string) => {
+        try {
+          const at_response = await fetch('https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${query}&secret=${secret}');
+          const at_data = await at_response.json();
+          access_token = at_data.access_token;
+          console.log('Access Token:', access_token);
+        } catch (error) {
+          console.error('API调用失败:', error);
+        }
+      };
+      at_fetchData(appId, secret);
+
+      const jt_fetchData = async (access_token: string) => {
+        try {
+          const jt_response = await fetch(`https://api.weixin.qq.com/cgi-bin/ticket/getticket?type=jsapi&access_token=${access_token}`);
+          const jt_data = await jt_response.json();
+          jsapi_ticket = jt_data.ticket;
+          console.log('JSAPI Ticket:', jsapi_ticket);
+        } catch (error) {
+          console.error('API调用失败:', error);
+        }
+      };
+      jt_fetchData(access_token);
+       
+      // 生成签名
+      const generateSignature = (nonceStr: string, timestamp: string, url: string, jsapi_ticket: string) => {
+        const stringToSign = `jsapi_ticket=${jsapi_ticket}&noncestr=${nonceStr}&timestamp=${timestamp}&url=${url}`;
+        const crypto = require('crypto');
+        return crypto.createHash('sha1').update(stringToSign).digest('hex');
+      };
+      signature = generateSignature(nonceStr, timestamp, url, jsapi_ticket);  
+
       if (isAndroid){
         if(isWeChat){
 
