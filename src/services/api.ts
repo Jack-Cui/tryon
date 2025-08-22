@@ -1,7 +1,7 @@
 import { API_CONFIG, API_ENDPOINTS } from '../config/api';
 import { v4 as uuidv4 } from 'uuid';
 import JSONbig from 'json-bigint';
-
+import wx from 'weixin-js-sdk'; 
 
 import { 
   ApiResponse, 
@@ -144,6 +144,41 @@ export const authAPI = {
     console.log('登录请求端点:', endpoint);
     return await apiService.post(endpoint, undefined, API_CONFIG.LOGIN_HEADERS);
   },
+
+  async getWxSignatureData(): Promise<ApiResponse>  {
+    
+    const getJsapiSignParamers = (name)=>{
+      let params = new URLSearchParams(window.location.search);
+      return params.get(name)
+    };
+
+    const url = window.location.href.split('#')[0];
+    const res = await getJsapiSignParamers(url);
+    const { appId, signature, timestamp, nonceStr } = res.data;
+    
+    wx.config({
+        debug: false,
+        appId: appId,
+        timestamp: timestamp,
+        nonceStr: nonceStr,
+        signature: signature,
+        jsApiList: ['showOptionMenu'], // 必填，故使用一个非实际使用的api用于填充
+        openTagList: ['wx-open-launch-app'], // 可选，需要使用的开放标签列表
+      });
+
+    wx.ready(() => {
+        console.info('wx sdk ready');
+        console.info('调用接口初始化wx sdk 成功');
+        this.initWxSDKStatus = 'success';
+      });
+
+    wx.error(res => {
+        console.error('调用接口初始化wx sdk 失败', res);
+        this.initWxSDKStatus = 'fail';
+      });
+      return wx.config;
+  },
+
 
   // 解析登录响应
   parseLoginResponse(response: ApiResponse): LoginResponse | null {
