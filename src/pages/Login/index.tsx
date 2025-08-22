@@ -102,7 +102,7 @@ const Login = () => {
         }
         
         // 获取验证码成功，开始倒计时
-        setCountdown(300);
+        setCountdown(60);
         setIsCountingDown(true);
         console.log('验证码发送成功');
         
@@ -122,9 +122,10 @@ const Login = () => {
   };
 
   const formatTime = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+    // const minutes = Math.floor(seconds / 60);
+    // const remainingSeconds = seconds % 60;
+    // return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+    return `${seconds.toString().padStart(2, '0')}`;
   };
 
   // 显示toast提示
