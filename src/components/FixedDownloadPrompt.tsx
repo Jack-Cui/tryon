@@ -221,6 +221,7 @@ const FixedDownloadPrompt: React.FC = () => {
           alert('isAndroid:'+isAndroid+';isWeChat:'+isWeChat);
           if (isAndroid){
             if(isWeChat){
+              alert('timestamp:'+timestamp+';nonceStr:'+nonceStr+';url:'+url+';jsapi_ticket:'+jsapi_ticket+';signature:'+signature);
               wx.config({
                 debug: true, // 开启调试模式,调用的所有api的返回值会在客户端alert出来，若要查看传入的参数，可以在pc端打开，参数信息会通过log打出，仅在pc端时才会打印
                 appId: appId, // 必填，公众号的唯一标识
@@ -232,7 +233,7 @@ const FixedDownloadPrompt: React.FC = () => {
                   'wx-open-launch-app'
                 ] // 可选，需要使用的开放标签列表，例如['wx-open-launch-app']
               });
-              alert('timestamp:'+timestamp+';nonceStr:'+nonceStr+';url:'+url+';jsapi_ticket:'+jsapi_ticket+';signature:'+signature);
+              
             }else{
               // Android设备，使用自定义协议唤起APP
               window.location.href = "airverse://message?id=2";
