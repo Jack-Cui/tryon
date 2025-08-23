@@ -17,7 +17,7 @@ const DownloadAppModal: React.FC<DownloadAppModalProps> = ({
   onClose,
   title = "airU APP",
   description = "您的私人试衣间,超多品牌等你来...",
-  buttonText = "立即下载",
+  buttonText = "立即下载11",
   showCloseButton = true
 }) => {
   if (!isOpen) return null;
@@ -25,7 +25,7 @@ const DownloadAppModal: React.FC<DownloadAppModalProps> = ({
   const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
   const isAndroid = /Android/i.test(navigator.userAgent);  
   const isWeChat = /MicroMessenger/i.test(navigator.userAgent);
-
+  alert('1111');
   // 唤起APP的函数
   const handleDownloadApp = () => {
     try {
@@ -36,12 +36,14 @@ const DownloadAppModal: React.FC<DownloadAppModalProps> = ({
         return;
       }
 
+
       var appId= 'appidwxb9f44b8faeead9f7'; // 你的公众号APPID
       var secret = 'a5c34dba7eb0115b064bbfd84d9ac604'; // 你的公众号密钥
       var access_token = ''; // 这里需要获取到有效的access_token
       var jsapi_ticket = ''; // 这里需要获取到有效的jsapi_ticket
       var nonceStr = Math.random().toString(36).substr(2, 15);
-      var timestamp = Math.floor(Date.now() / 1000).toString();
+      var timestamp = Math.floor(Date.now() / 1000);
+      var strtimestamp = timestamp.toString();
       var url = window.location.href.split('#')[0]; // 获取当前页面的URL
       var signature = ''; // 这里需要根据实际情况生成签名
 
@@ -75,22 +77,27 @@ const DownloadAppModal: React.FC<DownloadAppModalProps> = ({
         const crypto = require('crypto');
         return crypto.createHash('sha1').update(stringToSign).digest('hex');
       };
-      signature = generateSignature(nonceStr, timestamp, url, jsapi_ticket);  
+      signature = generateSignature(nonceStr, strtimestamp, url, jsapi_ticket);  
+      console.log('signature:', signature);
+
 
       if (isAndroid){
         if(isWeChat){
 
-          // wx.config({
-          //   debug: true, // 开启调试模式,调用的所有api的返回值会在客户端alert出来，若要查看传入的参数，可以在pc端打开，参数信息会通过log打出，仅在pc端时才会打印
-          //   appId: '', // 必填，公众号的唯一标识
-          //   timestamp: , // 必填，生成签名的时间戳
-          //   nonceStr: '', // 必填，生成签名的随机串
-          //   signature: '',// 必填，签名
-          //   jsApiList: [], // 必填，需要使用的JS接口列表
-          //   openTagList: [
-          //     'wx-open-launch-app'
-          //   ] // 可选，需要使用的开放标签列表，例如['wx-open-launch-app']
-          // });
+          wx.config({
+            debug: true, // 开启调试模式,调用的所有api的返回值会在客户端alert出来，若要查看传入的参数，可以在pc端打开，参数信息会通过log打出，仅在pc端时才会打印
+            appId: appId, // 必填，公众号的唯一标识
+            timestamp: timestamp, // 必填，生成签名的时间戳
+            nonceStr: nonceStr, // 必填，生成签名的随机串
+            signature: signature,// 必填，签名
+            jsApiList: [], // 必填，需要使用的JS接口列表
+            openTagList: [
+              'wx-open-launch-app'
+            ] // 可选，需要使用的开放标签列表，例如['wx-open-launch-app']
+          });
+
+          alert('timestamp:'+timestamp+';nonceStr:'+nonceStr+';url:'+url+';jsapi_ticket:'+jsapi_ticket+';signature:'+signature);
+
         }else{
           // Android设备，使用自定义协议唤起APP
           window.location.href = "airverse://message?id=2";
