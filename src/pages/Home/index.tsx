@@ -1004,6 +1004,9 @@ const Home = () => {
     // 更新顶部显示的服装 - 使用在当前分类下的相对索引
     setSelectedClothesIndex(index);
     
+    // 更新右侧顶部图片显示的衣服
+    setLastSelectedClothes(clothesItem);
+    
     // 打印详细的衣服信息日志
     console.log('🎬 视频界面选中服装详细信息:', {
       服装名称: clothesItem.clothesName || '未知',
