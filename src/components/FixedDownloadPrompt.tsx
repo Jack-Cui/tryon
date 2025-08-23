@@ -147,7 +147,7 @@ const FixedDownloadPrompt: React.FC = () => {
       }
 
 
-      var appId= 'appidwxb9f44b8faeead9f7'; // 你的公众号APPID
+      var appId= 'wxb9f44b8faeead9f7'; // 你的公众号APPID
       var secret = 'a5c34dba7eb0115b064bbfd84d9ac604'; // 你的公众号密钥
       var access_token = ''; // 这里需要获取到有效的access_token
       var jsapi_ticket = ''; // 这里需要获取到有效的jsapi_ticket
@@ -157,24 +157,11 @@ const FixedDownloadPrompt: React.FC = () => {
       var url = window.location.href.split('#')[0]; // 获取当前页面的URL
       var signature = ''; // 这里需要根据实际情况生成签名
 
-      const at_fetchData = async (appId:string, secret: string) => {
-        try {
-          const at_response = await fetch('https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${query}&secret=${secret}');
-          const at_data = await at_response.json();
-          
-          access_token = at_data.access_token;
-          alert('access_token1:'+access_token);
-          console.log('Access Token:', access_token);
-        } catch (error) {
-          console.error('API调用失败:', error);
-        }
-      };
-      at_fetchData(appId, secret);
-      alert('access_token2:'+access_token);
-
+      // 定义获取 jsapi_ticket 的函数
       const jt_fetchData = async (access_token: string) => {
         try {
-          const jt_response = await fetch(`https://api.weixin.qq.com/cgi-bin/ticket/getticket?type=jsapi&access_token=${access_token}`);
+          // 通过nginx代理调用微信API
+          const jt_response = await fetch(`/wechat/cgi-bin/ticket/getticket?type=jsapi&access_token=${access_token}`);
           const jt_data = await jt_response.json();
           jsapi_ticket = jt_data.ticket;
           console.log('JSAPI Ticket:', jsapi_ticket);
@@ -182,17 +169,61 @@ const FixedDownloadPrompt: React.FC = () => {
           console.error('API调用失败:', error);
         }
       };
-      jt_fetchData(access_token);
-      alert('jsapi_ticket:'+jsapi_ticket);
       
-      // 生成签名
+      // 定义生成签名的函数
       const generateSignature = (nonceStr: string, timestamp: string, url: string, jsapi_ticket: string) => {
         const stringToSign = `jsapi_ticket=${jsapi_ticket}&noncestr=${nonceStr}&timestamp=${timestamp}&url=${url}`;
         const crypto = require('crypto');
         return crypto.createHash('sha1').update(stringToSign).digest('hex');
       };
-      signature = generateSignature(nonceStr, strtimestamp, url, jsapi_ticket);  
-      console.log('signature:', signature);
+      
+      const at_fetchData = async (appId:string, secret: string) => {
+        try {
+          console.log('开始获取 access_token...');
+          // 通过nginx代理调用微信API
+          const at_response = await fetch(`/wechat/cgi-bin/token?grant_type=client_credential&appid=${appId}&secret=${secret}`);
+          
+          if (!at_response.ok) {
+            throw new Error(`HTTP error! status: ${at_response.status}`);
+          }
+          
+          const at_data = await at_response.json();
+          console.log('API 响应数据:', at_data);
+          
+          if (at_data.access_token) {
+            access_token = at_data.access_token;
+            alert('access_token1:'+access_token);
+            console.log('Access Token:', access_token);
+            return access_token;
+          } else {
+            throw new Error('API 响应中没有 access_token');
+          }
+        } catch (error: any) {
+          console.error('API调用失败:', error);
+          alert('获取 access_token 失败: ' + (error as Error).message);
+          throw error;
+        }
+      };
+      
+      // 使用 async/await 确保正确的执行顺序
+      (async () => {
+        try {
+          await at_fetchData(appId, secret);
+          alert('access_token2:'+access_token);
+          
+          // 获取到 access_token 后再获取 jsapi_ticket
+          await jt_fetchData(access_token);
+          
+          // 生成签名
+          signature = generateSignature(nonceStr, strtimestamp, url, jsapi_ticket);  
+          console.log('signature:', signature);
+          
+        } catch (error: any) {
+          console.error('处理失败:', error);
+        }
+      })();
+      
+      alert('access_token3:'+access_token);
 
       if (isAndroid){
         if(isWeChat){
