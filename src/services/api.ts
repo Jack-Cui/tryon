@@ -1,7 +1,7 @@
 import { API_CONFIG, API_ENDPOINTS } from '../config/api';
 import { v4 as uuidv4 } from 'uuid';
 import JSONbig from 'json-bigint';
-
+import wx from 'weixin-js-sdk'; 
 
 import { 
   ApiResponse, 
@@ -11,7 +11,7 @@ import {
   ClotheDetailResponse,
   CreateRoomResponse, 
   JoinRoomResponse, 
-  EnterStageInfo 
+  EnterStageInfo
 } from '../types/api';
 import { getLoginCache, updateDefaultSceneNameInCache, getClothesDetailFromCache, updateClothesDetailsInCache } from '../utils/loginCache';
 
