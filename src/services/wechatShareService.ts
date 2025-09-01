@@ -344,8 +344,8 @@ export class WechatShareService {
   private showNonWechatTip(): void {
     const event = new CustomEvent('wechatShareReady', {
       detail: {
-        message: '请在微信中打开此页面进行分享',
-        type: 'non-wechat'
+        message: '链接已复制到剪贴板！',
+        type: 'success'
       }
     });
     window.dispatchEvent(event);
