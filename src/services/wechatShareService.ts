@@ -124,12 +124,16 @@ export class WechatShareService {
 
           window.wx.error((res: any) => {
             console.error('❌ 微信SDK配置失败:', res);
-            reject(new Error(`微信SDK配置失败: ${res.errMsg}`));
+            // 不抛出错误，而是显示手动分享提示
+            this.showManualShareTip();
+            resolve(); // 继续执行，不阻塞
           });
         })
         .catch(error => {
           console.error('❌ 获取微信签名失败:', error);
-          reject(error);
+          // 不抛出错误，而是显示手动分享提示
+          this.showManualShareTip();
+          resolve(); // 继续执行，不阻塞
         });
     });
   }
@@ -172,8 +176,8 @@ export class WechatShareService {
     console.log('🔑 获取微信签名（模拟）...');
     console.log('  - url:', url);
     
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
+    // 在开发环境或没有真实签名时，使用模拟签名
+    // 注意：这在实际生产环境中需要真实的微信签名
     return {
       timestamp: Math.floor(Date.now() / 1000),
       nonceStr: 'wechat_share_' + Math.random().toString(36).substr(2, 9),
@@ -184,19 +188,20 @@ export class WechatShareService {
   // 分享给好友
   async shareToFriend(shareData?: Partial<WechatShareData>): Promise<void> {
     if (!this._ready || !window.wx) {
-      throw new Error('微信SDK未准备好');
+      console.warn('⚠️ 微信SDK未准备好，跳过分享配置');
+      return;
     }
 
     const data = {
       title: shareData?.title || this.config?.title || 'PADA2024秀款礼服系列',
       desc: shareData?.desc || this.config?.desc || '快来体验最新的AI试穿功能！',
-      link: shareData?.link || this.config?.link || window.location.href,
+      link: shareData?.link || this.config?.link || 'https://dev-h5.ai1010.cn/home',
       imgUrl: shareData?.imgUrl || this.config?.imgUrl || 'https://example.com/share-image.jpg'
     };
 
     console.log('📤 分享给好友:', data);
 
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       // 尝试使用新版分享接口
       if (window.wx.updateAppMessageShareData) {
         window.wx.updateAppMessageShareData({
@@ -211,18 +216,18 @@ export class WechatShareService {
           fail: (res: any) => {
             console.warn('⚠️ 新版分享接口失败，尝试旧版接口:', res);
             // 如果新版失败，尝试旧版接口
-            this.tryLegacyShareToFriend(data, resolve, reject);
+            this.tryLegacyShareToFriend(data, resolve);
           }
         });
       } else {
         // 直接使用旧版接口
-        this.tryLegacyShareToFriend(data, resolve, reject);
+        this.tryLegacyShareToFriend(data, resolve);
       }
     });
   }
 
   // 尝试旧版分享给好友接口
-  private tryLegacyShareToFriend(data: any, resolve: () => void, reject: (error: Error) => void): void {
+  private tryLegacyShareToFriend(data: any, resolve: () => void): void {
     if (window.wx.onMenuShareAppMessage) {
       window.wx.onMenuShareAppMessage({
         title: data.title,
@@ -234,8 +239,8 @@ export class WechatShareService {
           resolve();
         },
         fail: (res: any) => {
-          console.error('❌ 旧版分享给好友失败:', res);
-          reject(new Error(`分享给好友失败: ${res.errMsg || '未知错误'}`));
+          console.warn('⚠️ 旧版分享给好友失败:', res);
+          resolve(); // 不抛出错误，让用户手动分享
         }
       });
     } else {
@@ -247,18 +252,19 @@ export class WechatShareService {
   // 分享到朋友圈
   async shareToTimeline(shareData?: Partial<WechatShareData>): Promise<void> {
     if (!this._ready || !window.wx) {
-      throw new Error('微信SDK未准备好');
+      console.warn('⚠️ 微信SDK未准备好，跳过分享配置');
+      return;
     }
 
     const data = {
       title: shareData?.title || this.config?.title || 'PADA2024秀款礼服系列',
-      link: shareData?.link || this.config?.link || window.location.href,
+      link: shareData?.link || this.config?.link || 'https://dev-h5.ai1010.cn/home',
       imgUrl: shareData?.imgUrl || this.config?.imgUrl || 'https://example.com/share-image.jpg'
     };
 
     console.log('📤 分享到朋友圈:', data);
 
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       // 尝试使用新版分享接口
       if (window.wx.updateTimelineShareData) {
         window.wx.updateTimelineShareData({
@@ -272,18 +278,18 @@ export class WechatShareService {
           fail: (res: any) => {
             console.warn('⚠️ 新版朋友圈分享接口失败，尝试旧版接口:', res);
             // 如果新版失败，尝试旧版接口
-            this.tryLegacyShareToTimeline(data, resolve, reject);
+            this.tryLegacyShareToTimeline(data, resolve);
           }
         });
       } else {
         // 直接使用旧版接口
-        this.tryLegacyShareToTimeline(data, resolve, reject);
+        this.tryLegacyShareToTimeline(data, resolve);
       }
     });
   }
 
   // 尝试旧版分享到朋友圈接口
-  private tryLegacyShareToTimeline(data: any, resolve: () => void, reject: (error: Error) => void): void {
+  private tryLegacyShareToTimeline(data: any, resolve: () => void): void {
     if (window.wx.onMenuShareTimeline) {
       window.wx.onMenuShareTimeline({
         title: data.title,
@@ -294,8 +300,8 @@ export class WechatShareService {
           resolve();
         },
         fail: (res: any) => {
-          console.error('❌ 旧版分享到朋友圈失败:', res);
-          reject(new Error(`分享到朋友圈失败: ${res.errMsg || '未知错误'}`));
+          console.warn('⚠️ 旧版分享到朋友圈失败:', res);
+          resolve(); // 不抛出错误，让用户手动分享
         }
       });
     } else {
@@ -317,6 +323,24 @@ export class WechatShareService {
         return;
       }
       
+      // 如果微信SDK未初始化，先初始化
+      if (!this._initialized) {
+        console.log('🔧 微信SDK未初始化，开始初始化...');
+        try {
+          await this.initialize({
+            appId: this.config?.appId || 'wxb9f44b8faeead9f7',
+            title: shareData?.title || this.config?.title || '快来和我一起共创动画',
+            desc: shareData?.desc || this.config?.desc || '元相-3D试衣间 - AI试穿体验',
+            link: shareData?.link || this.config?.link || 'https://dev-h5.ai1010.cn/home',
+            imgUrl: shareData?.imgUrl || this.config?.imgUrl || 'https://admins3.tos-cn-shanghai.volces.com/af208b78e74547e49e86e92df252bf66.png'
+          });
+        } catch (initError) {
+          console.warn('⚠️ 微信SDK初始化失败，显示手动分享提示:', initError);
+          this.showManualShareTip();
+          return;
+        }
+      }
+      
       // 尝试分享，但不抛出错误
       try {
         await Promise.all([
@@ -336,7 +360,7 @@ export class WechatShareService {
     } catch (error) {
       console.error('❌ 微信分享失败:', error);
       // 不抛出错误，而是显示友好的提示
-      this.showErrorTip(error);
+      this.showManualShareTip();
     }
   }
 

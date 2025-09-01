@@ -1005,14 +1005,19 @@ const Home = () => {
         }
         
         // 执行微信分享
-        await wechatShareService.share({
-          title: `${roomName} - AI试穿体验`,
-          desc: '快来体验最新的AI试穿功能，感受科技与时尚的完美结合！',
-          link: window.location.href,
-          imgUrl: shareCoverImage // 使用分享封面图片
-        });
-        
-        console.log('✅ 微信分享配置完成');
+        try {
+          await wechatShareService.share({
+            title: WECHAT_CONFIG.DEFAULT_SHARE.title,
+            desc: WECHAT_CONFIG.DEFAULT_SHARE.desc,
+            link: WECHAT_CONFIG.DEFAULT_SHARE.link,
+            imgUrl: WECHAT_CONFIG.DEFAULT_SHARE.imgUrl
+          });
+          
+          console.log('✅ 微信分享配置完成');
+        } catch (error) {
+          console.warn('⚠️ 微信分享配置失败，显示手动分享提示:', error);
+          // 不抛出错误，让微信分享服务显示友好的提示
+        }
         
       } else {
         // 手机浏览器：复制链接并提示
@@ -3603,7 +3608,71 @@ const Home = () => {
               )}
             </div>
 
-            {/* 微信分享图标 - 已移除，现在用作录制按钮 */}
+            {/* 微信分享图标 */}
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '8px',
+              marginTop: '20px'
+            }}>
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '8px',
+                cursor: 'pointer',
+                transition: 'transform 0.2s ease'
+              }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleWechatShare();
+                }}
+                onTouchStart={(e) => {
+                  // 只处理单指触摸，双指触摸让给缩放处理
+                  if (e.touches.length === 1) {
+                    e.stopPropagation();
+                  }
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'scale(1.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)';
+                }}
+              >
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '50px',
+                  height: '50px',
+                  borderRadius: '12px',
+                  backgroundColor: 'rgba(255,255,255,0.8)',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                  border: '2px solid #07c160'
+                }}>
+                  <img 
+                    src={shareIcon} 
+                    alt="微信分享" 
+                    style={{
+                      width: '30px',
+                      height: '30px',
+                      objectFit: 'contain'
+                    }}
+                  />
+                </div>
+                <div style={{
+                  color: '#fff',
+                  fontSize: '12px',
+                  fontWeight: 'bold',
+                  textShadow: '0 1px 2px rgba(0,0,0,0.8)'
+                }}>
+                  分享
+                </div>
+              </div>
+            </div>
           </div>
       </div>
 

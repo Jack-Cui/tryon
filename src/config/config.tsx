@@ -163,10 +163,10 @@ export const WECHAT_CONFIG = {
   
   // 默认分享配置
   DEFAULT_SHARE: {
-    title: '元相-3D试衣间',
-    desc: '快来和我一起共创动画',
-    link: window.location.href,
-    imgUrl: '/src/assets/分享封面.png' // 使用本地分享封面图片
+    title: '快来和我一起共创动画',
+    desc: '元相-3D试衣间 - AI试穿体验，感受科技与时尚的完美结合！',
+    link: 'https://dev-h5.ai1010.cn/home', // 使用固定的分享链接
+    imgUrl: 'https://admins3.tos-cn-shanghai.volces.com/af208b78e74547e49e86e92df252bf66.png' // 使用在线分享封面图片
   }
 };
 
