@@ -97,7 +97,7 @@ export class WechatShareService {
       this.getWechatSignature(currentUrl)
         .then(signature => {
           wx.config({
-            debug: false, // 关闭调试模式避免显示错误弹窗
+            debug: true, // 开启调试模式查看详细错误信息
             appId: this.config!.appId,
             timestamp: signature.timestamp,
             nonceStr: signature.nonceStr,
@@ -238,22 +238,51 @@ export class WechatShareService {
 
   // 配置分享数据并提示用户手动分享
   async chooseAndShareToFriend(shareData?: Partial<WechatShareData>): Promise<void> {
-   alert('11233'); 
-   return;
-    wx.onMenuShareAppMessage({
-                  title: '元相-3D试衣间', // 分享标题
-                  desc: '快来和我一起共创动画', // 分享描述
-                  link: window.location.href.split('#')[0], // 分享链接
-                  imgUrl: 'https://dev-h5.ai1010.cn/logo192.png', // 分享图标
-                  success:  ()=> {
-                        alert('分享成功');
-                      },
-                      cancel:  ()=> {
-                        alert('分享取消');
-                      }
-                });
+    // 检查微信SDK是否准备好
+    if (!this._ready || !wx) {
+      console.warn('⚠️ 微信SDK未准备好，跳过分享配置');
+      alert('微信SDK未准备好，请稍后再试');
+      this.showManualShareTip();
+      return;
+    }
+
+    // 确保在wx.ready回调中执行分享配置
+    return new Promise((resolve) => {
+      wx.ready(() => {
+        console.log('✅ 微信SDK已准备好，开始配置分享');
         
-        return;
+        wx.onMenuShareAppMessage({
+          title: '元相-3D试衣间', // 分享标题
+          desc: '快来和我一起共创动画', // 分享描述
+          link: window.location.href.split('#')[0], // 分享链接
+          imgUrl: 'https://dev-h5.ai1010.cn/logo192.png', // 分享图标
+          success: () => {
+            console.log('分享成功');
+            alert('分享成功');
+            resolve();
+          },
+          cancel: () => {
+            console.log('分享取消');
+            alert('分享取消');
+            resolve();
+          },
+          fail: (res: any) => {
+            console.error('分享配置失败:', res);
+            alert(`分享配置失败: ${JSON.stringify(res)}`);
+            resolve();
+          }
+        });
+        
+        console.log('分享配置已设置，请点击右上角菜单进行分享');
+        alert('分享配置已设置，请点击右上角菜单进行分享');
+      });
+
+      wx.error((res: any) => {
+        console.error('微信SDK配置失败:', res);
+        alert(`微信SDK配置失败: ${JSON.stringify(res)}`);
+        resolve();
+      });
+    });
 
 
     if (!this._ready || !wx) {
@@ -564,6 +593,24 @@ export class WechatShareService {
   // 检查是否已准备好
   isReady(): boolean {
     return this._ready;
+  }
+
+  // 等待微信SDK准备就绪
+  async waitForReady(): Promise<boolean> {
+    if (this._ready) {
+      return true;
+    }
+
+    return new Promise((resolve) => {
+      const checkReady = () => {
+        if (this._ready) {
+          resolve(true);
+        } else {
+          setTimeout(checkReady, 100);
+        }
+      };
+      checkReady();
+    });
   }
 
   // 获取配置
