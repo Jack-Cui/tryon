@@ -158,15 +158,18 @@ export const PROXY_CONFIG = {
 
 // 微信分享配置
 export const WECHAT_CONFIG = {
-  // 微信应用ID
-  APP_ID: 'wxb9f44b8faeead9f7', // 请替换为实际的微信AppID
+  // 微信应用ID - 参考FixedDownloadPrompt.tsx中的配置
+  APP_ID: 'wx57548bb90330c93e', // 使用FixedDownloadPrompt.tsx中的AppID
+  
+  // 微信应用密钥 - 用于获取access_token
+  APP_SECRET: '07592fe655621b11af45dd30abea309e',
   
   // 默认分享配置
   DEFAULT_SHARE: {
-    title: '快来和我一起共创动画',
-    desc: '元相-3D试衣间 - AI试穿体验，感受科技与时尚的完美结合！',
+    title: '元相-3D试衣间',
+    desc: '快来和我一起共创动画',
     link: 'https://dev-h5.ai1010.cn/home', // 使用固定的分享链接
-    imgUrl: 'https://admins3.tos-cn-shanghai.volces.com/af208b78e74547e49e86e92df252bf66.png' // 使用在线分享封面图片
+    imgUrl: 'https://dev-h5.ai1010.cn/logo.png' // 使用项目logo作为分享图片
   }
 };
 

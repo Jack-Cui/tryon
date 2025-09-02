@@ -31,6 +31,7 @@ import realSceneActionIcon from '../../assets/实景动作.png';
 import { apiService, authAPI } from '../../services/api';
 import DownloadAppModal from '../../components/DownloadAppModal';
 import FixedDownloadPrompt from '../../components/FixedDownloadPrompt';
+import ShareModal from '../../components/ShareModal';
 import ReactHowler from 'react-howler';
 
 const Long = require('long');
@@ -85,6 +86,9 @@ const Home = () => {
   const [showShareTip, setShowShareTip] = useState(false); // 是否显示分享提示
   const [shareTipMessage, setShareTipMessage] = useState(''); // 分享提示消息
   const [shareTipType, setShareTipType] = useState(''); // 分享提示类型
+  
+  // 分享弹窗状态
+  const [showShareModal, setShowShareModal] = useState(false);
 
   // 新增状态：用户是否已离开过舞台
   const [hasLeftStage, setHasLeftStage] = useState(false);
@@ -978,17 +982,28 @@ const Home = () => {
     });
   };
 
-  // 处理微信分享点击
-  const handleWechatShare = async () => {
+  // 处理分享按钮点击 - 显示分享弹窗
+  const handleShareClick = () => {
+    console.log('📤 点击分享按钮，显示分享弹窗');
+    setShowShareModal(true);
+  };
+
+  // 关闭分享弹窗
+  const handleCloseShareModal = () => {
+    setShowShareModal(false);
+  };
+
+  // 分享给好友
+  const handleShareToFriend = async () => {
     try {
-      console.log('📤 开始分享...');
+      console.log('📤 分享给好友...');
       
       // 检测是否在微信浏览器中
       const isWechatBrowser = /MicroMessenger/i.test(navigator.userAgent);
       
       if (isWechatBrowser) {
-        // 微信浏览器：使用微信分享功能
-        console.log('📱 检测到微信浏览器，使用微信分享');
+        // 微信浏览器：使用微信选择好友发送功能
+        console.log('📱 检测到微信浏览器，使用微信选择好友发送');
         
         // 检查微信分享服务是否已初始化
         if (!wechatShareService.isInitialized()) {
@@ -1004,36 +1019,41 @@ const Home = () => {
           });
         }
         
-        // 执行微信分享
+        // 执行微信选择好友发送
         try {
-          await wechatShareService.share({
+          await wechatShareService.chooseAndShareToFriend({
             title: WECHAT_CONFIG.DEFAULT_SHARE.title,
             desc: WECHAT_CONFIG.DEFAULT_SHARE.desc,
             link: WECHAT_CONFIG.DEFAULT_SHARE.link,
             imgUrl: WECHAT_CONFIG.DEFAULT_SHARE.imgUrl
           });
           
-          console.log('✅ 微信分享配置完成');
+          console.log('✅ 微信选择好友发送完成');
+          setShowShareModal(false);
         } catch (error) {
-          console.warn('⚠️ 微信分享配置失败，显示手动分享提示:', error);
+          console.warn('⚠️ 微信选择好友发送失败，显示手动分享提示:', error);
           // 不抛出错误，让微信分享服务显示友好的提示
         }
         
       } else {
         // 手机浏览器：复制链接并提示
-        console.log('🌐 检测到手机浏览器，复制链接');
+        console.log('🌐 检测到手机浏览器，复制分享链接');
         
-        const shareUrl = 'https://baidu.com';
+        const shareData = {
+          title: '元相-3D试衣间',
+          desc: '快来和我一起共创动画',
+          link: window.location.href.split('#')[0],
+          imgUrl: 'https://dev-h5.ai1010.cn/logo192.png'
+        };
         
         try {
-          // 尝试使用现代API复制到剪贴板
           if (navigator.clipboard && navigator.clipboard.writeText) {
-            await navigator.clipboard.writeText(shareUrl);
-            console.log('✅ 链接已复制到剪贴板');
+            await navigator.clipboard.writeText(shareData.link);
+            console.log('✅ 分享链接已复制到剪贴板');
           } else {
             // 降级方案：使用传统方法
             const textArea = document.createElement('textarea');
-            textArea.value = shareUrl;
+            textArea.value = shareData.link;
             textArea.style.position = 'fixed';
             textArea.style.left = '-999999px';
             textArea.style.top = '-999999px';
@@ -1042,18 +1062,18 @@ const Home = () => {
             textArea.select();
             document.execCommand('copy');
             document.body.removeChild(textArea);
-            console.log('✅ 链接已复制到剪贴板（降级方案）');
+            console.log('✅ 分享链接已复制到剪贴板（降级方案）');
           }
           
           // 显示成功提示
-          setShareTipMessage('链接已复制到剪贴板！');
+          setShareTipMessage('分享链接已复制到剪贴板！');
           setShareTipType('success');
           setShowShareTip(true);
           setTimeout(() => setShowShareTip(false), 3000);
+          setShowShareModal(false);
           
         } catch (copyError) {
-          console.error('❌ 复制链接失败:', copyError);
-          // 如果复制失败，直接显示链接
+          console.error('❌ 复制分享链接失败:', copyError);
           setShareTipMessage('复制失败，请手动复制链接');
           setShareTipType('error');
           setShowShareTip(true);
@@ -1062,10 +1082,107 @@ const Home = () => {
       }
       
     } catch (error) {
-      console.error('❌ 分享失败:', error);
+      console.error('❌ 分享给好友失败:', error);
+      setShareTipMessage(`分享失败: ${error instanceof Error ? error.message : String(error)}`);
+      setShareTipType('error');
+      setShowShareTip(true);
+      setTimeout(() => setShowShareTip(false), 3000);
+    }
+  };
+
+  // 分享到朋友圈
+  const handleShareToTimeline = async () => {
+    try {
+      console.log('📤 分享到朋友圈...');
       
-      // 显示错误提示
-      alert(`分享失败: ${error instanceof Error ? error.message : String(error)}`);
+      // 检测是否在微信浏览器中
+      const isWechatBrowser = /MicroMessenger/i.test(navigator.userAgent);
+      
+      if (isWechatBrowser) {
+        // 微信浏览器：使用微信分享功能
+        console.log('📱 检测到微信浏览器，使用微信分享到朋友圈');
+        
+        // 检查微信分享服务是否已初始化
+        if (!wechatShareService.isInitialized()) {
+          console.log('🔧 初始化微信分享服务...');
+          
+          // 初始化微信分享服务
+          await wechatShareService.initialize({
+            appId: WECHAT_CONFIG.APP_ID,
+            title: WECHAT_CONFIG.DEFAULT_SHARE.title,
+            desc: WECHAT_CONFIG.DEFAULT_SHARE.desc,
+            link: WECHAT_CONFIG.DEFAULT_SHARE.link,
+            imgUrl: WECHAT_CONFIG.DEFAULT_SHARE.imgUrl
+          });
+        }
+        
+        // 执行微信分享到朋友圈
+        try {
+          await wechatShareService.shareToTimeline({
+            title: WECHAT_CONFIG.DEFAULT_SHARE.title,
+            link: WECHAT_CONFIG.DEFAULT_SHARE.link,
+            imgUrl: WECHAT_CONFIG.DEFAULT_SHARE.imgUrl
+          });
+          
+          console.log('✅ 微信分享到朋友圈配置完成');
+          setShowShareModal(false);
+        } catch (error) {
+          console.warn('⚠️ 微信分享到朋友圈配置失败，显示手动分享提示:', error);
+          // 不抛出错误，让微信分享服务显示友好的提示
+        }
+        
+      } else {
+        // 手机浏览器：复制链接并提示
+        console.log('🌐 检测到手机浏览器，复制分享链接');
+        
+        const shareData = {
+          title: 'airU APP - 您的私人试衣间',
+          desc: '超多品牌等你来体验，AI试穿技术让您轻松找到完美搭配！',
+          link: 'https://xxx',
+          imgUrl: 'https://xxx'
+        };
+        
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(shareData.link);
+            console.log('✅ 分享链接已复制到剪贴板');
+          } else {
+            // 降级方案：使用传统方法
+            const textArea = document.createElement('textarea');
+            textArea.value = shareData.link;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            textArea.style.top = '-999999px';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            console.log('✅ 分享链接已复制到剪贴板（降级方案）');
+          }
+          
+          // 显示成功提示
+          setShareTipMessage('分享链接已复制到剪贴板！');
+          setShareTipType('success');
+          setShowShareTip(true);
+          setTimeout(() => setShowShareTip(false), 3000);
+          setShowShareModal(false);
+          
+        } catch (copyError) {
+          console.error('❌ 复制分享链接失败:', copyError);
+          setShareTipMessage('复制失败，请手动复制链接');
+          setShareTipType('error');
+          setShowShareTip(true);
+          setTimeout(() => setShowShareTip(false), 3000);
+        }
+      }
+      
+    } catch (error) {
+      console.error('❌ 分享到朋友圈失败:', error);
+      setShareTipMessage(`分享失败: ${error instanceof Error ? error.message : String(error)}`);
+      setShareTipType('error');
+      setShowShareTip(true);
+      setTimeout(() => setShowShareTip(false), 3000);
     }
   };
 
@@ -2593,7 +2710,7 @@ const Home = () => {
                   cursor: 'pointer',
                   transition: 'transform 0.2s ease'
                 }}
-                  onClick={handleWechatShare}
+                  onClick={handleShareClick}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.transform = 'scale(1.1)';
                   }}
@@ -2757,7 +2874,7 @@ const Home = () => {
               e.preventDefault();
               e.stopPropagation();
               console.log('测试微信分享按钮被点击');
-              handleWechatShare();
+              handleShareClick();
             }}
             style={{
               position: 'absolute',
@@ -3627,7 +3744,7 @@ const Home = () => {
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  handleWechatShare();
+                  handleShareClick();
                 }}
                 onTouchStart={(e) => {
                   // 只处理单指触摸，双指触摸让给缩放处理
@@ -3840,6 +3957,19 @@ const Home = () => {
           description="请下载APP继续体验更多功能！"
           buttonText="去下载APP"
           showCloseButton={true}
+        />
+
+        {/* 分享弹窗 */}
+        <ShareModal
+          isOpen={showShareModal}
+          onClose={handleCloseShareModal}
+          onShare={handleShareToFriend}
+          shareData={{
+            title: WECHAT_CONFIG.DEFAULT_SHARE.title,
+            desc: WECHAT_CONFIG.DEFAULT_SHARE.desc,
+            link: WECHAT_CONFIG.DEFAULT_SHARE.link,
+            imgUrl: WECHAT_CONFIG.DEFAULT_SHARE.imgUrl
+          }}
         />
 
         {/* 固定下载APP提示 */}
