@@ -1,3 +1,5 @@
+import wx from 'weixin-js-sdk';
+
 // 微信分享服务
 export interface WechatShareConfig {
   appId: string;
@@ -81,7 +83,7 @@ export class WechatShareService {
 
   // 配置微信SDK
   private async configureWechatSDK(): Promise<void> {
-    if (!this.config || !window.wx) {
+    if (!this.config || !wx) {
       throw new Error('配置或微信SDK未准备好');
     }
 
@@ -94,7 +96,7 @@ export class WechatShareService {
 
       this.getWechatSignature(currentUrl)
         .then(signature => {
-          window.wx.config({
+          wx.config({
             debug: false, // 关闭调试模式避免显示错误弹窗
             appId: this.config!.appId,
             timestamp: signature.timestamp,
@@ -104,13 +106,12 @@ export class WechatShareService {
               'updateAppMessageShareData',
               'updateTimelineShareData',
               'onMenuShareTimeline',
-              'onMenuShareAppMessage',
-              'checkJsApi'
+              'onMenuShareAppMessage'
             ]
           });
 
-          window.wx.ready(() => {
-            console.log('✅ 微信SDK配置成功');
+          wx.ready(() => {
+            console.log('✅ 微信SDK配置成功111');
             this._ready = true;
             
             // 检查分享API是否可用
@@ -120,9 +121,11 @@ export class WechatShareService {
               console.warn('⚠️ 分享API检查失败，但继续使用:', error);
               resolve(); // 即使检查失败也继续
             });
+            
+
           });
 
-          window.wx.error((res: any) => {
+          wx.error((res: any) => {
             console.error('❌ 微信SDK配置失败:', res);
             // 不抛出错误，而是显示手动分享提示
             this.showManualShareTip();
@@ -235,7 +238,25 @@ export class WechatShareService {
 
   // 配置分享数据并提示用户手动分享
   async chooseAndShareToFriend(shareData?: Partial<WechatShareData>): Promise<void> {
-    if (!this._ready || !window.wx) {
+   alert('11233'); 
+   return;
+    wx.onMenuShareAppMessage({
+                  title: '元相-3D试衣间', // 分享标题
+                  desc: '快来和我一起共创动画', // 分享描述
+                  link: window.location.href.split('#')[0], // 分享链接
+                  imgUrl: 'https://dev-h5.ai1010.cn/logo192.png', // 分享图标
+                  success:  ()=> {
+                        alert('分享成功');
+                      },
+                      cancel:  ()=> {
+                        alert('分享取消');
+                      }
+                });
+        
+        return;
+
+
+    if (!this._ready || !wx) {
       console.warn('⚠️ 微信SDK未准备好，跳过分享配置');
       alert('微信SDK未准备好，跳过分享配置');
       this.showManualShareTip();
@@ -250,6 +271,7 @@ export class WechatShareService {
     };
 
     console.log('📤 配置分享数据:', data);
+
     
     // 调试信息：显示分享数据详情
     alert(`分享数据详情：
@@ -259,10 +281,12 @@ export class WechatShareService {
 图片: ${data.imgUrl}
 图片长度: ${data.imgUrl.length}`);
 
+   
+
     return new Promise((resolve) => {
       // 只配置好友分享，这是最重要的
-      if (window.wx.updateAppMessageShareData) {
-        window.wx.updateAppMessageShareData({
+      if (wx.updateAppMessageShareData) {
+        wx.updateAppMessageShareData({
           title: data.title,
           desc: data.desc,
           link: data.link,
@@ -273,6 +297,7 @@ export class WechatShareService {
             this.showShareSuccessTip('分享配置成功！请点击右上角菜单选择"发送给朋友"');
             resolve();
           },
+          
           fail: (res: any) => {
             console.warn('⚠️ 好友分享数据配置失败:', res);
             alert(`⚠️ 分享配置失败: ${JSON.stringify(res)}`);
