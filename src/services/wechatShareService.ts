@@ -96,6 +96,7 @@ export class WechatShareService {
 
       this.getWechatSignature(currentUrl)
         .then(signature => {
+          alert('123');
           wx.config({
             debug: true, // 开启调试模式查看详细错误信息
             appId: this.config!.appId,
@@ -248,17 +249,20 @@ export class WechatShareService {
 
     // 确保在wx.ready回调中执行分享配置
     return new Promise((resolve) => {
+      var url = window.location.href.split('#')[0]; // 获取当前页面的URL
+      alert('当前页面URL: ' + url);
       wx.ready(() => {
         console.log('✅ 微信SDK已准备好，开始配置分享');
         
         wx.onMenuShareAppMessage({
+        // wx.updateAppMessageShareData({
           title: '元相-3D试衣间', // 分享标题
           desc: '快来和我一起共创动画', // 分享描述
-          link: window.location.href.split('#')[0], // 分享链接
-          imgUrl: 'https://dev-h5.ai1010.cn/logo192.png', // 分享图标
+          link: 'https://dev-h5.ai1010.cn/login?co_creation_id=1962501788939943937', // 分享链接
+          imgUrl: 'https://dev-h5.ai1010.cn/share0902.jpg', // 分享图标
           success: () => {
-            console.log('分享成功');
-            alert('分享成功');
+            console.log('分享成功'+window.location.href.split('#')[0]);
+            alert('分享成功'+window.location.href.split('#')[0]);
             resolve();
           },
           cancel: () => {

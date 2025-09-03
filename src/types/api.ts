@@ -108,4 +108,5 @@ export interface EnterStageInfo {
   startTime: number;
   endTime: number;
   Size: number;
+  CustomModelUrl: string;
 } 
