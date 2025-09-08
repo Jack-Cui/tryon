@@ -1785,29 +1785,74 @@ const Home = () => {
     try {
       hasStartedTryon.current = true;
       setShowSelectionScreen(false); // 隐藏选择界面，显示视频播放界面
-      const cachedLoginData = getLoginCache();
-      let roomId = '';
-      if (cachedLoginData) {
-        roomId = cachedLoginData.roomId || '';
-      }
-      if (roomId == '') {
-        console.log('❌ 房间ID为空，跳过试穿流程');
+      
+      // 获取房间信息以获取userId
+      console.log('🔍 开始获取房间信息...');
+      const { roomAPI } = await import('../../services/api');
+      const roomResponse = await roomAPI.getSysRoomShare(loginParams.coCreationId, loginParams.token);
+      
+      if (!roomResponse.ok || !roomResponse.data) {
+        console.warn('⚠️ 获取房间信息失败，使用默认userId');
+        // 如果获取房间信息失败，使用loginParams中的userId作为备用
+        const rtcConfig: RTCVideoConfig = {
+          appId: '643e46acb15c24012c963951',
+          appKey: 'b329b39ca8df4b5185078f29d8d8025f',
+          roomId: loginParams.coCreationId.toString(),
+          userId: loginParams.userId
+        };
+        
+        const config = {
+          phone: loginParams.phone,
+          coCreationId: loginParams.coCreationId,
+          userId: loginParams.userId,
+          accessToken: loginParams.token,
+          rtcConfig,
+        };
+        
+        console.log('开始自动试穿流程，配置:', config);
+        await tryonService.startTryonFlow(config);
+        console.log('✅ 试穿流程启动成功');
         return;
       }
-      console.log('✅ 房间ID:', roomId);
+      
+      const roomInfo = roomAPI.parseRoomInfoResponse(roomResponse);
+      if (!roomInfo || !roomInfo.data) {
+        console.warn('⚠️ 解析房间信息失败，使用默认userId');
+        const rtcConfig: RTCVideoConfig = {
+          appId: '643e46acb15c24012c963951',
+          appKey: 'b329b39ca8df4b5185078f29d8d8025f',
+          roomId: loginParams.coCreationId.toString(),
+          userId: loginParams.userId
+        };
+        
+        const config = {
+          phone: loginParams.phone,
+          coCreationId: loginParams.coCreationId,
+          userId: loginParams.userId,
+          accessToken: loginParams.token,
+          rtcConfig,
+        };
+        
+        console.log('开始自动试穿流程，配置:', config);
+        await tryonService.startTryonFlow(config);
+        console.log('✅ 试穿流程启动成功');
+        return;
+      }
+      
+      console.log('✅ 房间信息获取成功:', roomInfo);
+      console.log('🔍 房间信息中的userId:', roomInfo.data.userId);
+      
       const rtcConfig: RTCVideoConfig = {
         appId: '643e46acb15c24012c963951',
         appKey: 'b329b39ca8df4b5185078f29d8d8025f',
-        // roomId: '1939613403762253825',
-        // roomId: '1956266414970302466',
-        roomId: roomId,
-        userId: loginParams.userId
+        roomId: roomInfo.data.roomId || loginParams.coCreationId.toString(),
+        userId: roomInfo.data.userId || loginParams.userId
       };
       
       const config = {
         phone: loginParams.phone,
         coCreationId: loginParams.coCreationId,
-        userId: loginParams.userId,
+        userId: roomInfo.data.userId || loginParams.userId,
         accessToken: loginParams.token,
         rtcConfig,
       };
