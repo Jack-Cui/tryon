@@ -152,6 +152,7 @@ export class ScheduleService {
       
       return responseData;
     } catch (error) {
+      alert('服务器已满，请稍后再试');
       console.error('调度请求失败:', error);
       throw error;
     }
