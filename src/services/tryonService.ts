@@ -665,18 +665,31 @@ export class TryonService {
       // 触发UI更新，让首页先创建DOM元素
       this.triggerVideoPlayerUpdate(userId, domId);
       
-      // 等待一段时间让DOM元素创建完成，然后再设置播放器
-      setTimeout(async () => {
-        try {
-          // 设置远程视频播放器
-          if (this.rtcVideoService) {
-            await this.rtcVideoService.setRemoteVideoPlayer(userId, domId);
-            console.log('🎬 远程视频播放器设置成功:', userId, domId);
+      // 使用更智能的等待策略，检查DOM元素是否准备好
+      const waitForDOMAndSetPlayer = async (attempt: number = 1) => {
+        const domElement = document.getElementById(domId);
+        if (domElement) {
+          console.log(`✅ DOM元素已准备好: ${domId}, 开始设置播放器`);
+          try {
+            // 设置远程视频播放器
+            if (this.rtcVideoService) {
+              await this.rtcVideoService.setRemoteVideoPlayer(userId, domId);
+              console.log('🎬 远程视频播放器设置成功:', userId, domId);
+            }
+          } catch (error) {
+            console.error('❌ 设置远程视频播放器失败:', error);
           }
-        } catch (error) {
-          console.error('❌ 设置远程视频播放器失败:', error);
+        } else if (attempt < 20) {
+          // 如果DOM元素还没准备好，继续等待
+          console.log(`⏳ DOM元素未准备好，第${attempt}次重试: ${domId}`);
+          setTimeout(() => waitForDOMAndSetPlayer(attempt + 1), 200); // 每200ms检查一次
+        } else {
+          console.error(`❌ DOM元素创建超时: ${domId}`);
         }
-      }, 1000); // 等待1秒让DOM元素创建
+      };
+      
+      // 立即开始检查
+      waitForDOMAndSetPlayer();
       
     } catch (error) {
       console.error('❌ 处理远程视频流失败:', error);

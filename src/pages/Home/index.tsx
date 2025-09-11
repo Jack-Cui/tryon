@@ -1441,7 +1441,9 @@ const Home = () => {
   }, [loginParams]); // 只依赖loginParams，避免重复执行
 
   // 检查视频是否真正开始播放的函数
-  const checkVideoPlayingStatus = (userId: string, domId: string) => {
+  const checkVideoPlayingStatus = (userId: string, domId: string, retryCount: number = 0) => {
+    console.log(`🔍 checkVideoPlayingStatus: ${userId} -> ${domId}, 重试次数: ${retryCount}`);
+    
     const videoElement = document.getElementById(domId);
     if (videoElement) {
       // 尝试多种方式查找video标签
@@ -1456,6 +1458,8 @@ const Home = () => {
       }
       
       if (videoTag) {
+        console.log(`✅ 找到视频元素: ${domId}, 标签名: ${videoTag.tagName}`);
+        
         // 设置视频样式以适应容器
         videoTag.style.width = '100%';
         videoTag.style.height = '100%';
@@ -1471,49 +1475,81 @@ const Home = () => {
             }));
             // 设置全局视频播放状态为true
             setIsVideoPlaying(true);
+            return true; // 表示检查成功
           } else {
-            // 继续检查，但限制检查次数
-            setTimeout(checkPlaying, 1000);
+            console.log(`⏳ 视频 ${userId} 还未开始播放，继续检查...`);
+            return false; // 表示需要继续检查
           }
         };
         
         // 监听视频事件（仅对video标签）
         if (videoTag && videoTag.tagName === 'VIDEO') {
-          videoTag.addEventListener('playing', () => {
-            console.log(`✅ 视频 ${userId} 播放事件触发`);
-            setVideoPlayingStatus(prev => ({
-              ...prev,
-              [userId]: true
-            }));
-            // 设置全局视频播放状态为true
-            setIsVideoPlaying(true);
-          });
-          
-          videoTag.addEventListener('pause', () => {
-            console.log(`⏸️ 视频 ${userId} 暂停事件触发`);
-            setIsVideoPlaying(false);
-          });
-          
-          videoTag.addEventListener('ended', () => {
-            console.log(`🔚 视频 ${userId} 结束事件触发`);
-            setIsVideoPlaying(false);
-          });
-          
-          videoTag.addEventListener('loadeddata', () => {
-            console.log(`✅ 视频 ${userId} 数据加载完成`);
-            checkPlaying();
-          });
+          // 检查是否已经添加过事件监听器，避免重复添加
+          if (!videoTag.hasAttribute('data-events-added')) {
+            videoTag.setAttribute('data-events-added', 'true');
+            
+            videoTag.addEventListener('playing', () => {
+              console.log(`✅ 视频 ${userId} 播放事件触发`);
+              setVideoPlayingStatus(prev => ({
+                ...prev,
+                [userId]: true
+              }));
+              // 设置全局视频播放状态为true
+              setIsVideoPlaying(true);
+            });
+            
+            videoTag.addEventListener('pause', () => {
+              console.log(`⏸️ 视频 ${userId} 暂停事件触发`);
+              setIsVideoPlaying(false);
+            });
+            
+            videoTag.addEventListener('ended', () => {
+              console.log(`🔚 视频 ${userId} 结束事件触发`);
+              setIsVideoPlaying(false);
+            });
+            
+            videoTag.addEventListener('loadeddata', () => {
+              console.log(`✅ 视频 ${userId} 数据加载完成`);
+              checkPlaying();
+            });
+            
+            videoTag.addEventListener('canplay', () => {
+              console.log(`✅ 视频 ${userId} 可以播放`);
+              setVideoPlayingStatus(prev => ({
+                ...prev,
+                [userId]: true
+              }));
+              setIsVideoPlaying(true);
+            });
+          }
         }
         
         // 立即检查一次
-        checkPlaying();
+        const isPlaying = checkPlaying();
+        
+        // 如果视频还没开始播放且重试次数少于10次，继续检查
+        if (!isPlaying && retryCount < 10) {
+          setTimeout(() => checkVideoPlayingStatus(userId, domId, retryCount + 1), 1000);
+        } else if (retryCount >= 10) {
+          console.log(`⚠️ 视频 ${userId} 检查超时，停止重试`);
+        }
       } else {
         // 如果还没有video标签，延迟检查，但限制重试次数
-        setTimeout(() => checkVideoPlayingStatus(userId, domId), 2000);
+        if (retryCount < 10) {
+          console.log(`⏳ 视频元素 ${domId} 还未创建，${retryCount + 1}秒后重试`);
+          setTimeout(() => checkVideoPlayingStatus(userId, domId, retryCount + 1), 1000);
+        } else {
+          console.log(`⚠️ 视频元素 ${domId} 创建超时，停止重试`);
+        }
       }
     } else {
       // 如果DOM元素还没有创建，延迟检查，但限制重试次数
-      setTimeout(() => checkVideoPlayingStatus(userId, domId), 2000);
+      if (retryCount < 10) {
+        console.log(`⏳ DOM元素 ${domId} 还未创建，${retryCount + 1}秒后重试`);
+        setTimeout(() => checkVideoPlayingStatus(userId, domId, retryCount + 1), 1000);
+      } else {
+        console.log(`⚠️ DOM元素 ${domId} 创建超时，停止重试`);
+      }
     }
   };
 
@@ -1987,85 +2023,118 @@ const Home = () => {
         
 
         
-        // 开始检查视频播放状态
-        setTimeout(() => {
-          console.log(`🔍 开始检查视频播放状态: ${userId} -> ${domId}`);
-          checkVideoPlayingStatus(userId, domId);
+        // 开始检查视频播放状态 - 立即开始，不延迟
+        console.log(`🔍 开始检查视频播放状态: ${userId} -> ${domId}`);
+        checkVideoPlayingStatus(userId, domId);
+        
+        // 使用更频繁的检查策略，因为RTC SDK渲染时间不确定
+        const checkVideoElement = (attempt: number = 1) => {
+          console.log(`🔍 第${attempt}次检查视频元素: ${domId}`);
           
-          // 多次检查，因为RTC SDK渲染可能需要时间
-          const checkVideoElement = (attempt: number = 1) => {
-            console.log(`🔍 第${attempt}次检查视频元素: ${domId}`);
+          const videoElement = document.getElementById(domId);
+          if (videoElement) {
+            console.log(`✅ 找到视频DOM元素: ${domId}`);
+            console.log(`🔍 DOM元素内容:`, videoElement.innerHTML);
+            console.log(`🔍 DOM元素标签名:`, videoElement.tagName);
+            console.log(`🔍 DOM元素类名:`, videoElement.className);
             
-            const videoElement = document.getElementById(domId);
-            if (videoElement) {
-              console.log(`✅ 找到视频DOM元素: ${domId}`);
-              console.log(`🔍 DOM元素内容:`, videoElement.innerHTML);
-              console.log(`🔍 DOM元素标签名:`, videoElement.tagName);
-              console.log(`🔍 DOM元素类名:`, videoElement.className);
-              
-              // 尝试多种方式查找video标签
-              let videoTag = videoElement.querySelector('video');
-              if (!videoTag) {
-                // 如果直接查找不到，尝试查找canvas（RTC可能使用canvas）
-                const canvas = videoElement.querySelector('canvas');
-                if (canvas) {
-                  console.log(`✅ 找到canvas标签: ${domId}`);
-                  videoTag = canvas as any; // 临时处理
-                }
+            // 尝试多种方式查找video标签
+            let videoTag = videoElement.querySelector('video');
+            if (!videoTag) {
+              // 如果直接查找不到，尝试查找canvas（RTC可能使用canvas）
+              const canvas = videoElement.querySelector('canvas');
+              if (canvas) {
+                console.log(`✅ 找到canvas标签: ${domId}`);
+                videoTag = canvas as any; // 临时处理
               }
+            }
+            
+            if (videoTag) {
+              console.log(`✅ 找到video标签: ${domId}`);
+              videoTag.style.width = '100%';
+              videoTag.style.height = '100%';
+              videoTag.style.objectFit = 'cover';
               
-              if (videoTag) {
-                console.log(`✅ 找到video标签: ${domId}`);
-                videoTag.style.width = '100%';
-                videoTag.style.height = '100%';
-                videoTag.style.objectFit = 'cover';
-                
-                // 添加更多调试信息
-                console.log(`📹 视频元素信息:`, {
-                  paused: videoTag.paused,
-                  ended: videoTag.ended,
-                  readyState: videoTag.readyState,
-                  currentTime: videoTag.currentTime,
-                  duration: videoTag.duration,
-                  src: videoTag.src
+              // 添加更多调试信息
+              console.log(`📹 视频元素信息:`, {
+                paused: videoTag.paused,
+                ended: videoTag.ended,
+                readyState: videoTag.readyState,
+                currentTime: videoTag.currentTime,
+                duration: videoTag.duration,
+                src: videoTag.src
+              });
+              
+              // 标记视频为播放状态
+              setVideoPlayingStatus(prev => ({
+                ...prev,
+                [userId]: true
+              }));
+              
+              return true; // 找到视频元素，停止检查
+            } else {
+              console.log(`❌ 未找到video标签: ${domId}`);
+              // 打印所有子元素
+              const children = videoElement.children;
+              console.log(`🔍 子元素数量:`, children.length);
+              for (let i = 0; i < children.length; i++) {
+                const child = children[i];
+                console.log(`🔍 子元素 ${i}:`, {
+                  tagName: child.tagName,
+                  className: child.className,
+                  id: child.id
                 });
-                
-                // 标记视频为播放状态
-                setVideoPlayingStatus(prev => ({
-                  ...prev,
-                  [userId]: true
-                }));
-                
-                return true; // 找到视频元素，停止检查
-              } else {
-                console.log(`❌ 未找到video标签: ${domId}`);
-                // 打印所有子元素
-                const children = videoElement.children;
-                console.log(`🔍 子元素数量:`, children.length);
-                for (let i = 0; i < children.length; i++) {
-                  const child = children[i];
-                  console.log(`🔍 子元素 ${i}:`, {
-                    tagName: child.tagName,
-                    className: child.className,
-                    id: child.id
-                  });
-                }
               }
-            } else {
-              console.log(`❌ 未找到视频DOM元素: ${domId}`);
             }
-            
-            // 如果还没找到且尝试次数少于10次，继续检查（增加重试次数）
-            if (attempt < 10) {
-              setTimeout(() => checkVideoElement(attempt + 1), 3000); // 增加间隔到3秒
-            } else {
-              console.log(`⚠️ 视频元素检查超时: ${domId}`);
-            }
-          };
+          } else {
+            console.log(`❌ 未找到视频DOM元素: ${domId}`);
+          }
           
-          // 开始检查
-          checkVideoElement();
-        }, 2000); // 减少初始等待时间到2秒
+          // 使用更频繁的检查，减少间隔时间
+          if (attempt < 20) { // 增加检查次数
+            setTimeout(() => checkVideoElement(attempt + 1), 500); // 减少间隔到500ms
+          } else {
+            console.log(`⚠️ 视频元素检查超时: ${domId}`);
+          }
+        };
+        
+        // 立即开始检查，然后定期检查
+        checkVideoElement();
+        
+        // 添加MutationObserver监听DOM变化，确保能及时检测到RTC SDK创建的video元素
+        const observer = new MutationObserver((mutations) => {
+          mutations.forEach((mutation) => {
+            if (mutation.type === 'childList') {
+              const addedNodes = Array.from(mutation.addedNodes);
+              const hasVideoElement = addedNodes.some(node => {
+                if (node.nodeType === Node.ELEMENT_NODE) {
+                  const element = node as Element;
+                  return element.tagName === 'VIDEO' || element.querySelector('video') || element.querySelector('canvas');
+                }
+                return false;
+              });
+              
+              if (hasVideoElement) {
+                console.log(`🎬 检测到新的视频元素添加到 ${domId}，立即检查`);
+                checkVideoElement();
+              }
+            }
+          });
+        });
+        
+        // 开始观察DOM变化
+        const videoElement = document.getElementById(domId);
+        if (videoElement) {
+          observer.observe(videoElement, {
+            childList: true,
+            subtree: true
+          });
+          
+          // 10秒后停止观察，避免内存泄漏
+          setTimeout(() => {
+            observer.disconnect();
+          }, 10000);
+        }
       } else if (type === 'remove') {
         setVideoStreams(prev => prev.filter(stream => stream.userId !== userId));
         setVideoPlayingStatus(prev => {
@@ -2084,6 +2153,10 @@ const Home = () => {
       
       if (eventType === 'onFirstFrame') {
         console.log('🎬 视频第一帧渲染完成，立即检查视频元素:', userId);
+        const domId = `remoteStream_${userId}`;
+        checkVideoPlayingStatus(userId, domId);
+      } else if (eventType === 'canplay') {
+        console.log('🎬 视频可以播放，立即检查视频元素:', userId);
         const domId = `remoteStream_${userId}`;
         checkVideoPlayingStatus(userId, domId);
       }
