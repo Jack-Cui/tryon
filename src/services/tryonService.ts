@@ -59,12 +59,17 @@ export class TryonService {
     const appId = RTC_CONFIG.APP_ID;
     const appKey = RTC_CONFIG.APP_KEY;
     const roomId = this.roomPrimaryId.toString();
-    const userId = this.config.userId;
-
+    // const userId = this.config.userId;
+    // update by chao 2025.09.09
+    const userId = this.config.rtcConfig?.userId;
+    if(userId===undefined){
+      alert('缺少必要参数：userId');
+      throw new Error('缺少必要参数：userId');
+    }
     console.log('🔑 生成RTC Token...');
     console.log('  - appId:', appId);
     console.log('  - roomId:', roomId);
-    console.log('  - userId:', userId);
+    console.log('  - userId111:', userId);
     console.log('  - roomPrimaryId:', this.roomPrimaryId);
 
     const token = new AccessToken(appId, appKey, roomId, userId);
@@ -559,12 +564,14 @@ export class TryonService {
         appId: RTC_CONFIG.APP_ID,
         appKey: RTC_CONFIG.APP_KEY,
         roomId: this.roomPrimaryId?.toString() || '',
-        userId: this.config.userId,
+        //update by chao 2025.09.09
+        // userId: this.config.userId,
+        userId: this.config.rtcConfig?.userId || '',
         token: this.generateRTCToken() // 动态生成token
       }
     };
     
-    console.log('WebSocket配置:', wsConfig);
+    console.log('WebSocket配置111:', wsConfig);
     
     // 连接WebSocket
     await webSocketService.connect(wsConfig);

@@ -1,3 +1,4 @@
+import { useRevalidator } from 'react-router-dom';
 import * as proto from '../proto/xproto';
 import VERTC, { MediaType, StreamIndex } from '@volcengine/rtc';
 
@@ -171,7 +172,9 @@ export class WebSocketService {
     try {
       console.log('🚪 加入RTC房间...', {
         roomId: this.rtcConfig.roomId,
-        userId: this.rtcConfig.userId,
+        //update by chao 2025.09.09
+        // userId: this.rtcConfig.userId,
+        userId: this.config?.uid,
         hasToken: !!this.rtcConfig.token
       });
 
@@ -179,7 +182,9 @@ export class WebSocketService {
         this.rtcConfig.token || null,
         this.rtcConfig.roomId,
         {
-          userId: this.rtcConfig.userId,
+          //update by chao 2025.09.09
+          // userId: this.rtcConfig.userId,
+          userId: this.config?.uid,
         },
         {
           // 只订阅，不发布本地流

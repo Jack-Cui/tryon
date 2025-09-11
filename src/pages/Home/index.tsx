@@ -1847,12 +1847,15 @@ const Home = () => {
         appKey: 'b329b39ca8df4b5185078f29d8d8025f',
         roomId: roomInfo.data.roomId || loginParams.coCreationId.toString(),
         userId: roomInfo.data.userId || loginParams.userId
+        // userId:loginParams.userId
       };
       
       const config = {
         phone: loginParams.phone,
         coCreationId: loginParams.coCreationId,
-        userId: roomInfo.data.userId || loginParams.userId,
+        //update by chao 2025.09.09
+        //  userId: roomInfo.data.userId || loginParams.userId,
+        userId:loginParams.userId,
         accessToken: loginParams.token,
         rtcConfig,
       };
