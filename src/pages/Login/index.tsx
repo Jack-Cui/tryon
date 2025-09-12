@@ -243,6 +243,7 @@ const Login = () => {
             });
         }
       } else {
+        alert(`登录失败: ${response.status}`);
         setErrorMessage(`登录失败: ${response.status}`);
       }
     } catch (error) {

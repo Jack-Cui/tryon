@@ -943,6 +943,7 @@ export class WebSocketService {
           this.sendEnterRoomRequest();
         }, 500);
       } else {
+        alert("登录失败:" + errorName);
         console.error('登录失败:', errorName);
       }
     } catch (error) {
