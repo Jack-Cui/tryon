@@ -221,6 +221,49 @@ export class RTCMessageHandler {
     }
   }
 
+  // 发送热力图消息
+  sendHeatMap(enable: boolean): void {
+    if (!this.engine) {
+      console.error('❌ [RTCMessageHandler:sendHeatMap] engine is null');
+      return;
+    }
+
+    try {
+      console.log('🔥 准备发送热力图消息:', {
+        enable: enable,
+        messageType: 'oHeatMapReq'
+      });
+      
+      // 直接编码proto消息
+      const message = proto.oHeatMapReq.create({
+        enable: enable
+      });
+      
+      const payload = proto.oHeatMapReq.encode(message).finish();
+      const hexString = Array.from(payload).map((b: number) => b.toString(16).padStart(2, '0')).join('');
+      
+      console.log('📤 发送proto消息:', {
+        id: proto.eClientPID.HeatMapReq,
+        payloadSize: payload.length,
+        hexString: hexString
+      });
+      
+      // 使用正确的proto消息格式 (参考C#代码)
+      const messageStr = `cmd=proto&id=${proto.eClientPID.HeatMapReq}&hex=${hexString}`;
+      this.engine.sendUserMessage("8888", messageStr);
+      
+      console.log('✅ proto消息发送成功:', proto.eClientPID.HeatMapReq);
+      console.log('📤 发送的消息内容:', messageStr);
+      
+    } catch (error) {
+      console.error('❌ 发送热力图RTC消息失败:', error);
+      // 如果proto编码失败，回退到简单字符串格式
+      const fallbackMessage = `cmd=heat_map&msec=${Date.now()}&enable=${enable}`;
+      console.log('🔄 回退到简单字符串格式:', fallbackMessage);
+      this.engine.sendUserMessage("8888", fallbackMessage);
+    }
+  }
+
   // 发送更换服装消息
   sendChangeGarment(garment1Id: number, garment2Id: number, garment3Id: number, garment1Size: number, garment2Size: number, garment3Size: number): void {
     if (!this.engine) {

@@ -488,6 +488,12 @@ export class RTCVideoService {
     rtcMessageHandler.sendChangeMap(mapName);
   }
 
+  // 发送热力图消息
+  sendHeatMap(enable: boolean): void {
+    console.log('🔥 发送热力图消息:', enable);
+    rtcMessageHandler.sendHeatMap(enable);
+  }
+
   // 发送更换服装消息
   sendChangeGarment(garment1Id: number, garment2Id: number, garment3Id: number, garment1Size: number, garment2Size: number, garment3Size: number): void {
     console.log('👕 发送更换服装消息:', { garment1Id, garment2Id, garment3Id, garment1Size, garment2Size, garment3Size });

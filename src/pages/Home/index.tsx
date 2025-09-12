@@ -28,6 +28,7 @@ import shareIcon from '../../assets/相机.png';
 import shareCoverImage from '../../assets/分享封面.png';
 import realSceneIcon from '../../assets/实景.png';
 import realSceneActionIcon from '../../assets/实景动作.png';
+import heatMapIcon from '../../assets/松紧热图片.png';
 import { apiService, authAPI } from '../../services/api';
 import DownloadAppModal from '../../components/DownloadAppModal';
 import FixedDownloadPrompt from '../../components/FixedDownloadPrompt';
@@ -76,6 +77,7 @@ const Home = () => {
   const [isRealSceneExpanded, setIsRealSceneExpanded] = useState(false); // 实景是否展开
   const [selectedActionIndex, setSelectedActionIndex] = useState(0); // 当前选中的动作索引（0: 动作.png, 1: 芭蕾.png）
   const [selectedRealSceneIndex, setSelectedRealSceneIndex] = useState(0); // 当前选中的实景索引
+  const [isHeatMapEnabled, setIsHeatMapEnabled] = useState(false); // 热力图开关状态
 
   // 新增状态：视频播放界面的图标控制
   const [showVideoIcons, setShowVideoIcons] = useState(true); // 视频播放时是否显示左右侧图标 - 常驻显示
@@ -421,6 +423,45 @@ const Home = () => {
       setSelectedActionIndex(index);
       setIsActionExpanded(false); // 自动收起
       console.log('选中动作:', actionIcons[index].name);
+    }
+  };
+
+  // 处理热力图图标点击
+  const handleHeatMapClick = async () => {
+    console.log('🔥 热力图图标被点击，当前状态:', isHeatMapEnabled);
+    
+    // 切换热力图开关状态
+    const newHeatMapState = !isHeatMapEnabled;
+    setIsHeatMapEnabled(newHeatMapState);
+    
+    // 检查RTC连接状态
+    if (!rtcVideoService.getConnectionStatus()) {
+      console.error('❌ RTC未连接，无法发送热力图请求');
+      console.log('🔍 RTC连接状态检查失败，可能需要等待RTC初始化完成');
+      console.log('💡 提示：请确保已完成登台流程，RTC服务已启动');
+      console.log('🔧 调试信息：');
+      console.log('  - showSelectionScreen:', showSelectionScreen);
+      console.log('  - hasStartedTryon.current:', hasStartedTryon.current);
+      console.log('  - RTC SDK版本:', rtcVideoService.getSDKVersion());
+      console.log('  - RTC连接状态:', rtcVideoService.getConnectionStatus());
+      return;
+    }
+    
+    // 检查是否在视频播放状态（已登台）
+    if (showSelectionScreen) {
+      console.error('❌ 未在视频播放状态，无法发送热力图请求');
+      return;
+    }
+    
+    // 发送热力图RTC消息
+    try {
+      console.log('🚀 开始发送热力图RTC消息...', newHeatMapState);
+      rtcVideoService.sendHeatMap(newHeatMapState);
+      console.log('✅ 热力图RTC消息已发送:', newHeatMapState);
+    } catch (error) {
+      console.error('❌ 发送热力图RTC消息失败:', error);
+      // 显示错误提示
+      alert(`热力图操作失败: ${error instanceof Error ? error.message : String(error)}`);
     }
   };
 
@@ -2332,6 +2373,63 @@ const Home = () => {
               position: 'relative',
               transform: 'translateY(30px)' // 向下移动
             }}>
+              {/* 热力图区域 */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px'
+              }}>
+                {/* 热力图图标 */}
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '8px',
+                  cursor: 'pointer',
+                  transition: 'transform 0.2s ease'
+                }}
+                  onClick={() => handleHeatMapClick()}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'scale(1.1)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'scale(1)';
+                  }}
+                >
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '12px',
+                    backgroundColor: isHeatMapEnabled ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.6)',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                    border: isHeatMapEnabled ? '2px solid #ff4d4f' : '2px solid transparent'
+                  }}>
+                    <img 
+                      src={heatMapIcon} 
+                      alt="松紧热图" 
+                      style={{
+                        width: '24px',
+                        height: '24px',
+                        objectFit: 'contain'
+                      }}
+                    />
+                  </div>
+                  <div style={{
+                    fontSize: '10px',
+                    color: '#333',
+                    fontWeight: 'normal',
+                    textAlign: 'center',
+                    lineHeight: '1',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    松紧热图
+                  </div>
+                </div>
+              </div>
+
               {/* 动作区域 */}
               <div style={{
                 display: 'flex',
@@ -3244,6 +3342,74 @@ const Home = () => {
           pointerEvents: 'auto', // 确保点击事件正常工作
           touchAction: 'none' // 防止触摸事件被阻止
         }}>
+            {/* 热力图区域 */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px'
+            }}>
+              {/* 热力图图标 */}
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '8px',
+                cursor: 'pointer',
+                transition: 'transform 0.2s ease'
+              }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleHeatMapClick();
+                }}
+                onTouchStart={(e) => {
+                  // 只处理单指触摸，双指触摸让给缩放处理
+                  if (e.touches.length === 1) {
+                    e.stopPropagation();
+                  }
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'scale(1.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)';
+                }}
+              >
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '10px',
+                  backgroundColor: isHeatMapEnabled ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.6)',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                  border: isHeatMapEnabled ? '2px solid #ff4d4f' : '2px solid transparent'
+                }}>
+                  <img 
+                    src={heatMapIcon} 
+                    alt="松紧热图" 
+                    style={{
+                      width: '24px',
+                      height: '24px',
+                      objectFit: 'contain'
+                    }}
+                  />
+                </div>
+                <div style={{
+                  fontSize: '10px',
+                  color: '#fff',
+                  fontWeight: 'normal',
+                  textAlign: 'center',
+                  lineHeight: '1',
+                  whiteSpace: 'nowrap',
+                  textShadow: '0 1px 2px rgba(0,0,0,0.8)'
+                }}>
+                  松紧热图
+                </div>
+              </div>
+            </div>
+
             {/* 动作区域 */}
             <div style={{
               display: 'flex',

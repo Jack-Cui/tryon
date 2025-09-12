@@ -1259,6 +1259,54 @@ export class WebSocketService {
     }
   }
 
+  // 发送热力图请求
+  async sendHeatMapRequest(enable: boolean): Promise<void> {
+    console.log('🔥 准备发送热力图请求...', enable);
+    
+    // 检查连接状态
+    if (!this.isConnected) {
+      console.error('❌ WebSocket未连接，无法发送热力图请求');
+      throw new Error('WebSocket未连接');
+    }
+    
+    // 检查配置是否有效
+    if (!this.config || !this.config.roomId) {
+      console.error('❌ WebSocket配置无效或未进房，无法发送热力图请求');
+      throw new Error('WebSocket配置无效或未进房');
+    }
+    
+    console.log('🔍 热力图请求状态检查:');
+    console.log('  - WebSocket连接状态:', this.isConnected);
+    console.log('  - 房间ID:', this.config.roomId);
+    console.log('  - 用户ID:', this.config.uid);
+    console.log('  - 热力图开关:', enable);
+    
+    try {
+      // 创建 oHeatMapReq 消息
+      const message = proto.oHeatMapReq.create({
+        enable: enable
+      });
+      
+      // 编码消息
+      const payload = proto.oHeatMapReq.encode(message).finish();
+      
+      console.log('📦 热力图消息编码完成:', {
+        enable: enable,
+        payloadSize: payload.length,
+        payloadBytes: Array.from(payload)
+      });
+      
+      // 发送消息 (HeatMapReq = 1009)
+      this.sendMessage(1009, payload);
+      
+      console.log('✅ 热力图请求发送成功:', enable);
+      
+    } catch (error) {
+      console.error('❌ 发送热力图请求失败:', error);
+      throw error;
+    }
+  }
+
   // 处理切换地图响应
   private handleChangeMapPush(data: Uint8Array): void {
     try {
