@@ -1621,6 +1621,12 @@ const Home = () => {
       
       onUserPublishStream: (userId: string, hasVideo: boolean, hasAudio: boolean) => {
         console.log('📹 用户发布流:', userId, { hasVideo, hasAudio });
+        // 过滤掉userid=0的流
+        if (userId === '0') {
+          console.log('⚠️ 跳过userid=0的流:', userId);
+        } else {
+          console.log('✅ 处理用户流:', userId);
+        }
         // 这个事件由tryonService处理，不需要在这里重复处理
       },
       
@@ -2052,8 +2058,8 @@ const Home = () => {
     const handleVideoStreamUpdate = (event: CustomEvent) => {
       const { userId, domId, type } = event.detail;
       
-      // 处理所有用户的视频流，不限制特定用户ID
-      if (type === 'add') {
+      // 过滤掉userid=0的流
+      if (type === 'add' && userId !== '0') {
         setVideoStreams(prev => {
           if (prev.find(stream => stream.userId === userId)) {
             return prev;

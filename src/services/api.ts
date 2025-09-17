@@ -386,7 +386,7 @@ export const roomAPI = {
         startTime: 0,
         endTime: 0,
         Size: 4,
-        CustomModelUrl: "placeholder"
+        CustomModelUrl: "12345"
       };
       console.log('进入舞台信息（无服装）:', enter_stage_info);
       return JSON.stringify(enter_stage_info);
@@ -673,7 +673,7 @@ export const roomAPI = {
       startTime: 0,
       endTime: 0,
       Size: 4,
-      CustomModelUrl: "placeholder"
+      CustomModelUrl: "12345"
     };
 
     console.log('✅ 进入舞台信息构建完成:', enter_stage_info);
