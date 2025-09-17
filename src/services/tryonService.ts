@@ -378,8 +378,8 @@ export class TryonService {
     }
     
     const response = await roomAPI.createRoom(this.roomId, this.config.coCreationId, this.accessToken);
-    console.log('创建房间响应:', response);
-    console.log('创建房间响应数据:', response.data);
+    // console.log('创建房间响应:', response);
+    // console.log('创建房间响应数据:', response.data);
     
     if (!response.ok) {
       // 检查响应数据中是否包含code 424
