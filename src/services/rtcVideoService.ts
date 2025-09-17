@@ -144,6 +144,13 @@ export class RTCVideoService {
       
       console.log('📹 用户发布流:', userId, '视频:', hasVideo, '音频:', hasAudio);
       
+      // 过滤掉userid=0的流
+      if (userId === '0') {
+        console.log('⚠️ 跳过userid=0的流:', userId);
+        return;
+      }
+      
+      console.log('✅ 处理用户流:', userId);
       this.addRemoteStream(userId, hasVideo, hasAudio);
       this.eventHandlers.onUserPublishStream?.(userId, hasVideo, hasAudio);
     });
@@ -297,6 +304,12 @@ export class RTCVideoService {
   async setRemoteVideoPlayer(userId: string, domId: string): Promise<void> {
     if (!this.engine) {
       throw new Error('RTC引擎未初始化');
+    }
+
+    // 过滤掉userid=0的流
+    if (userId === '0') {
+      console.log(`⚠️ 跳过userid=0的视频播放器设置: ${userId}`);
+      return;
     }
 
     console.log('🎬 设置远程视频播放器:', userId, 'DOM ID:', domId);

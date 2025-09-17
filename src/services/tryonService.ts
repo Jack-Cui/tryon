@@ -659,6 +659,14 @@ export class TryonService {
       return;
     }
 
+    // 过滤掉userid=0的流
+    if (userId === '0') {
+      console.log(`⚠️ 跳过userid=0的视频流: ${userId}`);
+      return;
+    }
+
+    console.log(`✅ 处理视频流: ${userId}`);
+
     try {
       const domId = `remoteStream_${userId}`;
       
