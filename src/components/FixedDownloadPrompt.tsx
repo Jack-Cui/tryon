@@ -302,7 +302,8 @@ const FixedDownloadPrompt: React.FC = () => {
         </div>        
       </div>
 
-      <span ><span>打开APP</span>
+      <span >
+      {/* <span>打开APP</span> */}
       {/*  @ts-ignore */}   
         <wx-open-launch-app
                 id="launch-btn"

@@ -1,9 +1,25 @@
 import React, { useState, useRef } from 'react';
-import './FixedDownloadPrompt.css';
+import './DownloadAppModal.css';
 import wx from 'weixin-js-sdk';
 declare namespace JSX {  interface IntrinsicElements {    'wx-open-launch-app': any;  }}
 
-const FixedDownloadPrompt: React.FC = () => {
+interface DownloadAppModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  title: string;
+  description: string;
+  buttonText: string;
+  showCloseButton?: boolean;
+}
+
+const DownloadAppModal: React.FC<DownloadAppModalProps> = ({
+  isOpen,
+  onClose,
+  title,
+  description,
+  buttonText,
+  showCloseButton = true
+}) => {
   const [showError, setShowError] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [showCopySuccess, setShowCopySuccess] = useState(false);
@@ -272,51 +288,59 @@ const FixedDownloadPrompt: React.FC = () => {
   };
 
 
+  if (!isOpen) return null;
+
   return (
     <>
-      <div className="fixed-download-prompt">
-        
-        <div className="prompt-content">
-          {/* APP图标 */}
-          <div className="app-icon">
-            <div className="icon-inner">
-              <img src={APP_CONFIG.icon} alt={APP_CONFIG.name} style={{ width: 32, height: 32 }} />
-            </div>
-          </div>
-
+      {/* 模态框遮罩 */}
+      <div className="modal-overlay" onClick={onClose}>
+        <div className="download-app-modal" onClick={(e) => e.stopPropagation()}>
+          {/* 关闭按钮 */}
+          {showCloseButton && (
+            <button className="close-button" onClick={onClose}>×</button>
+          )}
+          
           {/* 内容区域 */}
-          <div className="prompt-text" style={{ textAlign: 'left' }}>
-            <h3 className="app-title" style={{ textAlign: 'left' }}>{APP_CONFIG.name}</h3>
-            <p className="app-description" style={{ textAlign: 'left' }}>{APP_CONFIG.description}</p>
+          <div className="modal-content">
+            {/* APP图标 */}
+            <div className="app-icon">
+              <div className="icon-inner">
+                <img src={APP_CONFIG.icon} alt={APP_CONFIG.name} style={{ width: 48, height: 48 }} />
+              </div>
+            </div>
+
+            {/* 标题和描述 */}
+            <div className="modal-text">
+              <h3 className="modal-title">{title}</h3>
+              <p className="modal-description">{description}</p>
+            </div>
+
+            {/* 下载按钮 */}
+            <button 
+              className="download-button"
+              onClick={handleDownloadApp}
+            >
+              {buttonText}
+            </button>
           </div>
 
-          {/* 下载按钮 */}
-
-          <button 
-            className="download-button"
-            onClick={handleDownloadApp}
-          >
-            立即下载
-          </button>
-
-        </div>        
-      </div>
-
-      <span ><span>打开APP</span>
-      {/*  @ts-ignore */}   
-        <wx-open-launch-app
-                id="launch-btn"
-                appid="wxc844402f4f353bec"
-                extinfo='{"id": "2"}'
+          {/* 微信内打开APP按钮 */}
+          <div className="wechat-launch">
+            {/* <span>打开APP</span> */}
+            {/*  @ts-ignore */}   
+            <wx-open-launch-app
+              id="launch-btn"
+              appid="wxc844402f4f353bec"
+              extinfo='{"id": "2"}'
             >
-            <script type='text/wxtag-template'>
-    
-            <button className="download-button"  onClick={handleDownloadApp}>打开APP</button>
-            </script>
-         {/*  @ts-ignore */}   
+              <script type='text/wxtag-template'>
+                <button className="download-button" onClick={handleDownloadApp}>打开APP</button>
+              </script>
+              {/*  @ts-ignore */}   
             </wx-open-launch-app>   
-       
-        </span>
+          </div>
+        </div>
+      </div>
 
       {/* 错误弹窗 */}
       {showError && (
@@ -360,4 +384,4 @@ const FixedDownloadPrompt: React.FC = () => {
   );
 };
 
-export default FixedDownloadPrompt; 
+export default DownloadAppModal; 
