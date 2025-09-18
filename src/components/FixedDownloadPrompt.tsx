@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import './FixedDownloadPrompt.css';
 import wx from 'weixin-js-sdk';
+declare namespace JSX {  interface IntrinsicElements {    'wx-open-launch-app': any;  }}
 
 const FixedDownloadPrompt: React.FC = () => {
   const [showError, setShowError] = useState(false);
@@ -132,6 +133,7 @@ const FixedDownloadPrompt: React.FC = () => {
   //   }
   // };
 
+  
   const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
   const isAndroid = /Android/i.test(navigator.userAgent);  
   const isWeChat = /MicroMessenger/i.test(navigator.userAgent);
@@ -147,8 +149,10 @@ const FixedDownloadPrompt: React.FC = () => {
       }
 
 
-      var appId= 'wxb9f44b8faeead9f7'; // 你的公众号APPID
-      var secret = 'a5c34dba7eb0115b064bbfd84d9ac604'; // 你的公众号密钥
+      // var appId= 'wxc844402f4f353bec'; // 你的公众号APPID
+      // var secret = 'bbe45d4e142e7f3682039a370825c019'; // 你的公众号密钥
+      var appId= 'wx57548bb90330c93e'; // 你的公众号APPID
+      var secret = '07592fe655621b11af45dd30abea309e'; // 你的公众号密钥      
       var access_token = ''; // 这里需要获取到有效的access_token
       var jsapi_ticket = ''; // 这里需要获取到有效的jsapi_ticket
       var nonceStr = Math.random().toString(36).substr(2, 15);
@@ -156,6 +160,9 @@ const FixedDownloadPrompt: React.FC = () => {
       var strtimestamp = timestamp.toString();
       var url = window.location.href.split('#')[0]; // 获取当前页面的URL
       var signature = ''; // 这里需要根据实际情况生成签名
+
+      alert('appId:'+appId + ' secret:'+secret);
+      
 
       // 定义获取 jsapi_ticket 的函数
       const jt_fetchData = async (access_token: string) => {
@@ -248,7 +255,7 @@ const FixedDownloadPrompt: React.FC = () => {
               alert('APP唤起失败，可以跳转到应用商店');
               console.log('APP唤起失败，可以跳转到应用商店');
               }
-            }, 2000);
+            }, 20000);
           }
           // // 尝试唤起APP
           // const appUrl = 'airverse://message?id=xxxxx';
@@ -265,11 +272,10 @@ const FixedDownloadPrompt: React.FC = () => {
   };
 
 
-
-
   return (
     <>
       <div className="fixed-download-prompt">
+        
         <div className="prompt-content">
           {/* APP图标 */}
           <div className="app-icon">
@@ -285,14 +291,32 @@ const FixedDownloadPrompt: React.FC = () => {
           </div>
 
           {/* 下载按钮 */}
+
           <button 
             className="download-button"
             onClick={handleDownloadApp}
           >
             立即下载
           </button>
-        </div>
+
+        </div>        
       </div>
+
+      <span ><span>打开APP</span>
+      {/*  @ts-ignore */}   
+        <wx-open-launch-app
+                id="launch-btn"
+                appid="wxc844402f4f353bec"
+                extinfo='{"id": "2"}'
+            >
+            <script type='text/wxtag-template'>
+    
+            <button className="download-button"  onClick={handleDownloadApp}>打开APP</button>
+            </script>
+         {/*  @ts-ignore */}   
+            </wx-open-launch-app>   
+       
+        </span>
 
       {/* 错误弹窗 */}
       {showError && (
