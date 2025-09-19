@@ -260,7 +260,7 @@ const Login = () => {
   return (
     <div className="login-container">
       <img src={logo} alt="logo" className="logo" />
-      <h2 className="welcome-text">欢迎来到元相</h2>
+      <h2 className="welcome-text">欢迎来到airU</h2>
       
       {/* 显示登录提示 */}
       {isRedirected() && (

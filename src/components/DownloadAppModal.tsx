@@ -26,8 +26,8 @@ const DownloadAppModal: React.FC<DownloadAppModalProps> = ({
 
   // APP配置 - 在这里修改即可快速调试其他APP
   const APP_CONFIG = {
-    name: 'airU APP', // APP名称
-    description: '您的私人试衣间,超多品牌等你来...', // APP描述
+    name: 'airU', // APP名称
+    description: '精准试穿 瞬间自信', // APP描述
     protocols: [
       'airverse://message', // 主要协议
       'airverse://', // 备用协议1
@@ -305,7 +305,7 @@ const DownloadAppModal: React.FC<DownloadAppModalProps> = ({
             {/* APP图标 */}
             <div className="app-icon">
               <div className="icon-inner">
-                <img src={APP_CONFIG.icon} alt={APP_CONFIG.name} style={{ width: 48, height: 48 }} />
+                <img src={APP_CONFIG.icon} alt={APP_CONFIG.name} />
               </div>
             </div>
 

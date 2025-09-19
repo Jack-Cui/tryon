@@ -256,7 +256,7 @@ export class WechatShareService {
         
         wx.onMenuShareAppMessage({
         // wx.updateAppMessageShareData({
-          title: '元相-3D试衣间', // 分享标题
+          title: 'airU-3D试衣间', // 分享标题
           desc: '快来和我一起共创动画', // 分享描述
           link: 'https://dev-h5.ai1010.cn/login?co_creation_id=1962501788939943937', // 分享链接
           imgUrl: 'https://dev-h5.ai1010.cn/share0902.jpg', // 分享图标
@@ -297,7 +297,7 @@ export class WechatShareService {
     }
 
     const data = {
-      title: shareData?.title || this.config?.title || '元相-3D试衣间',
+      title: shareData?.title || this.config?.title || 'airU-3D试衣间',
       desc: shareData?.desc || this.config?.desc || '快来和我一起共创动画',
       link: shareData?.link || this.config?.link || window.location.href.split('#')[0],
       imgUrl: shareData?.imgUrl || this.config?.imgUrl || 'https://dev-h5.ai1010.cn/logo192.png'
@@ -354,7 +354,7 @@ export class WechatShareService {
     }
 
     const data = {
-      title: shareData?.title || this.config?.title || '元相-3D试衣间',
+      title: shareData?.title || this.config?.title || 'airU-3D试衣间',
       desc: shareData?.desc || this.config?.desc || '快来和我一起共创动画',
       link: shareData?.link || this.config?.link || window.location.href.split('#')[0],
       imgUrl: shareData?.imgUrl || this.config?.imgUrl || 'https://dev-h5.ai1010.cn/logo.png'
@@ -423,7 +423,7 @@ export class WechatShareService {
     }
 
     const data = {
-      title: shareData?.title || this.config?.title || '元相-3D试衣间',
+      title: shareData?.title || this.config?.title || 'airU-3D试衣间',
       link: shareData?.link || this.config?.link || window.location.href.split('#')[0],
       imgUrl: shareData?.imgUrl || this.config?.imgUrl || 'https://dev-h5.ai1010.cn/logo.png'
     };
