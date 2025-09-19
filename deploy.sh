@@ -37,6 +37,10 @@ sudo cp /etc/nginx/sites-available/tryon /etc/nginx/sites-available/tryon.backup
 echo "配置nginx..."
 sudo cp nginx.conf /etc/nginx/sites-available/tryon
 
+# 5.1 删除冲突的配置文件
+echo "删除冲突的nginx配置文件..."
+sudo rm -f /etc/nginx/conf.d/tryon.conf
+
 # 6. 测试nginx配置
 echo "测试nginx配置..."
 sudo nginx -t

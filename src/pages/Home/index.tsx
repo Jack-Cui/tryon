@@ -1081,7 +1081,7 @@ const Home = () => {
         console.log('🌐 检测到手机浏览器，复制分享链接');
         
         const shareData = {
-          title: '元相-3D试衣间',
+          title: 'airU-3D试衣间',
           desc: '快来和我一起共创动画',
           link: window.location.href.split('#')[0],
           imgUrl: 'https://dev-h5.ai1010.cn/logo192.png'
