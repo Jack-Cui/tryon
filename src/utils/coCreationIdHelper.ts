@@ -10,9 +10,9 @@
  * - http://dev_h5.ai1010.cn?co_creation_id=2
  * - http://dev_h5.ai1010.cn/login?co_creation_id=2
  * 
- * @returns coCreationId 如果获取到则返回数字，否则返回null
+ * @returns coCreationId 如果获取到则返回字符串，否则返回null
  */
-export const getCoCreationIdFromURL = (): number | null => {
+export const getCoCreationIdFromURL = (): string | null => {
   try {
     const currentUrl = window.location.href;
     const url = new URL(currentUrl);
@@ -20,32 +20,32 @@ export const getCoCreationIdFromURL = (): number | null => {
     // 方法1: 从查询参数获取 co_creation_id
     const coCreationIdParam = url.searchParams.get('co_creation_id');
     if (coCreationIdParam) {
-      const parsedId = parseInt(coCreationIdParam, 10);
-      if (!isNaN(parsedId) && parsedId > 0) {
-        console.log('✅ 从URL查询参数获取到coCreationId:', parsedId);
-        return parsedId;
+      // 直接返回字符串，不进行数字转换
+      if (coCreationIdParam.trim() !== '') {
+        console.log('✅ 从URL查询参数获取到coCreationId:', coCreationIdParam);
+        return coCreationIdParam;
       } else {
-        console.log('❌ 从URL查询参数获取到coCreationId:', coCreationIdParam);
+        console.log('❌ 从URL查询参数获取到coCreationId为空:', coCreationIdParam);
       }
     }
     
     // 方法2: 从路径中解析 (处理类似 /home?co_creation_id=2 的情况)
     const pathWithQuery = url.pathname + url.search;
-    const pathMatch = pathWithQuery.match(/co_creation_id=(\d+)/);
+    const pathMatch = pathWithQuery.match(/co_creation_id=([^&]+)/);
     if (pathMatch && pathMatch[1]) {
-      const parsedId = parseInt(pathMatch[1], 10);
-      if (!isNaN(parsedId) && parsedId > 0) {
-        return parsedId;
+      const coCreationId = pathMatch[1];
+      if (coCreationId.trim() !== '') {
+        return coCreationId;
       }
     }
     
     // 方法3: 从window.location.search中获取 (兼容旧版本)
     if (window.location.search) {
-      const searchMatch = window.location.search.match(/co_creation_id=(\d+)/);
+      const searchMatch = window.location.search.match(/co_creation_id=([^&]+)/);
       if (searchMatch && searchMatch[1]) {
-        const parsedId = parseInt(searchMatch[1], 10);
-        if (!isNaN(parsedId) && parsedId > 0) {
-          return parsedId;
+        const coCreationId = searchMatch[1];
+        if (coCreationId.trim() !== '') {
+          return coCreationId;
         }
       }
     }
@@ -64,9 +64,9 @@ export const getCoCreationIdFromURL = (): number | null => {
  * 
  * @param fallbackToCache 是否在URL中获取不到时尝试从缓存获取
  * @param forceUrlPriority 是否强制URL参数优先级（忽略缓存）
- * @returns coCreationId 如果获取到则返回数字，否则返回null
+ * @returns coCreationId 如果获取到则返回字符串，否则返回null
  */
-export const getCoCreationId = (fallbackToCache: boolean = true, forceUrlPriority: boolean = false): number | null => {
+export const getCoCreationId = (fallbackToCache: boolean = true, forceUrlPriority: boolean = false): string | null => {
   // 首先尝试从URL获取
   const urlCoCreationId = getCoCreationIdFromURL();
   if (urlCoCreationId !== null) {
@@ -81,7 +81,7 @@ export const getCoCreationId = (fallbackToCache: boolean = true, forceUrlPriorit
       if (cachedData) {
         const parsedData = JSON.parse(cachedData);
         if (parsedData.coCreationId && 
-            typeof parsedData.coCreationId === 'number' && 
+            typeof parsedData.coCreationId === 'string' && 
             parsedData.coCreationId !== urlCoCreationId) {
           console.log('🔄 检测到URL参数与缓存值不同，更新缓存:', 
             `缓存值: ${parsedData.coCreationId} -> URL值: ${urlCoCreationId}`);
@@ -105,7 +105,7 @@ export const getCoCreationId = (fallbackToCache: boolean = true, forceUrlPriorit
       const cachedData = localStorage.getItem('loginCache');
       if (cachedData) {
         const parsedData = JSON.parse(cachedData);
-        if (parsedData.coCreationId && typeof parsedData.coCreationId === 'number') {
+        if (parsedData.coCreationId && typeof parsedData.coCreationId === 'string') {
           console.log('✅ 从缓存获取到coCreationId:', parsedData.coCreationId);
           return parsedData.coCreationId;
         }
@@ -128,18 +128,17 @@ export const getCoCreationId = (fallbackToCache: boolean = true, forceUrlPriorit
 export const isValidCoCreationId = (coCreationId: any): boolean => {
   return coCreationId !== null && 
          coCreationId !== undefined && 
-         typeof coCreationId === 'number' && 
-         !isNaN(coCreationId) && 
-         coCreationId > 0;
+         typeof coCreationId === 'string' && 
+         coCreationId.trim() !== '';
 };
 
 /**
  * 获取coCreationId，URL参数优先（会覆盖缓存中的值）
  * 这个函数专门用于需要强制使用URL参数的场景
  * 
- * @returns coCreationId 如果获取到则返回数字，否则返回null
+ * @returns coCreationId 如果获取到则返回字符串，否则返回null
  */
-export const getCoCreationIdWithUrlPriority = (): number | null => {
+export const getCoCreationIdWithUrlPriority = (): string | null => {
   // 直接调用getCoCreationIdFromURL，不经过缓存逻辑
   return getCoCreationIdFromURL();
 };
