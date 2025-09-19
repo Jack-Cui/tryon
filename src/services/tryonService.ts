@@ -9,7 +9,7 @@ import { ClothesItem } from '../types/api';
 
 export interface TryonConfig {
   phone: string;
-  coCreationId: number;
+  coCreationId: string;
   userId: string;
   accessToken: string;
   rtcConfig?: RTCVideoConfig;
@@ -373,7 +373,7 @@ export class TryonService {
 
   // 创建房间
   private async createRoom(): Promise<number> {
-    if (!this.config || !this.accessToken || !this.roomId || this.config.coCreationId == 0) {
+    if (!this.config || !this.accessToken || !this.roomId || this.config.coCreationId === '') {
       throw new Error('未配置参数、未登录或未获取房间信息');
     }
     

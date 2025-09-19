@@ -96,7 +96,7 @@ export class WechatShareService {
 
       this.getWechatSignature(currentUrl)
         .then(signature => {
-          alert('123');
+          // alert('123');
           wx.config({
             debug: true, // 开启调试模式查看详细错误信息
             appId: this.config!.appId,
@@ -242,7 +242,7 @@ export class WechatShareService {
     // 检查微信SDK是否准备好
     if (!this._ready || !wx) {
       console.warn('⚠️ 微信SDK未准备好，跳过分享配置');
-      alert('微信SDK未准备好，请稍后再试');
+      // alert('微信SDK未准备好，请稍后再试');
       this.showManualShareTip();
       return;
     }
@@ -250,7 +250,7 @@ export class WechatShareService {
     // 确保在wx.ready回调中执行分享配置
     return new Promise((resolve) => {
       var url = window.location.href.split('#')[0]; // 获取当前页面的URL
-      alert('当前页面URL: ' + url);
+      // alert('当前页面URL: ' + url);
       wx.ready(() => {
         console.log('✅ 微信SDK已准备好，开始配置分享');
         
@@ -262,7 +262,7 @@ export class WechatShareService {
           imgUrl: 'https://dev-h5.ai1010.cn/share0902.jpg', // 分享图标
           success: () => {
             console.log('分享成功'+window.location.href.split('#')[0]);
-            alert('分享成功'+window.location.href.split('#')[0]);
+            // alert('分享成功'+window.location.href.split('#')[0]);
             resolve();
           },
           cancel: () => {
@@ -277,8 +277,8 @@ export class WechatShareService {
           }
         });
         
-        console.log('分享配置已设置，请点击右上角菜单进行分享');
-        alert('分享配置已设置，请点击右上角菜单进行分享');
+            console.log('已准备好要分享的共创内容，请点击右上角菜单进行分享！');
+        alert('已准备好要分享的共创内容，请点击右上角菜单进行分享！');
       });
 
       wx.error((res: any) => {
