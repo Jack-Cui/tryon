@@ -83,8 +83,7 @@ const FixedDownloadPrompt: React.FC = () => {
   const downloadPrepare = () => {
     // alert('isAndroid:'+isAndroid+';isWeChat:'+isWeChat);
     if(isAndroid && isWeChat){
-      try {
-        
+      try {        
         var appId= 'wx57548bb90330c93e'; // 你的公众号APPID
         var secret = '07592fe655621b11af45dd30abea309e'; // 你的公众号密钥      
         var access_token = ''; // 这里需要获取到有效的access_token
