@@ -266,6 +266,15 @@ const FixedDownloadPrompt: React.FC = () => {
                 id="launch-btn"
                 appid="wxc844402f4f353bec"
                 extinfo='{"id": "2"}'
+                style={{
+                      width: '105px',
+                      height: '32px',
+                      display: 'block',
+                      position: 'absolute',
+                      right: '0.68rem',
+                      top: '1.18rem',                    
+                    }}
+                
             >
             <script type='text/wxtag-template'>
             {(isAndroid&&isWeChat)&&<button 
