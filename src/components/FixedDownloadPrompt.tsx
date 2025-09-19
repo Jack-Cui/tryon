@@ -292,7 +292,9 @@ const FixedDownloadPrompt: React.FC = () => {
             {/* 处理失败情况 */}
             <script>
               var btn = document.getElementById('launch-btn');
-              btn.addEventListener(alert('setShowCopySuccess'));
+              btn.addEventListener('error', function (e) {
+                
+              });
             </script>
         {/*  @ts-ignore */}   
         </wx-open-launch-app>   
