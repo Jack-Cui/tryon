@@ -266,19 +266,22 @@ const FixedDownloadPrompt: React.FC = () => {
                 id="launch-btn"
                 appid="wxc844402f4f353bec"
                 extinfo='{"id": "2"}'
-                style={{
-                      width: '105px',
-                      height: '32px',
-                      display: 'block',
-                      position: 'absolute',
-                      right: '0.68rem',
-                      top: '1.18rem',                    
-                    }}
+                // style={{
+                //       width: '105px',
+                //       height: '32px',
+                //       display: 'block',
+                //       position: 'absolute',
+                //       right: '0.68rem',
+                //       top: '1.18rem',                    
+                //     }
+                //   }
                 
             >
             <script type='text/wxtag-template'>
             {/* <img src={APP_CONFIG.icon} alt={APP_CONFIG.name} style={{ width: 32, height: 32 }} /> */}
-            
+            <style> 
+
+            </style>
             {(isAndroid&&isWeChat)&&<button 
               className="download-button"  
               onClick={handleDownloadApp}>
@@ -289,7 +292,7 @@ const FixedDownloadPrompt: React.FC = () => {
             {/* 处理失败情况 */}
             <script>
               var btn = document.getElementById('launch-btn');
-              btn.addEventListener(handleDownloadApp);
+              btn.addEventListener(alert('setShowCopySuccess'));
             </script>
         {/*  @ts-ignore */}   
         </wx-open-launch-app>   
