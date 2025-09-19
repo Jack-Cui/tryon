@@ -60,7 +60,16 @@ const FixedDownloadPrompt: React.FC = () => {
     }
   };
 
- 
+  function judgeBrand() {
+    const ua = navigator.userAgent;
+    if(/huawei|honor/i.test(ua)) return 'huawei';
+    if(/oppo/i.test(ua)) return 'oppo'; 
+    if(/vivo/i.test(ua)) return 'vivo';
+    if(/mi|redmi/i.test(ua)) return 'xiaomi';
+    if(/sm-/i.test(ua)) return 'samsung';
+    return 'default';
+  }
+  
   const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
   const isAndroid = /Android/i.test(navigator.userAgent);  
   const isWeChat = /MicroMessenger/i.test(navigator.userAgent);
@@ -201,10 +210,21 @@ const FixedDownloadPrompt: React.FC = () => {
               if (!document.hidden) {
               // 这里可以添加应用商店链接
               alert('APP唤起失败，请到应用商店下载最新版本！');
-              window.location.href = 'mimarket://details?id==com.vdiy.airverse'; // 替换为实际的应用商店链接              
-              console.log('APP唤起失败，可以跳转到应用商店');
+              // 替换为实际的应用商店链接       
+              if(judgeBrand()=='xiaomi'){
+              window.location.href = 'mimarket://details?id=com.vdiy.airverse';        
+              } else if(judgeBrand()=='huawei'){
+              window.location.href = 'appmarket://details?id=com.vdiy.airverse'; 
+              } else if(judgeBrand()=='oppo'){
+              window.location.href = 'oppomarket://details?packagename=com.vdiy.airverse'; 
+              } else if(judgeBrand()=='vivo'){
+              window.location.href = 'vivomarket://details?id=com.vdiy.airverse'; 
+              } else if(judgeBrand()=='samsung'){
+              window.location.href = 'samsungapps://ProductDetail/com.vdiy.airverse'; 
+              } 
+              return;
               }
-            }, 2000);
+            }, 1000);
 
         } catch (error: any) {
           console.error('处理失败:', error);
