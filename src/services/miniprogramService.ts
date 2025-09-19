@@ -145,7 +145,7 @@ export class MiniprogramService {
   }): Promise<{ success: boolean; roomInfo?: any; roomPrimaryId?: number; error?: string }> {
     try {
       // 获取房间信息
-      const roomResponse = await fetch(`${this.baseURL}${API_ENDPOINTS.GET_SYSROOMSHARE(0)}`, {
+      const roomResponse = await fetch(`${this.baseURL}${API_ENDPOINTS.GET_SYSROOMSHARE('0')}`, {
         method: 'GET',
         headers: {
           ...API_CONFIG.COMMON_HEADERS,
