@@ -5,7 +5,7 @@ import { RTCVideoService, RTCVideoConfig, rtcVideoService } from './rtcVideoServ
 import { RTC_CONFIG } from '../config/config';
 import { AccessToken, Privilege } from '../token/AccessToken';
 import { updateRoomNameInCache, updateClothesListInCache, updateRoomIdInCache, updateScenesListInCache } from '../utils/loginCache';
-import { ClothesItem } from '../types/api';
+import { ClothesItem, CreateSysRoomShareRequest } from '../types/api';
 
 export interface TryonConfig {
   phone: string;
@@ -762,6 +762,88 @@ export class TryonService {
   // 获取场景列表
   getScenesList(): { [key: string]: { name: string; code: string; bgm?: string } } {
     return this.scenesList;
+  }
+
+  // 创建分享
+  async createShare(): Promise<any> {
+    if (!this.config || !this.accessToken || !this.roomPrimaryId) {
+      throw new Error('缺少必要参数：config、accessToken 或 roomPrimaryId');
+    }
+
+    try {
+      console.log('开始创建分享...');
+      console.log('  - roomPrimaryId:', this.roomPrimaryId);
+      console.log('  - coCreationId:', this.config.coCreationId);
+
+      // 1. 获取房间信息以获取必要的数据
+      const roomResponse = await roomAPI.getSysRoomShare(this.config.coCreationId, this.accessToken);
+      if (!roomResponse.ok || !roomResponse.data) {
+        throw new Error('获取房间信息失败');
+      }
+
+      const roomInfo = roomAPI.parseRoomInfoResponse(roomResponse);
+      if (!roomInfo || !roomInfo.data) {
+        throw new Error('解析房间信息失败');
+      }
+
+      console.log('✅ 房间信息获取成功:', roomInfo.data);
+
+      // 2. 构建分享数据
+      const shareData: CreateSysRoomShareRequest = {
+        roomId: this.roomPrimaryId.toString(),
+        userId: roomInfo.data.userId || this.config.userId,
+        extra1: roomInfo.data.extra1 || '新视频',
+        extra2: roomInfo.data.extra2 || '',
+        clothId: roomInfo.data.clothId || '',
+        actionId: roomInfo.data.actionId || '',
+        scenarioId: roomInfo.data.scenarioId || '',
+        user2Id: null,
+        cloth2Id: null,
+        action2Id: null,
+        startT: null,
+        endT: null,
+        state: '',
+        startT2: null,
+        endT2: null,
+        extra3: null,
+        createTime: null,
+        createBy: '',
+        updateTime: null,
+        updateBy: '',
+        tenantId: null
+      };
+
+      console.log('📋 构建的分享数据:', shareData);
+
+      // 3. 调用创建分享接口
+      const response = await roomAPI.createSysRoomShare(shareData, this.accessToken);
+      console.log('📤 创建分享响应:', response);
+
+      if (!response.ok) {
+        // 检查响应数据中是否包含code 424
+        try {
+          const responseData = JSON.parse(response.data);
+          if (responseData.code === 424) {
+            console.log('🚨 创建分享时检测到登录过期 (code: 424)');
+            this.handleLoginExpired();
+            throw new Error('登录已过期');
+          }
+        } catch (parseError) {
+          console.log('解析响应数据失败:', parseError);
+        }
+
+        throw new Error(`创建分享失败: HTTP ${response.status}`);
+      }
+
+      const createShareData = roomAPI.parseCreateSysRoomShareResponse(response);
+      console.log('✅ 创建分享成功:', createShareData);
+
+      return createShareData;
+
+    } catch (error) {
+      console.error('❌ 创建分享失败:', error);
+      throw error;
+    }
   }
 
   // 断开连接
