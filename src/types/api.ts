@@ -13,7 +13,7 @@ export interface LoginResponse {
   expires_in?: number;
   scope?: string;
   user_id?: string;
-  co_creation_id?: number;
+  co_creation_id?: string;
   [key: string]: any;
 }
 
@@ -79,6 +79,37 @@ export interface CreateRoomResponse {
 
 // 加入房间响应类型
 export interface JoinRoomResponse {
+  data: any;
+  [key: string]: any;
+}
+
+// 创建分享请求类型
+export interface CreateSysRoomShareRequest {
+  roomId: string;
+  userId: string;
+  extra1: string;
+  extra2: string;
+  clothId: string;
+  actionId: string;
+  scenarioId: string;
+  user2Id: string | null;
+  cloth2Id: string | null;
+  action2Id: string | null;
+  startT: number | null;
+  endT: number | null;
+  state: string;
+  startT2: number | null;
+  endT2: number | null;
+  extra3: string | null;
+  createTime: string | null;
+  createBy: string;
+  updateTime: string | null;
+  updateBy: string;
+  tenantId: string | null;
+}
+
+// 创建分享响应类型
+export interface CreateSysRoomShareResponse {
   data: any;
   [key: string]: any;
 }
