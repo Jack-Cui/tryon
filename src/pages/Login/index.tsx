@@ -167,7 +167,7 @@ const Login = () => {
           const user_id = loginData.user_id || 'default_user_id';
           
           // 获取coCreationId，优先级：服务器响应 > URL参数 > 缓存
-          let co_creation_id: number | undefined = loginData.co_creation_id;
+          let co_creation_id: string | undefined = loginData.co_creation_id;
           
           // 如果服务器没有返回，强制从URL获取（完全忽略缓存）
           if (!co_creation_id) {
@@ -187,7 +187,7 @@ const Login = () => {
           }
           
           // 确保co_creation_id是有效的数字
-          const finalCoCreationId = co_creation_id as number;
+          const finalCoCreationId = co_creation_id as string;
           
           // 保存登录信息到缓存
           saveLoginCache({

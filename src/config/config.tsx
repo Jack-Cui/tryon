@@ -62,7 +62,7 @@ export const API_ENDPOINTS = {
     `/admin/oauth/token?mobile=SMS@${phone}&code=${code}&grant_type=mobile`,
   
   // 获取房间信息
-  GET_SYSROOMSHARE: (co_creation_id: number) => `/admin/sysroomshare/${co_creation_id}`,
+  GET_SYSROOMSHARE: (co_creation_id: string) => `/admin/sysroomshare/${co_creation_id}`,
   
   // 创建房间
   CREATE_ROOM: () => `/admin/room/create`,
@@ -83,7 +83,10 @@ export const API_ENDPOINTS = {
   SCHEDULE: () => '/alloc/room_inst',
 
   // 检查token重复登录
-  CHECK_LOGIN: (access_token: string) => `/admin/oauth/check_token?token=${access_token}`
+  CHECK_LOGIN: (access_token: string) => `/admin/oauth/check_token?token=${access_token}`,
+  
+  // 创建分享
+  CREATE_SYSROOMSHARE: () => `/admin/sysroomshare`
 };
 
 // RTC配置

@@ -5,7 +5,7 @@ export interface LoginCacheData {
   token: string;
   userId: string;
   phone: string;
-  coCreationId: number;
+  coCreationId: string;
   roomId?: string; // 房间ID，可选
   roomName?: string; // 房间名称，可选
   clothesList?: ClothesItem[]; // 服饰列表，可选

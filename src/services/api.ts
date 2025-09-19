@@ -11,7 +11,9 @@ import {
   ClotheDetailResponse,
   CreateRoomResponse, 
   JoinRoomResponse, 
-  EnterStageInfo
+  EnterStageInfo,
+  CreateSysRoomShareRequest,
+  CreateSysRoomShareResponse
 } from '../types/api';
 import { getLoginCache, updateDefaultSceneNameInCache, getClothesDetailFromCache, updateClothesDetailsInCache } from '../utils/loginCache';
 
@@ -282,7 +284,7 @@ export const authAPI = {
 // 房间相关API方法
 export const roomAPI = {
   // 获取房间信息
-  async getSysRoomShare(co_creation_id: number, access_token: string): Promise<ApiResponse> {
+  async getSysRoomShare(co_creation_id: string, access_token: string): Promise<ApiResponse> {
     console.log('开始获取房间信息，共创ID:', co_creation_id);
     const endpoint = API_ENDPOINTS.GET_SYSROOMSHARE(co_creation_id);
     const headers = {
@@ -312,7 +314,7 @@ export const roomAPI = {
   },
 
   // 创建房间
-  async createRoom(room_id: string, co_creation_id: number, access_token: string): Promise<ApiResponse> {
+  async createRoom(room_id: string, co_creation_id: string, access_token: string): Promise<ApiResponse> {
     console.log('开始创建房间，房间ID:', room_id, '共创ID:', co_creation_id);
     const endpoint = API_ENDPOINTS.CREATE_ROOM();
     const headers = {
@@ -725,7 +727,7 @@ export const roomAPI = {
   },
 
   // 预加载衣服详情到缓存
-  async preloadClothesDetails(co_creation_id: number, access_token: string): Promise<void> {
+  async preloadClothesDetails(co_creation_id: string, access_token: string): Promise<void> {
     console.log('🚀 开始预加载衣服详情到缓存');
     console.log('🔍 co_creation_id:', co_creation_id);
     console.log('🔍 access_token:', access_token ? '存在' : '不存在');
@@ -828,6 +830,32 @@ export const roomAPI = {
       
     } catch (error) {
       console.error('❌ 更新右侧顶部图片失败:', error);
+    }
+  },
+
+  // 创建分享
+  async createSysRoomShare(shareData: CreateSysRoomShareRequest, access_token: string): Promise<ApiResponse> {
+    console.log('开始创建分享，分享数据:', shareData);
+    const endpoint = API_ENDPOINTS.CREATE_SYSROOMSHARE();
+    const headers = {
+      'Authorization': `Bearer ${access_token}`,
+      'Content-Type': 'application/json'
+    };
+    const data = JSON.stringify(shareData);
+    return await apiService.post(endpoint, data, headers);
+  },
+
+  // 解析创建分享响应
+  parseCreateSysRoomShareResponse(response: ApiResponse): CreateSysRoomShareResponse | null {
+    if (!response.ok || !response.data) {
+      return null;
+    }
+
+    try {
+      return JSON.parse(response.data);
+    } catch (error) {
+      console.error('解析创建分享响应失败:', error);
+      return null;
     }
   }
 }; 
