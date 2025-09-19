@@ -169,7 +169,7 @@ export const WECHAT_CONFIG = {
   
   // 默认分享配置
   DEFAULT_SHARE: {
-    title: '元相-3D试衣间',
+    title: 'airU-3D试衣间',
     desc: '快来和我一起共创动画',
     link: 'https://dev-h5.ai1010.cn/home', // 使用固定的分享链接
     imgUrl: 'https://dev-h5.ai1010.cn/logo.png' // 使用项目logo作为分享图片
