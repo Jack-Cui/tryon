@@ -232,6 +232,15 @@ const FixedDownloadPrompt: React.FC = () => {
     }
   };
 
+  //处理唤起失败事件
+  useEffect(() => {
+    const btn = document.getElementById('launch-btn');
+    if (btn) {
+      btn.addEventListener('error', function(e) {
+        handleDownloadApp();
+      });
+    }
+  }, []);
 
   return (
     <>
@@ -280,21 +289,13 @@ const FixedDownloadPrompt: React.FC = () => {
             <script type='text/wxtag-template'>
             {/* <img src={APP_CONFIG.icon} alt={APP_CONFIG.name} style={{ width: 32, height: 32 }} /> */}
             <style> 
-
+                    {'.download-button {  background: linear-gradient(135deg, #52c41a 0%, #389e0d 100%);   color: white;  border: none;  border-radius: 10px;  padding: 10px 18px;  font-size: 13px;  font-weight: bold;  cursor: pointer;  transition: all 0.2s ease;  box-shadow: 0 2px 8px rgba(82, 196, 26, 0.3);  flex-shrink: 0;  white-space: nowrap;} .download-button:hover {  transform: translateY(-1px);  box-shadow: 0 4px 12px rgba(82, 196, 26, 0.4); }.download-button:active {   transform: translateY(0);}'}
             </style>
             {(isAndroid&&isWeChat)&&<button 
               className="download-button"  
               onClick={handleDownloadApp}>
                 打开APP
             </button>}            
-            </script>
-
-            {/* 处理失败情况 */}
-            <script>
-              var btn = document.getElementById('launch-btn');
-              btn.addEventListener('error', function (e) {
-                
-              });
             </script>
         {/*  @ts-ignore */}   
         </wx-open-launch-app>   
