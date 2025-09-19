@@ -201,7 +201,7 @@ const FixedDownloadPrompt: React.FC = () => {
               if (!document.hidden) {
               // 这里可以添加应用商店链接
               alert('APP唤起失败，请到应用商店下载最新版本！');
-              window.location.href = 'market://details?id==com.vdiy.airverse'; // 替换为实际的应用商店链接              
+              window.location.href = 'mimarket://details?id==com.vdiy.airverse'; // 替换为实际的应用商店链接              
               console.log('APP唤起失败，可以跳转到应用商店');
               }
             }, 2000);
