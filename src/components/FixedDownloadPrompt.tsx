@@ -277,7 +277,7 @@ const FixedDownloadPrompt: React.FC = () => {
                 
             >
             <script type='text/wxtag-template'>
-            <img src={APP_CONFIG.icon} alt={APP_CONFIG.name} style={{ width: 32, height: 32 }} />
+            {/* <img src={APP_CONFIG.icon} alt={APP_CONFIG.name} style={{ width: 32, height: 32 }} /> */}
             
             {(isAndroid&&isWeChat)&&<button 
               className="download-button"  
@@ -285,7 +285,7 @@ const FixedDownloadPrompt: React.FC = () => {
                 打开APP
             </button>}            
             </script>
-            
+
             {/* 处理失败情况 */}
             <script>
               var btn = document.getElementById('launch-btn');
